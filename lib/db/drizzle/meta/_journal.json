@@ -43,6 +43,13 @@
       "when": 1790085466806,
       "tag": "0005_nervous_killmonger",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790085803872,
+      "tag": "0006_greedy_sentinels",
+      "breakpoints": true
     }
   ]
 }

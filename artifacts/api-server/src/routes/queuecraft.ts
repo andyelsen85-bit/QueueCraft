@@ -86,6 +86,7 @@ import {
 } from "@workspace/api-zod";
 import { breakGlassLimiter } from "../middleware/security";
 import { queueMail } from "../services/mailer";
+import { getRuntimeSettings, maskedStatus, updateRuntimeSettings, type RuntimeSettings } from "../services/application-settings";
 
 const router: IRouter = Router();
 
@@ -337,9 +338,9 @@ function getCapabilities(
     [role.leadId, role.deputyId].includes(userId),
   );
   const capabilities = ["topic.create", "topic.edit", "topic.assign"];
-  if (isServiceAuthority) capabilities.push("validation.approve", "directory.manage");
+  if (isServiceAuthority) capabilities.push("validation.approve", "directory.manage", "settings.manage");
   if (isServiceAuthority || user?.isCio) capabilities.push("validation.break_glass");
-  if (user?.isCio) capabilities.push("directory.manage", "directory.manage_cio");
+  if (user?.isCio) capabilities.push("directory.manage", "directory.manage_cio", "settings.manage");
   if (isRoleAuthority) capabilities.push("role.execute");
   return [...new Set(capabilities)];
 }
@@ -421,6 +422,46 @@ router.get("/session", async (req, res): Promise<void> => {
       },
     }),
   );
+});
+
+router.get("/admin/settings", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "settings.manage")) return;
+  res.setHeader("Cache-Control", "no-store");
+  res.json(maskedStatus(await getRuntimeSettings()));
+});
+
+router.put("/admin/settings", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "settings.manage")) return;
+  const body = req.body;
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    res.status(400).json({ error: "Settings must be an object" });
+    return;
+  }
+  const allowed = new Set<keyof RuntimeSettings>([
+    "publicBaseUrl", "adfsIssuer", "adfsClientId", "adfsClientSecret", "adfsRedirectUri",
+    "ldapsUrl", "ldapsBindDn", "ldapsBindPassword", "ldapsBaseDn", "ldapsUserFilter", "ldapsCioGroupDn", "ldapsCaCertificate",
+    "smtpHost", "smtpPort", "smtpSecure", "smtpUser", "smtpPassword", "smtpFrom",
+  ]);
+  const update: Partial<RuntimeSettings> = {};
+  for (const [key, value] of Object.entries(body)) {
+    if (!allowed.has(key as keyof RuntimeSettings)) continue;
+    if (key === "smtpPort") {
+      if (!Number.isInteger(value) || Number(value) < 1 || Number(value) > 65535) { res.status(400).json({ error: "SMTP port must be between 1 and 65535" }); return; }
+      update.smtpPort = Number(value);
+    } else if (key === "smtpSecure") {
+      if (typeof value !== "boolean") { res.status(400).json({ error: "SMTP secure must be a boolean" }); return; }
+      update.smtpSecure = value;
+    } else if (typeof value === "string") {
+      (update as Record<string, string>)[key] = value.trim();
+    } else {
+      res.status(400).json({ error: `Invalid value for ${key}` }); return;
+    }
+  }
+  const saved = await updateRuntimeSettings(update, currentUserId(req));
+  res.setHeader("Cache-Control", "no-store");
+  res.json(maskedStatus(saved));
 });
 
 router.get("/preferences/topic-filters", async (req, res): Promise<void> => {

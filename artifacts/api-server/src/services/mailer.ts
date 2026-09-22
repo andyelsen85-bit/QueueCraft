@@ -3,20 +3,22 @@ import nodemailer from "nodemailer";
 import { db, notificationOutboxTable } from "@workspace/db";
 import { and, eq, inArray, lte } from "drizzle-orm";
 import { config, smtpConfigured } from "../config";
+import { getRuntimeSettings } from "./application-settings";
 import { logger } from "../lib/logger";
 
-const transporter = smtpConfigured
-  ? nodemailer.createTransport({
-      host: config.smtp.host,
-      port: config.smtp.port,
-      secure: config.smtp.secure,
+async function getTransporter() {
+  const settings = await getRuntimeSettings();
+  const smtp = { host: settings.smtpHost ?? config.smtp.host, port: settings.smtpPort ?? config.smtp.port, secure: settings.smtpSecure ?? config.smtp.secure, user: settings.smtpUser ?? config.smtp.user, password: settings.smtpPassword ?? config.smtp.password, from: settings.smtpFrom ?? config.smtp.from };
+  if (!smtp.host) return { transporter: null, smtp };
+  return { transporter: nodemailer.createTransport({
+      host: smtp.host, port: smtp.port, secure: smtp.secure,
       auth:
-        config.smtp.user && config.smtp.password
-          ? { user: config.smtp.user, pass: config.smtp.password }
+        smtp.user && smtp.password
+          ? { user: smtp.user, pass: smtp.password }
           : undefined,
       tls: { rejectUnauthorized: true },
-    })
-  : null;
+    }), smtp };
+}
 
 export async function queueMail(executor: any, input: {
   topicId?: string;
@@ -36,6 +38,7 @@ export async function queueMail(executor: any, input: {
 }
 
 export async function deliverPendingNotifications() {
+  const { transporter, smtp } = await getTransporter();
   if (!transporter) {
     if (config.production) logger.error("SMTP is unavailable; notification delivery is blocked");
     return;
@@ -54,7 +57,7 @@ export async function deliverPendingNotifications() {
   for (const item of pending) {
     try {
       await transporter.sendMail({
-        from: config.smtp.from,
+        from: smtp.from,
         to: item.recipient,
         subject: item.subject,
         text: item.body,

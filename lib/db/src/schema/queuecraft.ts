@@ -66,6 +66,13 @@ export const departmentsTable = pgTable("departments", {
   serviceHeadDeputyId: text("service_head_deputy_id").references(() => membersTable.id),
 });
 
+export const applicationSettingsTable = pgTable("application_settings", {
+  id: text("id").primaryKey().default("runtime"),
+  encryptedValue: text("encrypted_value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedById: text("updated_by_id").references(() => membersTable.id),
+});
+
 export const rolesTable = pgTable("roles", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),

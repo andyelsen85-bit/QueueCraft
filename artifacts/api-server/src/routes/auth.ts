@@ -3,6 +3,7 @@ import { and, eq, or } from "drizzle-orm";
 import { db, membersTable } from "@workspace/db";
 import { authLimiter, csrfProtection, ensureCsrfToken } from "../middleware/security";
 import { config, ldapConfigured, oidcConfigured } from "../config";
+import { getRuntimeSettings, maskedStatus } from "../services/application-settings";
 import { authenticateWithLdaps } from "../services/ldaps";
 import { createAuthorizationRequest, redeemAuthorizationCode } from "../services/oidc";
 
@@ -59,10 +60,11 @@ async function resolveMember(input: {
   return member;
 }
 
-router.get("/auth/providers", (_req, res) => {
+router.get("/auth/providers", async (_req, res) => {
+  const settings = maskedStatus(await getRuntimeSettings());
   res.json({
-    adfs: oidcConfigured,
-    ldaps: ldapConfigured,
+    adfs: Boolean(settings.adfs.issuer && settings.adfs.clientId && settings.adfs.redirectUri),
+    ldaps: Boolean(settings.ldaps.url && settings.ldaps.bindDn && settings.ldaps.bindPasswordConfigured && settings.ldaps.baseDn),
     developmentPreview: !config.production,
   });
 });
@@ -95,7 +97,8 @@ router.get("/auth/callback", authLimiter, async (req, res, next) => {
       res.status(400).json({ error: "Authentication transaction expired" });
       return;
     }
-    const base = config.publicBaseUrl ?? `${req.protocol}://${req.get("host")}`;
+    const runtimeSettings = await getRuntimeSettings();
+    const base = runtimeSettings.publicBaseUrl ?? config.publicBaseUrl ?? `${req.protocol}://${req.get("host")}`;
     const currentUrl = new URL(req.originalUrl, base);
     const claims = await redeemAuthorizationCode(currentUrl, {
       state: oidcState,

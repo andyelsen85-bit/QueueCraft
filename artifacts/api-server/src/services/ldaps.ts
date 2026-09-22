@@ -1,5 +1,6 @@
 import { Client } from "ldapts";
 import { config, ldapConfigured } from "../config";
+import { getRuntimeSettings } from "./application-settings";
 
 function escapeFilter(value: string) {
   return value.replace(/[\\*()\0]/g, (character) => {
@@ -9,19 +10,25 @@ function escapeFilter(value: string) {
 }
 
 export async function authenticateWithLdaps(username: string, password: string) {
-  if (!ldapConfigured) throw new Error("LDAPS fallback is not configured");
+  const settings = await getRuntimeSettings();
+  const ldap = {
+    url: settings.ldapsUrl ?? config.ldap.url, bindDn: settings.ldapsBindDn ?? config.ldap.bindDn,
+    bindPassword: settings.ldapsBindPassword ?? config.ldap.bindPassword, baseDn: settings.ldapsBaseDn ?? config.ldap.baseDn,
+    userFilter: settings.ldapsUserFilter ?? config.ldap.userFilter, cioGroupDn: settings.ldapsCioGroupDn ?? config.ldap.cioGroupDn, ca: settings.ldapsCaCertificate,
+  };
+  if (!(ldap.url && ldap.bindDn && ldap.bindPassword && ldap.baseDn)) throw new Error("LDAPS fallback is not configured");
   if (!username || !password) throw new Error("Username and password are required");
 
   const serviceClient = new Client({
-    url: config.ldap.url!,
+    url: ldap.url,
     timeout: 8_000,
     connectTimeout: 8_000,
-    tlsOptions: { rejectUnauthorized: true },
+    tlsOptions: { rejectUnauthorized: true, ca: ldap.ca ? [ldap.ca] : undefined },
   });
   try {
-    await serviceClient.bind(config.ldap.bindDn!, config.ldap.bindPassword!);
-    const filter = config.ldap.userFilter.replace("{{username}}", escapeFilter(username));
-    const result = await serviceClient.search(config.ldap.baseDn!, {
+    await serviceClient.bind(ldap.bindDn, ldap.bindPassword);
+    const filter = ldap.userFilter.replace("{{username}}", escapeFilter(username));
+    const result = await serviceClient.search(ldap.baseDn, {
       scope: "sub",
       filter,
       sizeLimit: 2,
@@ -34,10 +41,10 @@ export async function authenticateWithLdaps(username: string, password: string) 
     if (!dn || (flags & 2) === 2) throw new Error("Account is disabled");
 
     const userClient = new Client({
-      url: config.ldap.url!,
+      url: ldap.url,
       timeout: 8_000,
       connectTimeout: 8_000,
-      tlsOptions: { rejectUnauthorized: true },
+      tlsOptions: { rejectUnauthorized: true, ca: ldap.ca ? [ldap.ca] : undefined },
     });
     try {
       await userClient.bind(dn, password);
@@ -54,7 +61,7 @@ export async function authenticateWithLdaps(username: string, password: string) 
       subject: dn,
       email: String(entry.mail ?? "").toLowerCase(),
       name: String(entry.displayName ?? username),
-      isCio: Boolean(config.ldap.cioGroupDn && groups.includes(config.ldap.cioGroupDn)),
+      isCio: Boolean(ldap.cioGroupDn && groups.includes(ldap.cioGroupDn)),
     };
   } finally {
     await serviceClient.unbind().catch(() => undefined);
