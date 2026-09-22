@@ -43,6 +43,7 @@ type DepartmentDraft = {
 type RoleDraft = {
   name: string
   departmentId: string
+  departmentIds: string[]
   leadId: string
   deputyId: string
   memberIds: string[]
@@ -50,7 +51,7 @@ type RoleDraft = {
 
 const emptyMember: MemberDraft = { name: "", email: "", title: "", externalSubject: "", isCio: false, dailyBusinessPercent: 0 }
 const emptyDepartment: DepartmentDraft = { name: "", serviceHeadId: "", serviceHeadDeputyId: "" }
-const emptyRole: RoleDraft = { name: "", departmentId: "", leadId: "", deputyId: "", memberIds: [] }
+const emptyRole: RoleDraft = { name: "", departmentId: "", departmentIds: [], leadId: "", deputyId: "", memberIds: [] }
 
 function mutationError(error: unknown) {
   if (!error) return null
@@ -107,6 +108,7 @@ export function Directory() {
     setRoleDraft(role ? {
       name: role.name,
       departmentId: role.departmentId,
+      departmentIds: role.departmentIds?.length ? role.departmentIds : [role.departmentId],
       leadId: role.lead.id,
       deputyId: role.deputy?.id ?? "",
       memberIds: role.memberIds ?? [],
@@ -152,6 +154,7 @@ export function Directory() {
     const data = {
       name: roleDraft.name.trim(),
       departmentId: roleDraft.departmentId,
+      departmentIds: [...new Set([roleDraft.departmentId, ...roleDraft.departmentIds].filter(Boolean))],
       leadId: roleDraft.leadId,
       deputyId: roleDraft.deputyId || null,
       memberIds: roleDraft.memberIds,
@@ -216,7 +219,7 @@ export function Directory() {
             {roles?.map((role) => (
               <Card key={role.id}>
                 <CardHeader className="flex-row items-start justify-between space-y-0">
-                  <div><div className="text-xs font-mono text-muted-foreground mb-1">{departments?.find((d) => d.id === role.departmentId)?.name}</div><CardTitle className="text-lg">{role.name}</CardTitle></div>
+                  <div><div className="text-xs font-mono text-muted-foreground mb-1">{(role.departmentIds?.length ? role.departmentIds : [role.departmentId]).map((id) => departments?.find((d) => d.id === id)?.name).filter(Boolean).join(" · ")}</div><CardTitle className="text-lg">{role.name}</CardTitle></div>
                   <Button variant="ghost" size="icon" aria-label={`Edit ${role.name}`} onClick={() => openRole(role)}><Pencil className="h-4 w-4" /></Button>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-0">
@@ -288,7 +291,8 @@ export function Directory() {
         <DialogContent><DialogHeader><DialogTitle>{roleDialog.id ? "Edit role" : "Create role"}</DialogTitle></DialogHeader>
           <form onSubmit={submitRole} className="space-y-4">
             <Field label="Role name"><Input required value={roleDraft.name} onChange={(e) => setRoleDraft({ ...roleDraft, name: e.target.value })} /></Field>
-            <Field label="Department"><Select value={roleDraft.departmentId} onValueChange={(value) => setRoleDraft({ ...roleDraft, departmentId: value, leadId: "", deputyId: "" })}><SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger><SelectContent>{departments?.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent></Select></Field>
+            <Field label="Primary department"><Select value={roleDraft.departmentId} onValueChange={(value) => setRoleDraft({ ...roleDraft, departmentId: value, departmentIds: [...new Set([value, ...roleDraft.departmentIds])], leadId: "", deputyId: "" })}><SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger><SelectContent>{departments?.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent></Select></Field>
+            <Field label="Also linked to departments"><div className="max-h-32 space-y-2 overflow-y-auto rounded-sm border p-2">{departments?.map((department) => <label key={department.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={roleDraft.departmentIds.includes(department.id)} disabled={department.id === roleDraft.departmentId} onChange={(event) => setRoleDraft({ ...roleDraft, departmentIds: event.target.checked ? [...roleDraft.departmentIds, department.id] : roleDraft.departmentIds.filter((id) => id !== department.id) })} />{department.name}{department.id === roleDraft.departmentId && <span className="text-xs text-muted-foreground">(primary)</span>}</label>)}</div></Field>
             <MemberSelect label="Role Lead" value={roleDraft.leadId} onChange={(value) => setRoleDraft({ ...roleDraft, leadId: value })} members={memberOptions} required />
             <MemberSelect label="Deputy (optional)" value={roleDraft.deputyId} onChange={(value) => setRoleDraft({ ...roleDraft, deputyId: value })} members={memberOptions} />
             <Field label="Role members (optional)"><div className="max-h-36 overflow-y-auto rounded-sm border p-2 space-y-2">{memberOptions.map((member) => <label key={member.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={roleDraft.memberIds.includes(member.id)} onChange={(e) => setRoleDraft({ ...roleDraft, memberIds: e.target.checked ? [...roleDraft.memberIds, member.id] : roleDraft.memberIds.filter((id) => id !== member.id) })} />{member.name}</label>)}</div></Field>

@@ -749,11 +749,14 @@ components:
         serviceHeadDeputyId: { type: ["string", "null"] }
     Role:
       type: object
-      required: [id, name, departmentId, lead]
+      required: [id, name, departmentId, departmentIds, lead]
       properties:
         id: { type: string }
         name: { type: string }
         departmentId: { type: string }
+        departmentIds:
+          type: array
+          items: { type: string }
         lead:
           $ref: "#/components/schemas/Member"
         deputy:
@@ -770,6 +773,9 @@ components:
       properties:
         name: { type: string, minLength: 2, maxLength: 120 }
         departmentId: { type: string }
+        departmentIds:
+          type: array
+          items: { type: string }
         leadId: { type: string }
         deputyId: { type: ["string", "null"] }
         memberIds:
@@ -780,6 +786,9 @@ components:
       properties:
         name: { type: string, minLength: 2, maxLength: 120 }
         departmentId: { type: string }
+        departmentIds:
+          type: array
+          items: { type: string }
         leadId: { type: string }
         deputyId: { type: ["string", "null"] }
         memberIds:

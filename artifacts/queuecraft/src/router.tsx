@@ -9,6 +9,8 @@ import { TopicDetail } from "./pages/topic-detail"
 import { Validation } from "./pages/validation"
 import { Directory } from "./pages/directory"
 import { Occupancy } from "./pages/occupancy"
+import { Calendar } from "./pages/calendar"
+import { SettingsPage } from "./pages/settings"
 import NotFound from "./pages/not-found"
 
 export function AppRouter() {
@@ -43,6 +45,8 @@ export function AppRouter() {
         <Route path="/validation" component={Validation} />
         <Route path="/directory" component={Directory} />
         <Route path="/occupancy" component={Occupancy} />
+        <Route path="/calendar" component={Calendar} />
+        <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

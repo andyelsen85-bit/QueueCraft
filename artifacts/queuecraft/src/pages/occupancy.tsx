@@ -1,6 +1,7 @@
 import * as React from "react"
 import { useGetOccupancyOverview, getGetOccupancyOverviewQueryKey } from "@workspace/api-client-react"
-import { format, startOfWeek, addWeeks, subWeeks, parseISO } from "date-fns"
+import { useQueries } from "@tanstack/react-query"
+import { format, startOfWeek, addWeeks, subWeeks, parseISO, startOfMonth, endOfMonth, eachWeekOfInterval, addMonths, subMonths } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -10,13 +11,48 @@ import { ChevronLeft, ChevronRight, AlertTriangle, Calendar as CalendarIcon, Bri
 
 export function Occupancy() {
   const [currentWeek, setCurrentWeek] = React.useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
+  const [view, setView] = React.useState<"week" | "month">("week")
 
   const weekStartStr = format(currentWeek, 'yyyy-MM-dd')
   
-  const { data: overviews, isLoading } = useGetOccupancyOverview({ weekStart: weekStartStr }, { query: { queryKey: getGetOccupancyOverviewQueryKey({ weekStart: weekStartStr }) } })
+  const { data: weeklyOverviews, isLoading: weeklyLoading } = useGetOccupancyOverview({ weekStart: weekStartStr }, { query: { queryKey: getGetOccupancyOverviewQueryKey({ weekStart: weekStartStr }), enabled: view === "week" } })
+  const monthWeeks = React.useMemo(() => eachWeekOfInterval({ start: startOfMonth(currentWeek), end: endOfMonth(currentWeek) }, { weekStartsOn: 1 }).map((date) => format(date, "yyyy-MM-dd")), [currentWeek])
+  const monthQueries = useQueries({
+    queries: monthWeeks.map((weekStart) => ({
+      queryKey: getGetOccupancyOverviewQueryKey({ weekStart }),
+      queryFn: async () => {
+        const response = await fetch(`/api/occupancy/overview?weekStart=${weekStart}`, { credentials: "include" })
+        if (!response.ok) throw new Error("Occupancy data could not be loaded")
+        return response.json()
+      },
+      enabled: view === "month",
+    })),
+  })
+  const monthLoading = monthQueries.some((query) => query.isLoading)
+  const monthlyOverviews = React.useMemo(() => {
+    const weeks = monthQueries.flatMap((query) => query.data ?? []) as any[]
+    const byMember = new Map<string, any[]>()
+    weeks.forEach((overview) => byMember.set(overview.member.id, [...(byMember.get(overview.member.id) ?? []), overview]))
+    return [...byMember.values()].map((entries) => {
+      const sample = entries[0]
+      const divisor = entries.length
+      const topics = new Map<string, { topicId: string; title: string; allocationPercent: number }>()
+      entries.forEach((entry) => entry.topics.forEach((topic: any) => {
+        const current = topics.get(topic.topicId) ?? { ...topic, allocationPercent: 0 }
+        current.allocationPercent += topic.allocationPercent / divisor
+        topics.set(topic.topicId, current)
+      }))
+      const topicAllocationPercent = Math.round(entries.reduce((sum, entry) => sum + entry.topicAllocationPercent, 0) / divisor)
+      const dailyBusinessPercent = sample.dailyBusinessPercent
+      const totalOccupancyPercent = dailyBusinessPercent + topicAllocationPercent
+      return { ...sample, dailyBusinessPercent, topics: [...topics.values()].map((topic) => ({ ...topic, allocationPercent: Math.round(topic.allocationPercent) })), topicAllocationPercent, totalOccupancyPercent, availablePercent: 100 - totalOccupancyPercent, overAllocated: totalOccupancyPercent > 100 }
+    })
+  }, [monthQueries])
+  const overviews = view === "week" ? weeklyOverviews : monthlyOverviews
+  const isLoading = view === "week" ? weeklyLoading : monthLoading
 
-  const goNextWeek = () => setCurrentWeek(prev => addWeeks(prev, 1))
-  const goPrevWeek = () => setCurrentWeek(prev => subWeeks(prev, 1))
+  const goNextWeek = () => setCurrentWeek(prev => view === "week" ? addWeeks(prev, 1) : addMonths(prev, 1))
+  const goPrevWeek = () => setCurrentWeek(prev => view === "week" ? subWeeks(prev, 1) : subMonths(prev, 1))
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.value) {
@@ -33,20 +69,24 @@ export function Occupancy() {
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Capacity Planning</p>
           <h1 className="text-3xl font-bold tracking-tight">Occupancy Overview</h1>
-          <p className="text-muted-foreground mt-1">Review team capacity, BAU commitments, and topic allocations.</p>
+          <p className="text-muted-foreground mt-1">Review team capacity, BAU commitments, and topic allocations by week or month.</p>
         </div>
         
-        <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-md border">
+        <div className="flex flex-wrap items-center gap-2 bg-muted/30 p-1 rounded-md border">
+          <div className="flex rounded-sm border bg-background p-0.5">
+            <Button size="sm" variant={view === "week" ? "default" : "ghost"} onClick={() => setView("week")}>Week</Button>
+            <Button size="sm" variant={view === "month" ? "default" : "ghost"} onClick={() => setView("month")}>Month</Button>
+          </div>
           <Button variant="ghost" size="icon" onClick={goPrevWeek}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="relative">
             <CalendarIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input 
-              type="date" 
-              value={weekStartStr} 
+              type={view === "week" ? "date" : "month"}
+              value={view === "week" ? weekStartStr : format(currentWeek, "yyyy-MM")}
               onChange={handleDateChange}
-              className="w-[160px] pl-9 h-9 bg-transparent border-0 shadow-none focus-visible:ring-0" 
+              className="w-[160px] pl-9 h-9 bg-transparent border-0 shadow-none focus-visible:ring-0"
             />
           </div>
           <Button variant="ghost" size="icon" onClick={goNextWeek}>
@@ -128,11 +168,11 @@ export function Occupancy() {
                       <div className="text-sm font-semibold text-muted-foreground mb-3">Topic Allocations</div>
                       {overview.topics.length === 0 ? (
                         <div className="text-sm text-muted-foreground p-3 border border-dashed rounded-sm text-center bg-muted/10">
-                          No topics allocated for this week.
+                          No topics allocated for this {view}.
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {overview.topics.map(topic => (
+                          {overview.topics.map((topic: { topicId: string; title: string; allocationPercent: number }) => (
                             <div key={topic.topicId} className="flex items-center justify-between p-3 rounded-sm border bg-background hover:border-primary/50 transition-colors">
                               <span className="text-sm font-medium truncate pr-4">{topic.title}</span>
                               <span className="text-sm font-mono font-bold whitespace-nowrap">{topic.allocationPercent}%</span>
@@ -141,7 +181,7 @@ export function Occupancy() {
                           {overview.topics.length > 0 && (
                             <div className="flex justify-end pt-2 px-1">
                               <div className="text-xs font-mono text-muted-foreground">
-                                Topic Total: <span className="font-bold text-foreground">{overview.topicAllocationPercent}%</span>
+                                {view === "month" ? "Average topic allocation" : "Topic Total"}: <span className="font-bold text-foreground">{overview.topicAllocationPercent}%</span>
                               </div>
                             </div>
                           )}

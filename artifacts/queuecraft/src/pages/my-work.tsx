@@ -21,6 +21,12 @@ export function MyWork() {
   }
 
   if (!myWork) return null
+  const openTopics = <T extends { status: string }>(topics: T[]) =>
+    topics.filter((topic) => !["completed", "closed"].includes(topic.status))
+  const assigned = openTopics(myWork.assigned)
+  const created = openTopics(myWork.created)
+  const collaborations = openTopics(myWork.collaborations)
+  const milestones = myWork.milestones.filter((milestone) => milestone.status !== "completed")
 
   const TopicList = ({ topics, emptyMessage }: { topics: typeof myWork.created, emptyMessage: string }) => {
     if (topics.length === 0) {
@@ -75,41 +81,41 @@ export function MyWork() {
             value="assigned" 
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
           >
-            Assigned Topics ({myWork.assigned.length})
+            Assigned Topics ({assigned.length})
           </TabsTrigger>
           <TabsTrigger 
             value="milestones" 
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
           >
-            My Milestones ({myWork.milestones.length})
+            My Milestones ({milestones.length})
           </TabsTrigger>
           <TabsTrigger 
             value="created" 
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
           >
-            Created by Me ({myWork.created.length})
+            Created by Me ({created.length})
           </TabsTrigger>
           <TabsTrigger 
             value="collaborating" 
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
           >
-            Collaborating ({myWork.collaborations.length})
+            Collaborating ({collaborations.length})
           </TabsTrigger>
         </TabsList>
 
         <div className="mt-6">
           <TabsContent value="assigned">
-            <TopicList topics={myWork.assigned} emptyMessage="No topics currently assigned as primary responsibility." />
+            <TopicList topics={assigned} emptyMessage="No open topics currently assigned as primary responsibility." />
           </TabsContent>
 
           <TabsContent value="milestones">
-            {myWork.milestones.length === 0 ? (
+            {milestones.length === 0 ? (
               <div className="p-12 text-center text-sm text-muted-foreground border-2 border-dashed border-muted rounded-sm">
                 No active milestones assigned to you.
               </div>
             ) : (
               <div className="space-y-2">
-                {myWork.milestones.map(m => (
+                {milestones.map(m => (
                   <Card key={m.id}>
                     <CardContent className="p-4 flex items-center gap-4">
                       <div className="flex-1 min-w-0">
@@ -131,11 +137,11 @@ export function MyWork() {
           </TabsContent>
 
           <TabsContent value="created">
-            <TopicList topics={myWork.created} emptyMessage="You haven't created any topics." />
+            <TopicList topics={created} emptyMessage="You haven't created any open topics." />
           </TabsContent>
 
           <TabsContent value="collaborating">
-            <TopicList topics={myWork.collaborations} emptyMessage="You are not a collaborator on any active topics." />
+            <TopicList topics={collaborations} emptyMessage="You are not a collaborator on any open topics." />
           </TabsContent>
         </div>
       </TabsRoot>

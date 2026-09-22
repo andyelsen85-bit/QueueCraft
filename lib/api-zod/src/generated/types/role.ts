@@ -11,6 +11,7 @@ export interface Role {
   id: string;
   name: string;
   departmentId: string;
+  departmentIds: string[];
   lead: Member;
   deputy?: Member | null;
   memberCount?: number;

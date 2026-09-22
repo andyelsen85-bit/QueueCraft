@@ -187,6 +187,7 @@ export interface Role {
   id: string;
   name: string;
   departmentId: string;
+  departmentIds: string[];
   lead: Member;
   deputy?: Member | null;
   memberCount?: number;
@@ -200,6 +201,7 @@ export interface RoleInput {
      */
   name: string;
   departmentId: string;
+  departmentIds?: string[];
   leadId: string;
   /** @nullable */
   deputyId?: string | null;
@@ -213,6 +215,7 @@ export interface RoleUpdate {
      */
   name?: string;
   departmentId?: string;
+  departmentIds?: string[];
   leadId?: string;
   /** @nullable */
   deputyId?: string | null;

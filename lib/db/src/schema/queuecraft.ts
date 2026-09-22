@@ -78,6 +78,19 @@ export const rolesTable = pgTable("roles", {
   deputyId: text("deputy_id").references(() => membersTable.id),
 });
 
+export const roleDepartmentsTable = pgTable(
+  "role_departments",
+  {
+    roleId: text("role_id")
+      .notNull()
+      .references(() => rolesTable.id),
+    departmentId: text("department_id")
+      .notNull()
+      .references(() => departmentsTable.id),
+  },
+  (table) => [primaryKey({ columns: [table.roleId, table.departmentId] })],
+);
+
 export const roleMembersTable = pgTable(
   "role_members",
   {

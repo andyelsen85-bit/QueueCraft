@@ -292,6 +292,7 @@ export const GetMyWorkResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()),
   "lead": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -407,6 +408,7 @@ export const GetMyWorkResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()),
   "lead": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -541,6 +543,7 @@ export const GetMyWorkResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()),
   "lead": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -656,6 +659,7 @@ export const GetMyWorkResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()),
   "lead": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -805,6 +809,7 @@ export const GetValidationQueueResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()),
   "lead": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -968,6 +973,7 @@ export const ListTopicsResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()),
   "lead": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1140,6 +1146,7 @@ export const CreateTopicResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()),
   "lead": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1307,6 +1314,7 @@ export const GetTopicResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()),
   "lead": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1552,6 +1560,7 @@ export const UpdateTopicResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()),
   "lead": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1713,6 +1722,7 @@ export const UpdateTopicFinishDateResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()),
   "lead": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1953,6 +1963,7 @@ export const ValidateTopicResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()),
   "lead": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -2115,6 +2126,7 @@ export const ValidateTopicBreakGlassResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()),
   "lead": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -2271,6 +2283,7 @@ export const AssignTopicResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()),
   "lead": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -2689,6 +2702,7 @@ export const ListRolesResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()),
   "lead": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -2726,6 +2740,7 @@ export const createRoleBodyNameMax = 120;
 export const CreateRoleBody = zod.object({
   "name": zod.string().min(createRoleBodyNameMin).max(createRoleBodyNameMax),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()).optional(),
   "leadId": zod.string(),
   "deputyId": zod.string().nullish(),
   "memberIds": zod.array(zod.string()).optional()
@@ -2743,6 +2758,7 @@ export const CreateRoleResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()),
   "lead": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -2783,6 +2799,7 @@ export const updateRoleBodyNameMax = 120;
 export const UpdateRoleBody = zod.object({
   "name": zod.string().min(updateRoleBodyNameMin).max(updateRoleBodyNameMax).optional(),
   "departmentId": zod.string().optional(),
+  "departmentIds": zod.array(zod.string()).optional(),
   "leadId": zod.string().optional(),
   "deputyId": zod.string().nullish(),
   "memberIds": zod.array(zod.string()).optional()
@@ -2800,6 +2817,7 @@ export const UpdateRoleResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
+  "departmentIds": zod.array(zod.string()),
   "lead": zod.object({
   "id": zod.string(),
   "name": zod.string(),

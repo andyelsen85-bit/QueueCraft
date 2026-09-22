@@ -13,6 +13,7 @@ export interface RoleUpdate {
      */
   name?: string;
   departmentId?: string;
+  departmentIds?: string[];
   leadId?: string;
   /** @nullable */
   deputyId?: string | null;

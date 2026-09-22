@@ -10,6 +10,7 @@ import {
   membersTable,
   milestonesTable,
   roleMembersTable,
+  roleDepartmentsTable,
   rolesTable,
   topicCollaboratorsTable,
   topicFinishDateRevisionsTable,
@@ -113,6 +114,7 @@ async function loadSnapshot() {
     members,
     departments,
     roles,
+    roleDepartments,
     roleMembers,
     topics,
     collaborators,
@@ -125,6 +127,7 @@ async function loadSnapshot() {
     db.select().from(membersTable),
     db.select().from(departmentsTable),
     db.select().from(rolesTable),
+    db.select().from(roleDepartmentsTable),
     db.select().from(roleMembersTable),
     db.select().from(topicsTable).orderBy(desc(topicsTable.updatedAt)),
     db.select().from(topicCollaboratorsTable),
@@ -162,6 +165,7 @@ async function loadSnapshot() {
       id: role.id,
       name: role.name,
       departmentId: role.departmentId,
+      departmentIds: [...new Set([role.departmentId, ...roleDepartments.filter((entry) => entry.roleId === id).map((entry) => entry.departmentId)])],
       lead,
       deputy: member(role.deputyId),
       memberCount: roleMembers.filter((entry) => entry.roleId === id).length,
@@ -272,6 +276,7 @@ async function loadSnapshot() {
     members,
     departments,
     roles,
+    roleDepartments,
     topics,
     milestones,
     activities,
@@ -628,7 +633,12 @@ router.post("/directory/roles", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  if (!canManageDepartment(currentUserId(req), body.data.departmentId, snapshot)) {
+  const departmentIds = [...new Set([body.data.departmentId, ...(body.data.departmentIds ?? [])])];
+  if (!departmentIds.every((departmentId) => snapshot.departmentById.has(departmentId))) {
+    res.status(400).json({ error: "One or more departments do not exist" });
+    return;
+  }
+  if (!departmentIds.every((departmentId) => canManageDepartment(currentUserId(req), departmentId, snapshot))) {
     res.status(403).json({ error: "You may only create roles in your assigned departments" });
     return;
   }
@@ -641,6 +651,7 @@ router.post("/directory/roles", async (req, res): Promise<void> => {
       leadId: body.data.leadId,
       deputyId: body.data.deputyId,
     });
+    await tx.insert(roleDepartmentsTable).values(departmentIds.map((departmentId) => ({ roleId: id, departmentId })));
     const memberIds = [...new Set([...(body.data.memberIds ?? []), body.data.leadId, body.data.deputyId].filter(Boolean))] as string[];
     if (memberIds.length) {
       await tx.insert(roleMembersTable).values(memberIds.map((memberId) => ({ roleId: id, memberId })));
@@ -665,11 +676,13 @@ router.patch("/directory/roles/:roleId", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Role not found" });
     return;
   }
-  if (
-    !canManageDepartment(currentUserId(req), currentRole.departmentId, snapshot) ||
-    (body.data.departmentId &&
-      !canManageDepartment(currentUserId(req), body.data.departmentId, snapshot))
-  ) {
+  const currentDepartmentIds = snapshot.roleDepartments.filter((entry) => entry.roleId === currentRole.id).map((entry) => entry.departmentId);
+  const departmentIds = [...new Set([body.data.departmentId ?? currentRole.departmentId, ...(body.data.departmentIds ?? currentDepartmentIds)])];
+  if (!departmentIds.every((departmentId) => snapshot.departmentById.has(departmentId))) {
+    res.status(400).json({ error: "One or more departments do not exist" });
+    return;
+  }
+  if (![...currentDepartmentIds, ...departmentIds].every((departmentId) => canManageDepartment(currentUserId(req), departmentId, snapshot))) {
     res.status(403).json({ error: "You may only update roles in your assigned departments" });
     return;
   }
@@ -683,6 +696,10 @@ router.patch("/directory/roles/:roleId", async (req, res): Promise<void> => {
         deputyId: body.data.deputyId,
       })
       .where(eq(rolesTable.id, params.data.roleId));
+    if (body.data.departmentIds || body.data.departmentId) {
+      await tx.delete(roleDepartmentsTable).where(eq(roleDepartmentsTable.roleId, params.data.roleId));
+      await tx.insert(roleDepartmentsTable).values(departmentIds.map((departmentId) => ({ roleId: params.data.roleId, departmentId })));
+    }
     if (body.data.memberIds) {
       await tx.delete(roleMembersTable).where(eq(roleMembersTable.roleId, params.data.roleId));
       const current = snapshot.roleById.get(params.data.roleId);
@@ -740,7 +757,8 @@ router.post("/topics", async (req, res): Promise<void> => {
   }
   const snapshot = await loadSnapshot();
   const role = snapshot.roleById.get(parsed.data.roleId);
-  if (!role || role.departmentId !== parsed.data.departmentId) {
+  const roleDepartmentIds = snapshot.roleDepartments.filter((entry) => entry.roleId === parsed.data.roleId).map((entry) => entry.departmentId);
+  if (!role || ![role.departmentId, ...roleDepartmentIds].includes(parsed.data.departmentId)) {
     res.status(400).json({ error: "Role does not belong to the selected department" });
     return;
   }
