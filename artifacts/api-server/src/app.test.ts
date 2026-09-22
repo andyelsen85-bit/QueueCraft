@@ -1,10 +1,49 @@
-import { after, describe, test } from "node:test";
+import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import request from "supertest";
 import { eq } from "drizzle-orm";
-import { activityTable, db, membersTable, pool, topicsTable } from "@workspace/db";
+import {
+  activityTable,
+  db,
+  departmentsTable,
+  membersTable,
+  pool,
+  rolesTable,
+  topicsTable,
+} from "@workspace/db";
 import app from "./app";
+
+before(async () => {
+  if (!process.env.CI) return;
+  await db
+    .insert(membersTable)
+    .values({
+      id: "member-andy",
+      name: "Andy Elsen",
+      initials: "AE",
+      email: "andy.elsen@example.invalid",
+      title: "Service Head",
+    })
+    .onConflictDoNothing();
+  await db
+    .insert(departmentsTable)
+    .values({
+      id: "dept-platform",
+      name: "Platform Services",
+      serviceHeadId: "member-andy",
+    })
+    .onConflictDoNothing();
+  await db
+    .insert(rolesTable)
+    .values({
+      id: "role-ci-validation",
+      name: "CI Validation",
+      departmentId: "dept-platform",
+      leadId: "member-andy",
+    })
+    .onConflictDoNothing();
+});
 
 after(async () => {
   await pool.end();
