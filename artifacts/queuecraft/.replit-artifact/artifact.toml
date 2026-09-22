@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "QueueCraft"
+description = "An internal operations workspace for routing topics to the right department, validating them through Service Heads, assigning accountable owners, and tracking collaborators and parallel milestones."
+version = "1.0.0"
+id = "artifacts/queuecraft"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18760
+
+[services.development]
+run = "pnpm --filter @workspace/queuecraft run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/queuecraft", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/queuecraft/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18760"
+BASE_PATH = "/"

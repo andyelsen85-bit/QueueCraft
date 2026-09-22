@@ -5,7 +5,9 @@
  * QueueCraft operations and topic-routing API
  * OpenAPI spec version: 0.1.0
  */
+import type { Member } from './member';
 
-export interface HealthStatus {
-  status: string;
+export interface Session {
+  user: Member;
+  capabilities?: string[];
 }

@@ -5,7 +5,6 @@
  * QueueCraft operations and topic-routing API
  * OpenAPI spec version: 0.1.0
  */
+import type { TopicStatus } from './topicStatus';
 
-export interface HealthStatus {
-  status: string;
-}
+export type StatusParameter = TopicStatus;
