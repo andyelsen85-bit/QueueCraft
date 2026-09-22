@@ -31,6 +31,7 @@ type MemberDraft = {
   title: string
   externalSubject: string
   isCio: boolean
+  dailyBusinessPercent: number
 }
 
 type DepartmentDraft = {
@@ -47,7 +48,7 @@ type RoleDraft = {
   memberIds: string[]
 }
 
-const emptyMember: MemberDraft = { name: "", email: "", title: "", externalSubject: "", isCio: false }
+const emptyMember: MemberDraft = { name: "", email: "", title: "", externalSubject: "", isCio: false, dailyBusinessPercent: 0 }
 const emptyDepartment: DepartmentDraft = { name: "", serviceHeadId: "", serviceHeadDeputyId: "" }
 const emptyRole: RoleDraft = { name: "", departmentId: "", leadId: "", deputyId: "", memberIds: [] }
 
@@ -88,6 +89,7 @@ export function Directory() {
       title: member.title ?? "",
       externalSubject: (member as typeof member & { externalSubject?: string | null }).externalSubject ?? "",
       isCio: Boolean((member as typeof member & { isCio?: boolean }).isCio),
+      dailyBusinessPercent: member.dailyBusinessPercent ?? 0,
     } : emptyMember)
     setMemberDialog({ open: true, id: member?.id })
   }
@@ -120,6 +122,7 @@ export function Directory() {
       title: memberDraft.title.trim() || null,
       externalSubject: memberDraft.externalSubject.trim() || null,
       isCio: memberDraft.isCio,
+      dailyBusinessPercent: memberDraft.dailyBusinessPercent,
     }
     try {
       if (memberDialog.id) await updateMember.mutateAsync({ memberId: memberDialog.id, data })
@@ -232,8 +235,15 @@ export function Directory() {
               {members?.map((member) => (
                 <div key={member.id} className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors">
                   <Avatar className="h-10 w-10"><AvatarFallback className="bg-muted text-foreground border">{member.initials}</AvatarFallback></Avatar>
-                  <div className="flex flex-col flex-1 min-w-0"><span className="font-semibold truncate">{member.name}</span><span className="text-sm text-muted-foreground truncate">{member.title || "Member"}</span></div>
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className="font-semibold truncate">{member.name}</span>
+                    <span className="text-sm text-muted-foreground truncate">{member.title || "Member"}</span>
+                  </div>
                   <div className="hidden sm:block text-sm text-muted-foreground font-mono truncate">{member.email}</div>
+                  <div className="hidden sm:block text-sm font-medium">
+                    <span className="text-muted-foreground text-xs uppercase mr-1">BAU:</span>
+                    {member.dailyBusinessPercent ?? 0}%
+                  </div>
                   <Button variant="ghost" size="icon" aria-label={`Edit ${member.name}`} onClick={() => openMember(member)}><Pencil className="h-4 w-4" /></Button>
                 </div>
               ))}
@@ -249,6 +259,12 @@ export function Directory() {
             <Field label="Email"><Input required type="email" value={memberDraft.email} onChange={(e) => setMemberDraft({ ...memberDraft, email: e.target.value })} /></Field>
             <Field label="Title"><Input value={memberDraft.title} onChange={(e) => setMemberDraft({ ...memberDraft, title: e.target.value })} /></Field>
             <Field label="AD/identity subject (optional)"><Input value={memberDraft.externalSubject} onChange={(e) => setMemberDraft({ ...memberDraft, externalSubject: e.target.value })} /></Field>
+            <Field label="Daily Business Percent (BAU)">
+              <div className="flex items-center gap-4">
+                <Input type="number" min="0" max="100" required value={memberDraft.dailyBusinessPercent} onChange={(e) => setMemberDraft({ ...memberDraft, dailyBusinessPercent: Number(e.target.value) })} />
+                <span className="text-muted-foreground">%</span>
+              </div>
+            </Field>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={memberDraft.isCio} onChange={(e) => setMemberDraft({ ...memberDraft, isCio: e.target.checked })} />CIO break-glass authority</label>
             <MutationError error={mutationError(createMember.error) ?? mutationError(updateMember.error)} />
             <Button className="w-full" disabled={createMember.isPending || updateMember.isPending}>{createMember.isPending || updateMember.isPending ? "Saving…" : "Save member"}</Button>

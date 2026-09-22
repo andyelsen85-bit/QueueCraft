@@ -22,6 +22,20 @@
       "when": 1790078675186,
       "tag": "0002_greedy_fat_cobra",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790080162983,
+      "tag": "0003_jazzy_mentor",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790080454308,
+      "tag": "0004_worried_living_lightning",
+      "breakpoints": true
     }
   ]
 }

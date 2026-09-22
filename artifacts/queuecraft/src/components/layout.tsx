@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Link, useLocation } from "wouter"
 import { cn } from "@/lib/utils"
-import { Home, FolderKanban, ListTodo, ShieldAlert, Users, LogOut, ChevronRight } from "lucide-react"
+import { Home, FolderKanban, ListTodo, ShieldAlert, Users, CalendarDays, LogOut, ChevronRight } from "lucide-react"
 import { useGetSession } from "@workspace/api-client-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
@@ -13,6 +13,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { label: "Dashboard", href: "/", icon: Home },
     { label: "My Work", href: "/my-work", icon: FolderKanban },
     { label: "Topics", href: "/topics", icon: ListTodo },
+    { label: "Occupancy", href: "/occupancy", icon: CalendarDays },
     { label: "Validation", href: "/validation", icon: ShieldAlert },
     { label: "Directory", href: "/directory", icon: Users },
   ]

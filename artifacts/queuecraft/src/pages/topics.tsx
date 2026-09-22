@@ -32,7 +32,13 @@ const createSchema = z.object({
   roleId: z.string().min(1),
   priority: z.enum(["P1", "P2", "P3", "P4"]),
   targetDate: z.string().optional().nullable(),
-})
+  estimatedStartDate: z.string().optional().nullable(),
+  estimatedFinishDate: z.string().optional().nullable(),
+  estimatedEffortHours: z.coerce.number().int().min(0).optional().nullable(),
+}).refine(
+  (data) => !data.estimatedStartDate || !data.estimatedFinishDate || data.estimatedStartDate <= data.estimatedFinishDate,
+  { message: "Estimated finish must be on or after the start date", path: ["estimatedFinishDate"] },
+)
 
 type CreateFormValues = z.infer<typeof createSchema>
 
@@ -103,6 +109,10 @@ export function Topics() {
       departmentId: "",
       roleId: "",
       priority: "P3",
+      targetDate: "",
+      estimatedStartDate: "",
+      estimatedFinishDate: "",
+      estimatedEffortHours: null,
     }
   })
 
@@ -115,7 +125,13 @@ export function Topics() {
   }, [filteredRoles, roleId, saveFilters])
 
   const onSubmit = (data: CreateFormValues) => {
-    createTopic.mutate({ data }, {
+    createTopic.mutate({ data: {
+      ...data,
+      targetDate: data.targetDate || null,
+      estimatedStartDate: data.estimatedStartDate || null,
+      estimatedFinishDate: data.estimatedFinishDate || null,
+      estimatedEffortHours: data.estimatedEffortHours ?? null,
+    } }, {
       onSuccess: (newTopic) => {
         setOpenCreate(false)
         form.reset()
@@ -160,7 +176,7 @@ export function Topics() {
                   )}
                 />
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="departmentId"
@@ -207,7 +223,7 @@ export function Topics() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="priority"
@@ -244,6 +260,56 @@ export function Topics() {
                       </FormItem>
                     )}
                   />
+                </div>
+
+                <div className="rounded-sm border bg-muted/20 p-4 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold">Planning estimates</h3>
+                    <p className="text-xs text-muted-foreground">Set the expected delivery window and effort. The committed finish date can later be re-scoped with a mandatory note.</p>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <FormField
+                      control={form.control}
+                      name="estimatedStartDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Estimated Start</FormLabel>
+                          <FormControl><Input type="date" {...field} value={field.value || ""} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="estimatedFinishDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Estimated Finish</FormLabel>
+                          <FormControl><Input type="date" {...field} value={field.value || ""} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="estimatedEffortHours"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Estimated Hours</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={field.value ?? ""}
+                              onChange={(event) => field.onChange(event.target.value === "" ? null : event.target.value)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
 
                 <FormField

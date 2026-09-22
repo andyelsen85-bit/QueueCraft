@@ -25,4 +25,13 @@ export interface TopicInput {
   targetDate?: Date | null;
   /** @nullable */
   primaryAssigneeId?: string | null;
+  /** @nullable */
+  estimatedStartDate?: Date | null;
+  /** @nullable */
+  estimatedFinishDate?: Date | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  estimatedEffortHours?: number | null;
 }

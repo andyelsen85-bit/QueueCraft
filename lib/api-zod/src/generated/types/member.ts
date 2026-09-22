@@ -16,4 +16,9 @@ export interface Member {
   title?: string | null;
   status?: MemberStatus;
   isCio?: boolean;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  dailyBusinessPercent?: number;
 }

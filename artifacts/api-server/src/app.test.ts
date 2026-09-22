@@ -8,8 +8,10 @@ import {
   db,
   departmentsTable,
   membersTable,
+  milestonesTable,
   pool,
   rolesTable,
+  topicFinishDateRevisionsTable,
   topicsTable,
 } from "@workspace/db";
 import app from "./app";
@@ -156,5 +158,51 @@ describe("QueueCraft security and preference flows", () => {
 
     await db.delete(activityTable).where(eq(activityTable.topicId, created.body.id));
     await db.delete(topicsTable).where(eq(topicsTable.id, created.body.id));
+  });
+
+  test("requires a note for finish-date changes and allows milestone deletion", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = await agent.get("/api/auth/csrf").expect(200);
+    const roles = await agent.get("/api/directory/roles").expect(200);
+    const role = roles.body.find((item: { departmentId: string }) => item.departmentId === "dept-platform");
+    assert.ok(role);
+    const created = await agent
+      .post("/api/topics")
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({
+        title: `Milestone lifecycle ${randomUUID()}`,
+        description: "Temporary topic used to verify finish-date and milestone lifecycle.",
+        departmentId: "dept-platform",
+        roleId: role.id,
+        priority: "P3",
+      })
+      .expect(201);
+
+    await agent
+      .patch(`/api/topics/${created.body.id}/finish-date`)
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({ targetDate: "2030-01-15" })
+      .expect(400);
+    await agent
+      .patch(`/api/topics/${created.body.id}/finish-date`)
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({ targetDate: "2030-01-15", note: "Scope clarified with the requester." })
+      .expect(200);
+
+    const milestone = await agent
+      .post(`/api/topics/${created.body.id}/milestones`)
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({ title: "Temporary milestone" })
+      .expect(201);
+    await agent
+      .delete(`/api/milestones/${milestone.body.id}`)
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .expect(204);
+
+    await db.delete(topicFinishDateRevisionsTable).where(eq(topicFinishDateRevisionsTable.topicId, created.body.id));
+    await db.delete(activityTable).where(eq(activityTable.topicId, created.body.id));
+    await db.delete(topicsTable).where(eq(topicsTable.id, created.body.id));
+    assert.equal((await db.select().from(milestonesTable).where(eq(milestonesTable.id, milestone.body.id))).length, 0);
   });
 });

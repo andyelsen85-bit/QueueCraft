@@ -28,6 +28,15 @@ export interface Topic {
   completedMilestoneCount?: number;
   /** @nullable */
   targetDate?: Date | null;
+  /** @nullable */
+  estimatedStartDate?: Date | null;
+  /** @nullable */
+  estimatedFinishDate?: Date | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  estimatedEffortHours?: number | null;
   validationMode: ValidationMode;
   /** @nullable */
   validationReason?: string | null;

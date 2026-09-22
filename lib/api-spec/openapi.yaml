@@ -200,6 +200,63 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Topic"
+  /topics/{topicId}/finish-date:
+    patch:
+      operationId: updateTopicFinishDate
+      tags: [topics]
+      summary: Update the committed finish date with a required scope note
+      parameters:
+        - $ref: "#/components/parameters/TopicId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinishDateUpdate"
+      responses:
+        "200":
+          description: Updated topic
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Topic"
+  /topics/{topicId}/allocations/{weekStart}:
+    get:
+      operationId: getTopicAllocations
+      tags: [topics]
+      summary: Get weekly member allocations for a topic
+      parameters:
+        - $ref: "#/components/parameters/TopicId"
+        - $ref: "#/components/parameters/WeekStartPath"
+      responses:
+        "200":
+          description: Weekly allocations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TopicAllocation" }
+  /topics/{topicId}/allocations:
+    put:
+      operationId: replaceTopicAllocations
+      tags: [topics]
+      summary: Replace weekly member allocations for a topic
+      parameters:
+        - $ref: "#/components/parameters/TopicId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TopicAllocationReplace"
+      responses:
+        "200":
+          description: Updated weekly allocations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TopicAllocation" }
   /topics/{topicId}/validate:
     post:
       operationId: validateTopic
@@ -320,6 +377,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Milestone"
+    delete:
+      operationId: deleteMilestone
+      tags: [topics]
+      summary: Delete a milestone
+      parameters:
+        - $ref: "#/components/parameters/MilestoneId"
+      responses:
+        "204": { description: Milestone deleted }
+  /occupancy/overview:
+    get:
+      operationId: getOccupancyOverview
+      tags: [dashboard]
+      summary: Get member occupancy for a week
+      parameters:
+        - $ref: "#/components/parameters/WeekStart"
+      responses:
+        "200":
+          description: Occupancy overview
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/OccupancyOverview" }
   /directory/departments:
     get:
       operationId: listDepartments
@@ -538,6 +618,20 @@ components:
       in: query
       schema:
         $ref: "#/components/schemas/TopicPriority"
+    WeekStart:
+      name: weekStart
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date
+    WeekStartPath:
+      name: weekStart
+      in: path
+      required: true
+      schema:
+        type: string
+        format: date
   responses:
     NotFound:
       description: Resource not found
@@ -607,6 +701,7 @@ components:
         title: { type: ["string", "null"] }
         status: { type: string, enum: [active, disabled] }
         isCio: { type: boolean }
+        dailyBusinessPercent: { type: integer, minimum: 0, maximum: 100 }
     MemberInput:
       type: object
       required: [name, email]
@@ -616,6 +711,7 @@ components:
         title: { type: ["string", "null"], maxLength: 160 }
         externalSubject: { type: ["string", "null"], maxLength: 255 }
         isCio: { type: boolean, default: false }
+        dailyBusinessPercent: { type: integer, minimum: 0, maximum: 100, default: 0 }
     MemberUpdate:
       type: object
       properties:
@@ -625,6 +721,7 @@ components:
         externalSubject: { type: ["string", "null"], maxLength: 255 }
         status: { type: string, enum: [active, disabled] }
         isCio: { type: boolean }
+        dailyBusinessPercent: { type: integer, minimum: 0, maximum: 100 }
     Department:
       type: object
       required: [id, name, serviceHead, serviceHeadDeputy]
@@ -762,6 +859,13 @@ components:
         targetDate:
           type: ["string", "null"]
           format: date
+        estimatedStartDate:
+          type: ["string", "null"]
+          format: date
+        estimatedFinishDate:
+          type: ["string", "null"]
+          format: date
+        estimatedEffortHours: { type: ["integer", "null"], minimum: 0 }
         validationMode:
           $ref: "#/components/schemas/ValidationMode"
         validationReason:
@@ -788,6 +892,12 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/Milestone"
+            allocations:
+              type: array
+              items: { $ref: "#/components/schemas/TopicAllocation" }
+            finishDateRevisions:
+              type: array
+              items: { $ref: "#/components/schemas/FinishDateRevision" }
             activity:
               type: array
               items:
@@ -822,6 +932,13 @@ components:
           format: date
         primaryAssigneeId:
           type: ["string", "null"]
+        estimatedStartDate:
+          type: ["string", "null"]
+          format: date
+        estimatedFinishDate:
+          type: ["string", "null"]
+          format: date
+        estimatedEffortHours: { type: ["integer", "null"], minimum: 0 }
     TopicUpdate:
       type: object
       properties:
@@ -829,8 +946,13 @@ components:
         description: { type: string, minLength: 3, maxLength: 2000 }
         priority:
           $ref: "#/components/schemas/TopicPriority"
-        targetDate:
+        estimatedStartDate:
           type: ["string", "null"]
+          format: date
+        estimatedFinishDate:
+          type: ["string", "null"]
+          format: date
+        estimatedEffortHours: { type: ["integer", "null"], minimum: 0 }
         status:
           $ref: "#/components/schemas/TopicStatus"
         completionSummary: { type: ["string", "null"], maxLength: 1000 }
@@ -883,6 +1005,68 @@ components:
         assigneeId:
           type: ["string", "null"]
         completionNote: { type: ["string", "null"], maxLength: 1000 }
+    FinishDateUpdate:
+      type: object
+      required: [note]
+      properties:
+        targetDate:
+          type: ["string", "null"]
+          format: date
+        note: { type: string, minLength: 1, maxLength: 2000 }
+    TopicAllocation:
+      type: object
+      required: [topicId, member, weekStart, allocationPercent]
+      properties:
+        topicId: { type: string }
+        member:
+          $ref: "#/components/schemas/Member"
+        weekStart: { type: string, format: date }
+        allocationPercent: { type: integer, minimum: 0, maximum: 100 }
+    TopicAllocationInput:
+      type: object
+      required: [memberId, allocationPercent]
+      properties:
+        memberId: { type: string }
+        allocationPercent: { type: integer, minimum: 0, maximum: 100 }
+    TopicAllocationReplace:
+      type: object
+      required: [weekStart, allocations]
+      properties:
+        weekStart: { type: string, format: date }
+        allocations:
+          type: array
+          items: { $ref: "#/components/schemas/TopicAllocationInput" }
+    FinishDateRevision:
+      type: object
+      required: [id, previousTargetDate, newTargetDate, note, actor, createdAt]
+      properties:
+        id: { type: string }
+        previousTargetDate: { type: ["string", "null"], format: date }
+        newTargetDate: { type: ["string", "null"], format: date }
+        note: { type: string }
+        actor: { $ref: "#/components/schemas/Member" }
+        createdAt: { type: string, format: date-time }
+    OccupancyTopic:
+      type: object
+      required: [topicId, title, allocationPercent]
+      properties:
+        topicId: { type: string }
+        title: { type: string }
+        allocationPercent: { type: integer }
+    OccupancyOverview:
+      type: object
+      required: [member, weekStart, dailyBusinessPercent, topics, topicAllocationPercent, totalOccupancyPercent, availablePercent, overAllocated]
+      properties:
+        member: { $ref: "#/components/schemas/Member" }
+        weekStart: { type: string, format: date }
+        dailyBusinessPercent: { type: integer }
+        topics:
+          type: array
+          items: { $ref: "#/components/schemas/OccupancyTopic" }
+        topicAllocationPercent: { type: integer }
+        totalOccupancyPercent: { type: integer }
+        availablePercent: { type: integer }
+        overAllocated: { type: boolean }
     DashboardSummary:
       type: object
       required: [kpis, statusCounts, priorityCounts, roleCounts, departmentCounts]

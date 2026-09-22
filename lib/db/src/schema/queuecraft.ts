@@ -1,5 +1,6 @@
 import {
   boolean,
+  check,
   date,
   integer,
   jsonb,
@@ -10,6 +11,7 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
+import { sql } from "drizzle-orm";
 import { z } from "zod/v4";
 
 export const topicStatusEnum = pgEnum("topic_status", [
@@ -47,12 +49,13 @@ export const membersTable = pgTable("members", {
   authProvider: text("auth_provider"),
   status: memberStatusEnum("status").notNull().default("active"),
   isCio: boolean("is_cio").notNull().default(false),
+  dailyBusinessPercent: integer("daily_business_percent").notNull().default(0),
   topicFilterDepartmentId: text("topic_filter_department_id"),
   topicFilterRoleId: text("topic_filter_role_id"),
   topicFilterStatus: topicStatusEnum("topic_filter_status"),
   topicFilterPriority: topicPriorityEnum("topic_filter_priority"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [check("members_daily_business_percent_range", sql`${table.dailyBusinessPercent} between 0 and 100`)]);
 
 export const departmentsTable = pgTable("departments", {
   id: text("id").primaryKey(),
@@ -105,6 +108,9 @@ export const topicsTable = pgTable("topics", {
     .references(() => membersTable.id),
   primaryAssigneeId: text("primary_assignee_id").references(() => membersTable.id),
   targetDate: date("target_date", { mode: "string" }),
+  estimatedStartDate: date("estimated_start_date", { mode: "string" }),
+  estimatedFinishDate: date("estimated_finish_date", { mode: "string" }),
+  estimatedEffortHours: integer("estimated_effort_hours"),
   validationMode: validationModeEnum("validation_mode").notNull().default("standard"),
   validationReason: text("validation_reason"),
   validatorId: text("validator_id").references(() => membersTable.id),
@@ -156,6 +162,32 @@ export const collaboratorMilestonesTable = pgTable(
   },
   (table) => [primaryKey({ columns: [table.collaboratorId, table.milestoneId] })],
 );
+
+export const topicWeeklyAllocationsTable = pgTable(
+  "topic_weekly_allocations",
+  {
+    topicId: text("topic_id").notNull().references(() => topicsTable.id),
+    memberId: text("member_id").notNull().references(() => membersTable.id),
+    weekStart: date("week_start", { mode: "string" }).notNull(),
+    allocationPercent: integer("allocation_percent").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  (table) => [
+    primaryKey({ columns: [table.topicId, table.memberId, table.weekStart] }),
+    check("topic_weekly_allocations_percent_range", sql`${table.allocationPercent} between 0 and 100`),
+  ],
+);
+
+export const topicFinishDateRevisionsTable = pgTable("topic_finish_date_revisions", {
+  id: text("id").primaryKey(),
+  topicId: text("topic_id").notNull().references(() => topicsTable.id),
+  previousTargetDate: date("previous_target_date", { mode: "string" }),
+  newTargetDate: date("new_target_date", { mode: "string" }),
+  note: text("note").notNull(),
+  actorId: text("actor_id").notNull().references(() => membersTable.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const activityTable = pgTable("activity", {
   id: text("id").primaryKey(),

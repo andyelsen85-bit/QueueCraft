@@ -28,7 +28,9 @@ import type {
   Department,
   DepartmentInput,
   DepartmentUpdate,
+  FinishDateUpdate,
   GetDashboardActivityParams,
+  GetOccupancyOverviewParams,
   HealthStatus,
   ListTopicsParams,
   Member,
@@ -39,11 +41,14 @@ import type {
   MilestoneUpdate,
   MyWork,
   NotFoundResponse,
+  OccupancyOverview,
   Role,
   RoleInput,
   RoleUpdate,
   Session,
   Topic,
+  TopicAllocation,
+  TopicAllocationReplace,
   TopicCollaborator,
   TopicDetail,
   TopicFilters,
@@ -1052,6 +1057,266 @@ export const useUpdateTopic = <TError = ErrorType<unknown>,
       return useMutation(getUpdateTopicMutationOptions(options));
     }
 
+export const getUpdateTopicFinishDateUrl = (topicId: string,) => {
+
+
+
+
+  return `/api/topics/${topicId}/finish-date`
+}
+
+/**
+ * @summary Update the committed finish date with a required scope note
+ */
+export const updateTopicFinishDate = async (topicId: string,
+    finishDateUpdate: FinishDateUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Topic> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Topic>(getUpdateTopicFinishDateUrl(topicId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(finishDateUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateTopicFinishDateMutationKey = () => ['updateTopicFinishDate'] as const;
+
+export const getUpdateTopicFinishDateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTopicFinishDate>>, TError,UpdateTopicFinishDateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTopicFinishDate>>, TError,UpdateTopicFinishDateMutationVariables, TContext> => {
+
+const mutationKey = getUpdateTopicFinishDateMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTopicFinishDate>>, UpdateTopicFinishDateMutationVariables> = (props) => {
+          const {topicId,data} = props ?? {};
+
+          return  updateTopicFinishDate(topicId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTopicFinishDateMutationResult = NonNullable<Awaited<ReturnType<typeof updateTopicFinishDate>>>
+    export type UpdateTopicFinishDateMutationBody = BodyType<FinishDateUpdate>
+    export type UpdateTopicFinishDateMutationError = ErrorType<unknown>
+    export type UpdateTopicFinishDateMutationVariables = {topicId: string;data: BodyType<FinishDateUpdate>}
+
+    /**
+ * @summary Update the committed finish date with a required scope note
+ */
+export const useUpdateTopicFinishDate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTopicFinishDate>>, TError,UpdateTopicFinishDateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateTopicFinishDate>>,
+        TError,
+        UpdateTopicFinishDateMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateTopicFinishDateMutationOptions(options));
+    }
+
+export const getGetTopicAllocationsUrl = (topicId: string,
+    weekStart: string,) => {
+
+
+
+
+  return `/api/topics/${topicId}/allocations/${weekStart}`
+}
+
+/**
+ * @summary Get weekly member allocations for a topic
+ */
+export const getTopicAllocations = async (topicId: string,
+    weekStart: string, options?: Parameters<typeof customFetch>[1]): Promise<TopicAllocation[]> => {
+
+  return customFetch<TopicAllocation[]>(getGetTopicAllocationsUrl(topicId,weekStart),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTopicAllocationsQueryKey = (topicId: string,
+    weekStart: string,) => {
+    return [
+    `/api/topics/${topicId}/allocations/${weekStart}`
+    ] as const;
+    }
+
+
+export const getGetTopicAllocationsQueryOptions = <TData = Awaited<ReturnType<typeof getTopicAllocations>>, TError = ErrorType<unknown>>(topicId: string,
+    weekStart: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTopicAllocations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTopicAllocationsQueryKey(topicId,weekStart);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTopicAllocations>>> = ({ signal }) => getTopicAllocations(topicId,weekStart, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: topicId !== null && topicId !== undefined && weekStart !== null && weekStart !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTopicAllocations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTopicAllocationsQueryResult = NonNullable<Awaited<ReturnType<typeof getTopicAllocations>>>
+export type GetTopicAllocationsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get weekly member allocations for a topic
+ */
+
+export function useGetTopicAllocations<TData = Awaited<ReturnType<typeof getTopicAllocations>>, TError = ErrorType<unknown>>(
+ topicId: string,
+    weekStart: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTopicAllocations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTopicAllocationsQueryOptions(topicId,weekStart,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReplaceTopicAllocationsUrl = (topicId: string,) => {
+
+
+
+
+  return `/api/topics/${topicId}/allocations`
+}
+
+/**
+ * @summary Replace weekly member allocations for a topic
+ */
+export const replaceTopicAllocations = async (topicId: string,
+    topicAllocationReplace: TopicAllocationReplace, options?: Parameters<typeof customFetch>[1]): Promise<TopicAllocation[]> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TopicAllocation[]>(getReplaceTopicAllocationsUrl(topicId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(topicAllocationReplace)
+  }
+);}
+
+
+
+
+
+export const getReplaceTopicAllocationsMutationKey = () => ['replaceTopicAllocations'] as const;
+
+export const getReplaceTopicAllocationsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceTopicAllocations>>, TError,ReplaceTopicAllocationsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof replaceTopicAllocations>>, TError,ReplaceTopicAllocationsMutationVariables, TContext> => {
+
+const mutationKey = getReplaceTopicAllocationsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof replaceTopicAllocations>>, ReplaceTopicAllocationsMutationVariables> = (props) => {
+          const {topicId,data} = props ?? {};
+
+          return  replaceTopicAllocations(topicId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReplaceTopicAllocationsMutationResult = NonNullable<Awaited<ReturnType<typeof replaceTopicAllocations>>>
+    export type ReplaceTopicAllocationsMutationBody = BodyType<TopicAllocationReplace>
+    export type ReplaceTopicAllocationsMutationError = ErrorType<unknown>
+    export type ReplaceTopicAllocationsMutationVariables = {topicId: string;data: BodyType<TopicAllocationReplace>}
+
+    /**
+ * @summary Replace weekly member allocations for a topic
+ */
+export const useReplaceTopicAllocations = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceTopicAllocations>>, TError,ReplaceTopicAllocationsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof replaceTopicAllocations>>,
+        TError,
+        ReplaceTopicAllocationsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReplaceTopicAllocationsMutationOptions(options));
+    }
+
 export const getValidateTopicUrl = (topicId: string,) => {
 
 
@@ -1585,6 +1850,164 @@ export const useUpdateMilestone = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getUpdateMilestoneMutationOptions(options));
     }
+
+export const getDeleteMilestoneUrl = (milestoneId: string,) => {
+
+
+
+
+  return `/api/milestones/${milestoneId}`
+}
+
+/**
+ * @summary Delete a milestone
+ */
+export const deleteMilestone = async (milestoneId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteMilestoneUrl(milestoneId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteMilestoneMutationKey = () => ['deleteMilestone'] as const;
+
+export const getDeleteMilestoneMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMilestone>>, TError,DeleteMilestoneMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMilestone>>, TError,DeleteMilestoneMutationVariables, TContext> => {
+
+const mutationKey = getDeleteMilestoneMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMilestone>>, DeleteMilestoneMutationVariables> = (props) => {
+          const {milestoneId} = props ?? {};
+
+          return  deleteMilestone(milestoneId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMilestoneMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMilestone>>>
+
+    export type DeleteMilestoneMutationError = ErrorType<unknown>
+    export type DeleteMilestoneMutationVariables = {milestoneId: string}
+
+    /**
+ * @summary Delete a milestone
+ */
+export const useDeleteMilestone = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMilestone>>, TError,DeleteMilestoneMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMilestone>>,
+        TError,
+        DeleteMilestoneMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteMilestoneMutationOptions(options));
+    }
+
+export const getGetOccupancyOverviewUrl = (params: GetOccupancyOverviewParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/occupancy/overview?${stringifiedParams}` : `/api/occupancy/overview`
+}
+
+/**
+ * @summary Get member occupancy for a week
+ */
+export const getOccupancyOverview = async (params: GetOccupancyOverviewParams, options?: Parameters<typeof customFetch>[1]): Promise<OccupancyOverview[]> => {
+
+  return customFetch<OccupancyOverview[]>(getGetOccupancyOverviewUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOccupancyOverviewQueryKey = (params?: GetOccupancyOverviewParams,) => {
+    return [
+    `/api/occupancy/overview`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOccupancyOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getOccupancyOverview>>, TError = ErrorType<unknown>>(params: GetOccupancyOverviewParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOccupancyOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOccupancyOverviewQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOccupancyOverview>>> = ({ signal }) => getOccupancyOverview(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOccupancyOverview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOccupancyOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getOccupancyOverview>>>
+export type GetOccupancyOverviewQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get member occupancy for a week
+ */
+
+export function useGetOccupancyOverview<TData = Awaited<ReturnType<typeof getOccupancyOverview>>, TError = ErrorType<unknown>>(
+ params: GetOccupancyOverviewParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOccupancyOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOccupancyOverviewQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListDepartmentsUrl = () => {
 

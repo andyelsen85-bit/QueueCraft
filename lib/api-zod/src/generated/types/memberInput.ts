@@ -25,4 +25,9 @@ export interface MemberInput {
      */
   externalSubject?: string | null;
   isCio?: boolean;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  dailyBusinessPercent?: number;
 }

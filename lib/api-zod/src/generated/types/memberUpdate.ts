@@ -27,4 +27,9 @@ export interface MemberUpdate {
   externalSubject?: string | null;
   status?: MemberUpdateStatus;
   isCio?: boolean;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  dailyBusinessPercent?: number;
 }

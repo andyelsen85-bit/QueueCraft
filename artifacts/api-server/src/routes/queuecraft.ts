@@ -12,6 +12,8 @@ import {
   roleMembersTable,
   rolesTable,
   topicCollaboratorsTable,
+  topicFinishDateRevisionsTable,
+  topicWeeklyAllocationsTable,
   topicsTable,
 } from "@workspace/db";
 import {
@@ -69,6 +71,17 @@ import {
   ValidateTopicBreakGlassResponse,
   ValidateTopicParams,
   ValidateTopicResponse,
+  UpdateTopicFinishDateBody,
+  UpdateTopicFinishDateParams,
+  UpdateTopicFinishDateResponse,
+  GetTopicAllocationsParams,
+  GetTopicAllocationsResponse,
+  ReplaceTopicAllocationsBody,
+  ReplaceTopicAllocationsParams,
+  ReplaceTopicAllocationsResponse,
+  DeleteMilestoneParams,
+  GetOccupancyOverviewQueryParams,
+  GetOccupancyOverviewResponse,
 } from "@workspace/api-zod";
 import { breakGlassLimiter } from "../middleware/security";
 import { queueMail } from "../services/mailer";
@@ -106,6 +119,8 @@ async function loadSnapshot() {
     collaboratorMilestones,
     milestones,
     activities,
+    allocations,
+    finishDateRevisions,
   ] = await Promise.all([
     db.select().from(membersTable),
     db.select().from(departmentsTable),
@@ -116,6 +131,8 @@ async function loadSnapshot() {
     db.select().from(collaboratorMilestonesTable),
     db.select().from(milestonesTable),
     db.select().from(activityTable).orderBy(desc(activityTable.createdAt)),
+    db.select().from(topicWeeklyAllocationsTable),
+    db.select().from(topicFinishDateRevisionsTable).orderBy(desc(topicFinishDateRevisionsTable.createdAt)),
   ]);
 
   const memberById = new Map(members.map((member) => [member.id, member]));
@@ -209,6 +226,9 @@ async function loadSnapshot() {
         (milestone) => milestone.status === "completed",
       ).length,
       targetDate: topic.targetDate,
+      estimatedStartDate: topic.estimatedStartDate,
+      estimatedFinishDate: topic.estimatedFinishDate,
+      estimatedEffortHours: topic.estimatedEffortHours,
       validationMode: topic.validationMode,
       validationReason: topic.validationReason,
       validator: member(topic.validatorId),
@@ -227,6 +247,24 @@ async function loadSnapshot() {
     activity: activities
       .filter((activity) => activity.topicId === topic.id)
       .map(buildActivity),
+    allocations: allocations
+      .filter((allocation) => allocation.topicId === topic.id)
+      .map((allocation) => ({
+        topicId: allocation.topicId,
+        member: member(allocation.memberId),
+        weekStart: allocation.weekStart,
+        allocationPercent: allocation.allocationPercent,
+      })),
+    finishDateRevisions: finishDateRevisions
+      .filter((revision) => revision.topicId === topic.id)
+      .map((revision) => ({
+        id: revision.id,
+        previousTargetDate: revision.previousTargetDate,
+        newTargetDate: revision.newTargetDate,
+        note: revision.note,
+        actor: member(revision.actorId),
+        createdAt: revision.createdAt,
+      })),
     completionSummary: topic.completionSummary,
   });
 
@@ -238,6 +276,8 @@ async function loadSnapshot() {
     milestones,
     activities,
     collaborators,
+    allocations,
+    finishDateRevisions,
     memberById,
     departmentById,
     roleById,
@@ -718,6 +758,9 @@ router.post("/topics", async (req, res): Promise<void> => {
         creatorId: currentUserId(req),
         primaryAssigneeId: parsed.data.primaryAssigneeId,
         targetDate: dateOnly(parsed.data.targetDate),
+        estimatedStartDate: dateOnly(parsed.data.estimatedStartDate),
+        estimatedFinishDate: dateOnly(parsed.data.estimatedFinishDate),
+        estimatedEffortHours: parsed.data.estimatedEffortHours,
         status: "pending_validation",
       })
       .returning();
@@ -778,8 +821,11 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
       .update(topicsTable)
       .set({
         ...body.data,
-        targetDate:
-          body.data.targetDate === undefined ? undefined : dateOnly(body.data.targetDate),
+        estimatedStartDate:
+          body.data.estimatedStartDate === undefined ? undefined : dateOnly(body.data.estimatedStartDate),
+        estimatedFinishDate:
+          body.data.estimatedFinishDate === undefined ? undefined : dateOnly(body.data.estimatedFinishDate),
+        estimatedEffortHours: body.data.estimatedEffortHours,
         completedAt,
         updatedAt: new Date(),
       })
@@ -796,6 +842,193 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
   }
   const snapshot = await loadSnapshot();
   res.json(UpdateTopicResponse.parse(snapshot.buildTopic(updated)));
+});
+
+router.patch("/topics/:topicId/finish-date", async (req, res): Promise<void> => {
+  const params = UpdateTopicFinishDateParams.safeParse(req.params);
+  const body = UpdateTopicFinishDateBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "A finish-date note is required" });
+    return;
+  }
+  const before = await loadSnapshot();
+  const topic = before.topics.find((item) => item.id === params.data.topicId);
+  if (!topic) {
+    res.status(404).json({ error: "Topic not found" });
+    return;
+  }
+  if (!requireTopicManager(req, res, topic, before)) return;
+  const targetDate = dateOnly(body.data.targetDate);
+  const [updated] = await db.transaction(async (tx) => {
+    const rows = await tx
+      .update(topicsTable)
+      .set({ targetDate, updatedAt: new Date() })
+      .where(eq(topicsTable.id, topic.id))
+      .returning();
+    if (!rows[0]) return rows;
+    await tx.insert(topicFinishDateRevisionsTable).values({
+      id: randomUUID(),
+      topicId: topic.id,
+      previousTargetDate: topic.targetDate,
+      newTargetDate: targetDate,
+      note: body.data.note,
+      actorId: currentUserId(req),
+    });
+    await addActivity(req, topic.id, "Committed finish date changed", body.data.note, false, tx);
+    return rows;
+  });
+  if (!updated) {
+    res.status(404).json({ error: "Topic not found" });
+    return;
+  }
+  const snapshot = await loadSnapshot();
+  res.json(UpdateTopicFinishDateResponse.parse(snapshot.buildTopic(updated)));
+});
+
+router.get("/topics/:topicId/allocations/:weekStart", async (req, res): Promise<void> => {
+  const params = GetTopicAllocationsParams.safeParse({
+    ...req.params,
+    weekStart: new Date(req.params.weekStart),
+  });
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid topic allocation request" });
+    return;
+  }
+  const snapshot = await loadSnapshot();
+  const topic = snapshot.topics.find((item) => item.id === params.data.topicId);
+  if (!topic) {
+    res.status(404).json({ error: "Topic not found" });
+    return;
+  }
+  const weekStart = dateOnly(params.data.weekStart);
+  if (!weekStart) {
+    res.status(400).json({ error: "A valid weekStart is required" });
+    return;
+  }
+  const rows = snapshot.allocations.filter(
+    (allocation) => allocation.topicId === topic.id && allocation.weekStart === weekStart,
+  );
+  res.json(
+    GetTopicAllocationsResponse.parse(
+      rows.map((allocation) => ({
+        topicId: allocation.topicId,
+        member: snapshot.memberById.get(allocation.memberId),
+        weekStart: allocation.weekStart,
+        allocationPercent: allocation.allocationPercent,
+      })),
+    ),
+  );
+});
+
+router.put("/topics/:topicId/allocations", async (req, res): Promise<void> => {
+  const params = ReplaceTopicAllocationsParams.safeParse(req.params);
+  const body = ReplaceTopicAllocationsBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Invalid topic allocations" });
+    return;
+  }
+  const before = await loadSnapshot();
+  const topic = before.topics.find((item) => item.id === params.data.topicId);
+  if (!topic) {
+    res.status(404).json({ error: "Topic not found" });
+    return;
+  }
+  if (!requireTopicManager(req, res, topic, before)) return;
+  const weekStart = dateOnly(body.data.weekStart);
+  if (!weekStart) {
+    res.status(400).json({ error: "A valid weekStart is required" });
+    return;
+  }
+  const members = new Map(before.members.map((member) => [member.id, member]));
+  const collaboratorIds = new Set(
+    before.collaborators.filter((item) => item.topicId === topic.id).map((item) => item.memberId),
+  );
+  const seen = new Set<string>();
+  for (const allocation of body.data.allocations) {
+    if (seen.has(allocation.memberId)) {
+      res.status(400).json({ error: "Duplicate allocation member" });
+      return;
+    }
+    seen.add(allocation.memberId);
+    if (!members.has(allocation.memberId)) {
+      res.status(400).json({ error: "Allocation member not found" });
+      return;
+    }
+    if (allocation.memberId !== topic.primaryAssigneeId && !collaboratorIds.has(allocation.memberId)) {
+      res.status(400).json({ error: "Allocation member must be the primary assignee or a collaborator" });
+      return;
+    }
+  }
+  await db.transaction(async (tx) => {
+    await tx.delete(topicWeeklyAllocationsTable).where(
+      and(eq(topicWeeklyAllocationsTable.topicId, topic.id), eq(topicWeeklyAllocationsTable.weekStart, weekStart)),
+    );
+    if (body.data.allocations.length) {
+      await tx.insert(topicWeeklyAllocationsTable).values(
+        body.data.allocations.map((allocation) => ({
+          topicId: topic.id,
+          memberId: allocation.memberId,
+          weekStart,
+          allocationPercent: allocation.allocationPercent,
+        })),
+      );
+    }
+    await addActivity(req, topic.id, "Weekly allocations replaced", `${weekStart}: ${body.data.allocations.length} member allocations`, false, tx);
+  });
+  const snapshot = await loadSnapshot();
+  res.json(
+    ReplaceTopicAllocationsResponse.parse(
+      snapshot.allocations
+        .filter((allocation) => allocation.topicId === topic.id && allocation.weekStart === weekStart)
+        .map((allocation) => ({
+          topicId: allocation.topicId,
+          member: snapshot.memberById.get(allocation.memberId),
+          weekStart: allocation.weekStart,
+          allocationPercent: allocation.allocationPercent,
+        })),
+    ),
+  );
+});
+
+router.get("/occupancy/overview", async (req, res): Promise<void> => {
+  const parsed = GetOccupancyOverviewQueryParams.safeParse({
+    ...req.query,
+    weekStart: new Date(String(req.query.weekStart ?? "")),
+  });
+  if (!parsed.success) {
+    res.status(400).json({ error: "A valid weekStart is required" });
+    return;
+  }
+  const weekStart = dateOnly(parsed.data.weekStart);
+  if (!weekStart) {
+    res.status(400).json({ error: "A valid weekStart is required" });
+    return;
+  }
+  const snapshot = await loadSnapshot();
+  const overview = snapshot.members
+    .filter((member) => member.status === "active")
+    .map((member) => {
+      const topicRows = snapshot.allocations.filter(
+        (allocation) => allocation.memberId === member.id && allocation.weekStart === weekStart,
+      );
+      const topicAllocationPercent = topicRows.reduce((sum, row) => sum + row.allocationPercent, 0);
+      const totalOccupancyPercent = member.dailyBusinessPercent + topicAllocationPercent;
+      return {
+        member,
+        weekStart,
+        dailyBusinessPercent: member.dailyBusinessPercent,
+        topics: topicRows.map((row) => ({
+          topicId: row.topicId,
+          title: snapshot.topics.find((topic) => topic.id === row.topicId)?.title ?? "Unknown topic",
+          allocationPercent: row.allocationPercent,
+        })),
+        topicAllocationPercent,
+        totalOccupancyPercent,
+        availablePercent: 100 - totalOccupancyPercent,
+        overAllocated: totalOccupancyPercent > 100,
+      };
+    });
+  res.json(GetOccupancyOverviewResponse.parse(overview));
 });
 
 router.post("/topics/:topicId/validate", async (req, res): Promise<void> => {
@@ -1002,6 +1235,10 @@ router.post("/topics/:topicId/collaborators", async (req, res): Promise<void> =>
     res.status(400).json({ error: "Collaborator not found" });
     return;
   }
+  if (before.collaborators.some((collaborator) => collaborator.topicId === existingTopic.id && collaborator.memberId === body.data.memberId)) {
+    res.status(409).json({ error: "Member is already a collaborator on this topic" });
+    return;
+  }
   if (
     body.data.milestoneIds?.some(
       (id) => !before.milestones.some((milestone) => milestone.id === id && milestone.topicId === existingTopic.id),
@@ -1107,6 +1344,28 @@ router.patch("/milestones/:milestoneId", async (req, res): Promise<void> => {
   }
   const snapshot = await loadSnapshot();
   res.json(UpdateMilestoneResponse.parse(snapshot.buildMilestone(updated)));
+});
+
+router.delete("/milestones/:milestoneId", async (req, res): Promise<void> => {
+  const params = DeleteMilestoneParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid milestone" });
+    return;
+  }
+  const before = await loadSnapshot();
+  const milestone = before.milestones.find((item) => item.id === params.data.milestoneId);
+  const topic = milestone ? before.topics.find((item) => item.id === milestone.topicId) : undefined;
+  if (!milestone || !topic) {
+    res.status(404).json({ error: "Milestone not found" });
+    return;
+  }
+  if (!requireTopicManager(req, res, topic, before)) return;
+  await db.transaction(async (tx) => {
+    await tx.delete(collaboratorMilestonesTable).where(eq(collaboratorMilestonesTable.milestoneId, milestone.id));
+    await tx.delete(milestonesTable).where(eq(milestonesTable.id, milestone.id));
+    await addActivity(req, topic.id, "Milestone deleted", milestone.title, false, tx);
+  });
+  res.sendStatus(204);
 });
 
 router.get("/validation-queue", async (req, res): Promise<void> => {

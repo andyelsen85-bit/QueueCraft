@@ -21,7 +21,14 @@ export interface TopicUpdate {
   description?: string;
   priority?: TopicPriority;
   /** @nullable */
-  targetDate?: string | null;
+  estimatedStartDate?: Date | null;
+  /** @nullable */
+  estimatedFinishDate?: Date | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  estimatedEffortHours?: number | null;
   status?: TopicStatus;
   /**
      * @maxLength 1000

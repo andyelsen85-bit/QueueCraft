@@ -6,11 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Activity } from './activity';
+import type { FinishDateRevision } from './finishDateRevision';
 import type { Milestone } from './milestone';
 import type { Topic } from './topic';
+import type { TopicAllocation } from './topicAllocation';
 
 export type TopicDetail = Topic & ({
   milestones: Milestone[];
+  allocations?: TopicAllocation[];
+  finishDateRevisions?: FinishDateRevision[];
   activity: Activity[];
   /** @nullable */
   completionSummary?: string | null;

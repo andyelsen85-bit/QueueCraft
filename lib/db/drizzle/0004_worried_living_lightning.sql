@@ -1,0 +1,2 @@
+ALTER TABLE "members" ADD CONSTRAINT "members_daily_business_percent_range" CHECK ("members"."daily_business_percent" between 0 and 100);--> statement-breakpoint
+ALTER TABLE "topic_weekly_allocations" ADD CONSTRAINT "topic_weekly_allocations_percent_range" CHECK ("topic_weekly_allocations"."allocation_percent" between 0 and 100);

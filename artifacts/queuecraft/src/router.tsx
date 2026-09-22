@@ -8,6 +8,7 @@ import { Topics } from "./pages/topics"
 import { TopicDetail } from "./pages/topic-detail"
 import { Validation } from "./pages/validation"
 import { Directory } from "./pages/directory"
+import { Occupancy } from "./pages/occupancy"
 import NotFound from "./pages/not-found"
 
 export function AppRouter() {
@@ -41,6 +42,7 @@ export function AppRouter() {
         <Route path="/topics/:topicId" component={TopicDetail} />
         <Route path="/validation" component={Validation} />
         <Route path="/directory" component={Directory} />
+        <Route path="/occupancy" component={Occupancy} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

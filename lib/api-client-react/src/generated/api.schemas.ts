@@ -30,6 +30,11 @@ export interface Member {
   title?: string | null;
   status?: MemberStatus;
   isCio?: boolean;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  dailyBusinessPercent?: number;
 }
 
 export type TopicStatus = typeof TopicStatus[keyof typeof TopicStatus];
@@ -107,6 +112,11 @@ export interface MemberInput {
      */
   externalSubject?: string | null;
   isCio?: boolean;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  dailyBusinessPercent?: number;
 }
 
 export type MemberUpdateStatus = typeof MemberUpdateStatus[keyof typeof MemberUpdateStatus];
@@ -137,6 +147,11 @@ export interface MemberUpdate {
   externalSubject?: string | null;
   status?: MemberUpdateStatus;
   isCio?: boolean;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  dailyBusinessPercent?: number;
 }
 
 export interface Department {
@@ -241,6 +256,15 @@ export interface Topic {
   completedMilestoneCount?: number;
   /** @nullable */
   targetDate?: string | null;
+  /** @nullable */
+  estimatedStartDate?: string | null;
+  /** @nullable */
+  estimatedFinishDate?: string | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  estimatedEffortHours?: number | null;
   validationMode: ValidationMode;
   /** @nullable */
   validationReason?: string | null;
@@ -251,6 +275,28 @@ export interface Topic {
   updatedAt: string;
   /** @nullable */
   completedAt?: string | null;
+}
+
+export interface TopicAllocation {
+  topicId: string;
+  member: Member;
+  weekStart: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  allocationPercent: number;
+}
+
+export interface FinishDateRevision {
+  id: string;
+  /** @nullable */
+  previousTargetDate: string | null;
+  /** @nullable */
+  newTargetDate: string | null;
+  note: string;
+  actor: Member;
+  createdAt: string;
 }
 
 export interface Activity {
@@ -265,6 +311,8 @@ export interface Activity {
 
 export type TopicDetail = Topic & ({
   milestones: Milestone[];
+  allocations?: TopicAllocation[];
+  finishDateRevisions?: FinishDateRevision[];
   activity: Activity[];
   /** @nullable */
   completionSummary?: string | null;
@@ -288,6 +336,15 @@ export interface TopicInput {
   targetDate?: string | null;
   /** @nullable */
   primaryAssigneeId?: string | null;
+  /** @nullable */
+  estimatedStartDate?: string | null;
+  /** @nullable */
+  estimatedFinishDate?: string | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  estimatedEffortHours?: number | null;
 }
 
 export interface TopicUpdate {
@@ -303,7 +360,14 @@ export interface TopicUpdate {
   description?: string;
   priority?: TopicPriority;
   /** @nullable */
-  targetDate?: string | null;
+  estimatedStartDate?: string | null;
+  /** @nullable */
+  estimatedFinishDate?: string | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  estimatedEffortHours?: number | null;
   status?: TopicStatus;
   /**
      * @maxLength 1000
@@ -378,6 +442,47 @@ export interface MilestoneUpdate {
   completionNote?: string | null;
 }
 
+export interface FinishDateUpdate {
+  /** @nullable */
+  targetDate?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  note: string;
+}
+
+export interface TopicAllocationInput {
+  memberId: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  allocationPercent: number;
+}
+
+export interface TopicAllocationReplace {
+  weekStart: string;
+  allocations: TopicAllocationInput[];
+}
+
+export interface OccupancyTopic {
+  topicId: string;
+  title: string;
+  allocationPercent: number;
+}
+
+export interface OccupancyOverview {
+  member: Member;
+  weekStart: string;
+  dailyBusinessPercent: number;
+  topics: OccupancyTopic[];
+  topicAllocationPercent: number;
+  totalOccupancyPercent: number;
+  availablePercent: number;
+  overAllocated: boolean;
+}
+
 export type DashboardSummaryKpis = {
   total: number;
   pendingValidation: number;
@@ -427,6 +532,8 @@ export type StatusParameter = TopicStatus;
 
 export type PriorityParameter = TopicPriority;
 
+export type WeekStartParameter = string;
+
 export type GetDashboardActivityParams = {
 /**
  * @minimum 1
@@ -446,5 +553,9 @@ search?: SearchParameter;
  * @maximum 100
  */
 limit?: LimitParameter;
+};
+
+export type GetOccupancyOverviewParams = {
+weekStart: WeekStartParameter;
 };
 
