@@ -1,4 +1,4 @@
-FROM node:24-alpine AS builder
+FROM node:24-bookworm-slim AS builder
 RUN corepack enable
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig*.json ./
