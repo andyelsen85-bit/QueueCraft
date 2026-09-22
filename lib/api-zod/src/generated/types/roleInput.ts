@@ -5,14 +5,16 @@
  * QueueCraft operations and topic-routing API
  * OpenAPI spec version: 0.1.0
  */
-import type { Member } from './member';
 
-export interface Role {
-  id: string;
+export interface RoleInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
   name: string;
   departmentId: string;
-  lead: Member;
-  deputy?: Member | null;
-  memberCount?: number;
+  leadId: string;
+  /** @nullable */
+  deputyId?: string | null;
   memberIds?: string[];
 }

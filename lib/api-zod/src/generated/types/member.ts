@@ -5,6 +5,7 @@
  * QueueCraft operations and topic-routing API
  * OpenAPI spec version: 0.1.0
  */
+import type { MemberStatus } from './memberStatus';
 
 export interface Member {
   id: string;
@@ -13,4 +14,6 @@ export interface Member {
   email: string;
   /** @nullable */
   title?: string | null;
+  status?: MemberStatus;
+  isCio?: boolean;
 }

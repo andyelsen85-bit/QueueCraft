@@ -1,5 +1,12 @@
 import * as React from "react"
-import { useListTopics, useCreateTopic, useListDepartments, useListRoles } from "@workspace/api-client-react"
+import {
+  useListTopics,
+  useCreateTopic,
+  useListDepartments,
+  useListRoles,
+  useGetTopicFilterPreferences,
+  useUpdateTopicFilterPreferences,
+} from "@workspace/api-client-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,7 +21,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { format } from "date-fns"
-import { Search, Plus } from "lucide-react"
+import { Search, Plus, SlidersHorizontal } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { getListTopicsQueryKey } from "@workspace/api-client-react"
 
@@ -33,19 +40,58 @@ export function Topics() {
   const [search, setSearch] = React.useState("")
   const [status, setStatus] = React.useState<string>("")
   const [priority, setPriority] = React.useState<string>("")
+  const [departmentId, setDepartmentId] = React.useState<string>("")
+  const [roleId, setRoleId] = React.useState<string>("")
+  const [filtersReady, setFiltersReady] = React.useState(false)
   const [openCreate, setOpenCreate] = React.useState(false)
   const [, setLocation] = useLocation()
   const queryClient = useQueryClient()
+  const { data: savedFilters, isLoading: filtersLoading, isError: filtersError } = useGetTopicFilterPreferences()
+  const updateFilters = useUpdateTopicFilterPreferences()
+
+  const normalizeFilter = (value: string) => (value === "none" ? "" : value)
+
+  React.useEffect(() => {
+    if (!savedFilters || filtersReady) return
+    setDepartmentId(savedFilters.departmentId ?? "")
+    setRoleId(savedFilters.roleId ?? "")
+    setStatus(savedFilters.status ?? "")
+    setPriority(savedFilters.priority ?? "")
+    setFiltersReady(true)
+  }, [savedFilters, filtersReady])
+
+  const saveFilters = React.useCallback((next: {
+    departmentId?: string
+    roleId?: string
+    status?: string
+    priority?: string
+  }) => {
+    if (!filtersReady) return
+    updateFilters.mutate({
+      data: {
+        departmentId: (next.departmentId ?? departmentId) || null,
+        roleId: (next.roleId ?? roleId) || null,
+        status: ((next.status ?? status) || null) as any,
+        priority: ((next.priority ?? priority) || null) as any,
+      },
+    })
+  }, [departmentId, roleId, priority, status, filtersReady, updateFilters])
 
   // Queries
   const { data: topics, isLoading } = useListTopics({
     search: search || undefined,
     status: status ? (status as any) : undefined,
     priority: priority ? (priority as any) : undefined,
+    departmentId: departmentId || undefined,
+    roleId: roleId || undefined,
   })
   
   const { data: departments } = useListDepartments()
   const { data: roles } = useListRoles()
+  const filteredRoles = React.useMemo(
+    () => (roles ?? []).filter((role) => !departmentId || role.departmentId === departmentId),
+    [roles, departmentId],
+  )
 
   const createTopic = useCreateTopic()
 
@@ -61,11 +107,12 @@ export function Topics() {
   })
 
   const watchDept = form.watch("departmentId")
-  const filteredRoles = React.useMemo(() => {
-    if (!roles) return []
-    if (!watchDept) return roles
-    return roles.filter(r => r.departmentId === watchDept)
-  }, [roles, watchDept])
+  React.useEffect(() => {
+    if (roleId && !filteredRoles.some((role) => role.id === roleId)) {
+      setRoleId("")
+      saveFilters({ roleId: "" })
+    }
+  }, [filteredRoles, roleId, saveFilters])
 
   const onSubmit = (data: CreateFormValues) => {
     createTopic.mutate({ data }, {
@@ -228,15 +275,50 @@ export function Topics() {
       <div className="flex flex-col sm:flex-row gap-4 bg-muted/50 p-4 rounded-sm border border-border">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search topics by title or ID..." 
+           <Input
+             placeholder="Search topics by title or description..."
             className="pl-9 bg-background"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
-          <Select value={status} onValueChange={setStatus}>
+        <div className="flex flex-wrap gap-2">
+          <Select value={departmentId || "none"} onValueChange={(value) => {
+            const next = normalizeFilter(value)
+            setDepartmentId(next)
+            setRoleId("")
+            saveFilters({ departmentId: next })
+          }}>
+            <SelectTrigger className="w-[190px] bg-background">
+              <SelectValue placeholder="All Departments" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">All Departments</SelectItem>
+              {departments?.map((department) => (
+                <SelectItem key={department.id} value={department.id}>{department.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={roleId || "none"} onValueChange={(value) => {
+            const next = normalizeFilter(value)
+            setRoleId(next)
+            if (!next) setRoleId("")
+          }} disabled={!departmentId}>
+            <SelectTrigger className="w-[170px] bg-background">
+              <SelectValue placeholder="All Roles" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">All Roles</SelectItem>
+              {filteredRoles.map((role) => (
+                <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={status || "none"} onValueChange={(value) => {
+            const next = normalizeFilter(value)
+            setStatus(next)
+            saveFilters({ status: next })
+          }}>
             <SelectTrigger className="w-[160px] bg-background">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
@@ -249,7 +331,11 @@ export function Topics() {
               <SelectItem value="closed">Closed</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={priority} onValueChange={setPriority}>
+          <Select value={priority || "none"} onValueChange={(value) => {
+            const next = normalizeFilter(value)
+            setPriority(next)
+            saveFilters({ priority: next })
+          }}>
             <SelectTrigger className="w-[140px] bg-background">
               <SelectValue placeholder="All Priorities" />
             </SelectTrigger>
@@ -262,6 +348,10 @@ export function Topics() {
             </SelectContent>
           </Select>
         </div>
+      </div>
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <SlidersHorizontal className="h-3.5 w-3.5" />
+        {filtersLoading ? "Loading your saved filters…" : filtersError ? "Filters could not be loaded; using defaults." : updateFilters.isPending ? "Saving filters…" : "Your department, role, status, and priority filters are saved automatically."}
       </div>
 
       {isLoading ? (

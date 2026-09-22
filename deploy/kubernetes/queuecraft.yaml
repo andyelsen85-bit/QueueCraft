@@ -144,6 +144,53 @@ spec:
                 secretKeyRef:
                   name: queuecraft-secrets
                   key: session-secret
+            - name: PUBLIC_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: queuecraft-secrets
+                  key: public-base-url
+            - name: ADFS_ISSUER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: queuecraft-secrets
+                  key: adfs-issuer-url
+            - name: ADFS_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: queuecraft-secrets
+                  key: adfs-client-id
+            - name: ADFS_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: queuecraft-secrets
+                  key: adfs-client-secret
+            - name: ADFS_REDIRECT_URI
+              valueFrom:
+                secretKeyRef:
+                  name: queuecraft-secrets
+                  key: adfs-redirect-uri
+            - name: SMTP_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: queuecraft-secrets
+                  key: smtp-host
+            - name: SMTP_PORT
+              value: "587"
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: queuecraft-secrets
+                  key: smtp-user
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: queuecraft-secrets
+                  key: smtp-password
+            - name: SMTP_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: queuecraft-secrets
+                  key: smtp-from
           readinessProbe:
             httpGet:
               path: /api/healthz

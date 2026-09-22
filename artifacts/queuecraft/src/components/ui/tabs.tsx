@@ -6,12 +6,24 @@ const Tabs = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
 ))
 Tabs.displayName = "Tabs"
 
-const TabsList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
+const TabsList = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & {
+    activeValue?: string
+    onValueChange?: (value: string) => void
+  }
+>(({ className, children, activeValue, onValueChange, ...props }, ref) => (
   <div
     ref={ref}
     className={cn("inline-flex h-10 items-center justify-center rounded-sm bg-muted p-1 text-muted-foreground", className)}
     {...props}
-  />
+  >
+    {React.Children.map(children, (child) =>
+      React.isValidElement(child)
+        ? React.cloneElement(child as React.ReactElement<any>, { activeValue, onValueChange })
+        : child
+    )}
+  </div>
 ))
 TabsList.displayName = "TabsList"
 
@@ -38,8 +50,12 @@ TabsTrigger.displayName = "TabsTrigger"
 
 const TabsContent = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { value: string; activeValue?: string }
->(({ className, value, activeValue, ...props }, ref) => {
+  React.HTMLAttributes<HTMLDivElement> & {
+    value: string
+    activeValue?: string
+    onValueChange?: (value: string) => void
+  }
+>(({ className, value, activeValue, onValueChange: _onValueChange, ...props }, ref) => {
   if (value !== activeValue) return null
   return (
     <div

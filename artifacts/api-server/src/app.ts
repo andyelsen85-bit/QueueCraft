@@ -4,8 +4,14 @@ import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import {
+  apiLimiter,
+  securityHeaders,
+  sessionMiddleware,
+} from "./middleware/security";
 
 const app: Express = express();
+app.set("trust proxy", 1);
 
 app.use(
   pinoHttp({
@@ -26,6 +32,8 @@ app.use(
     },
   }),
 );
+app.use(securityHeaders);
+app.use(apiLimiter);
 app.use(
   cors({
     origin(origin, callback) {
@@ -45,6 +53,7 @@ app.use(
 app.use(cookieParser());
 app.use(express.json({ limit: "256kb" }));
 app.use(express.urlencoded({ extended: true, limit: "128kb" }));
+app.use(sessionMiddleware);
 
 app.use("/api", router);
 

@@ -26,20 +26,27 @@ import type {
   CollaboratorInput,
   DashboardSummary,
   Department,
+  DepartmentInput,
+  DepartmentUpdate,
   GetDashboardActivityParams,
   HealthStatus,
   ListTopicsParams,
   Member,
+  MemberInput,
+  MemberUpdate,
   Milestone,
   MilestoneInput,
   MilestoneUpdate,
   MyWork,
   NotFoundResponse,
   Role,
+  RoleInput,
+  RoleUpdate,
   Session,
   Topic,
   TopicCollaborator,
   TopicDetail,
+  TopicFilters,
   TopicInput,
   TopicUpdate,
   ValidationInput
@@ -226,6 +233,171 @@ export function useGetSession<TData = Awaited<ReturnType<typeof getSession>>, TE
 
 
 
+
+export const getGetTopicFilterPreferencesUrl = () => {
+
+
+
+
+  return `/api/preferences/topic-filters`
+}
+
+/**
+ * @summary Get the current user's saved topic filters
+ */
+export const getTopicFilterPreferences = async ( options?: Parameters<typeof customFetch>[1]): Promise<TopicFilters> => {
+
+  return customFetch<TopicFilters>(getGetTopicFilterPreferencesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTopicFilterPreferencesQueryKey = () => {
+    return [
+    `/api/preferences/topic-filters`
+    ] as const;
+    }
+
+
+export const getGetTopicFilterPreferencesQueryOptions = <TData = Awaited<ReturnType<typeof getTopicFilterPreferences>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTopicFilterPreferences>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTopicFilterPreferencesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTopicFilterPreferences>>> = ({ signal }) => getTopicFilterPreferences({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTopicFilterPreferences>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTopicFilterPreferencesQueryResult = NonNullable<Awaited<ReturnType<typeof getTopicFilterPreferences>>>
+export type GetTopicFilterPreferencesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the current user's saved topic filters
+ */
+
+export function useGetTopicFilterPreferences<TData = Awaited<ReturnType<typeof getTopicFilterPreferences>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTopicFilterPreferences>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTopicFilterPreferencesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateTopicFilterPreferencesUrl = () => {
+
+
+
+
+  return `/api/preferences/topic-filters`
+}
+
+/**
+ * @summary Save the current user's topic filters
+ */
+export const updateTopicFilterPreferences = async (topicFilters: TopicFilters, options?: Parameters<typeof customFetch>[1]): Promise<TopicFilters> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TopicFilters>(getUpdateTopicFilterPreferencesUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(topicFilters)
+  }
+);}
+
+
+
+
+
+export const getUpdateTopicFilterPreferencesMutationKey = () => ['updateTopicFilterPreferences'] as const;
+
+export const getUpdateTopicFilterPreferencesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTopicFilterPreferences>>, TError,UpdateTopicFilterPreferencesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTopicFilterPreferences>>, TError,UpdateTopicFilterPreferencesMutationVariables, TContext> => {
+
+const mutationKey = getUpdateTopicFilterPreferencesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTopicFilterPreferences>>, UpdateTopicFilterPreferencesMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateTopicFilterPreferences(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTopicFilterPreferencesMutationResult = NonNullable<Awaited<ReturnType<typeof updateTopicFilterPreferences>>>
+    export type UpdateTopicFilterPreferencesMutationBody = BodyType<TopicFilters>
+    export type UpdateTopicFilterPreferencesMutationError = ErrorType<unknown>
+    export type UpdateTopicFilterPreferencesMutationVariables = {data: BodyType<TopicFilters>}
+
+    /**
+ * @summary Save the current user's topic filters
+ */
+export const useUpdateTopicFilterPreferences = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTopicFilterPreferences>>, TError,UpdateTopicFilterPreferencesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateTopicFilterPreferences>>,
+        TError,
+        UpdateTopicFilterPreferencesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateTopicFilterPreferencesMutationOptions(options));
+    }
 
 export const getGetDashboardSummaryUrl = () => {
 
@@ -1491,6 +1663,183 @@ export function useListDepartments<TData = Awaited<ReturnType<typeof listDepartm
 
 
 
+export const getCreateDepartmentUrl = () => {
+
+
+
+
+  return `/api/directory/departments`
+}
+
+/**
+ * @summary Create a department and assign its service authorities
+ */
+export const createDepartment = async (departmentInput: DepartmentInput, options?: Parameters<typeof customFetch>[1]): Promise<Department> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Department>(getCreateDepartmentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(departmentInput)
+  }
+);}
+
+
+
+
+
+export const getCreateDepartmentMutationKey = () => ['createDepartment'] as const;
+
+export const getCreateDepartmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDepartment>>, TError,CreateDepartmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createDepartment>>, TError,CreateDepartmentMutationVariables, TContext> => {
+
+const mutationKey = getCreateDepartmentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createDepartment>>, CreateDepartmentMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createDepartment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateDepartmentMutationResult = NonNullable<Awaited<ReturnType<typeof createDepartment>>>
+    export type CreateDepartmentMutationBody = BodyType<DepartmentInput>
+    export type CreateDepartmentMutationError = ErrorType<unknown>
+    export type CreateDepartmentMutationVariables = {data: BodyType<DepartmentInput>}
+
+    /**
+ * @summary Create a department and assign its service authorities
+ */
+export const useCreateDepartment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDepartment>>, TError,CreateDepartmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createDepartment>>,
+        TError,
+        CreateDepartmentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateDepartmentMutationOptions(options));
+    }
+
+export const getUpdateDepartmentUrl = (departmentId: string,) => {
+
+
+
+
+  return `/api/directory/departments/${departmentId}`
+}
+
+/**
+ * @summary Update a department and its service authorities
+ */
+export const updateDepartment = async (departmentId: string,
+    departmentUpdate: DepartmentUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Department> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Department>(getUpdateDepartmentUrl(departmentId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(departmentUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateDepartmentMutationKey = () => ['updateDepartment'] as const;
+
+export const getUpdateDepartmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDepartment>>, TError,UpdateDepartmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateDepartment>>, TError,UpdateDepartmentMutationVariables, TContext> => {
+
+const mutationKey = getUpdateDepartmentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateDepartment>>, UpdateDepartmentMutationVariables> = (props) => {
+          const {departmentId,data} = props ?? {};
+
+          return  updateDepartment(departmentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateDepartmentMutationResult = NonNullable<Awaited<ReturnType<typeof updateDepartment>>>
+    export type UpdateDepartmentMutationBody = BodyType<DepartmentUpdate>
+    export type UpdateDepartmentMutationError = ErrorType<unknown>
+    export type UpdateDepartmentMutationVariables = {departmentId: string;data: BodyType<DepartmentUpdate>}
+
+    /**
+ * @summary Update a department and its service authorities
+ */
+export const useUpdateDepartment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDepartment>>, TError,UpdateDepartmentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateDepartment>>,
+        TError,
+        UpdateDepartmentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateDepartmentMutationOptions(options));
+    }
+
 export const getListRolesUrl = () => {
 
 
@@ -1568,6 +1917,183 @@ export function useListRoles<TData = Awaited<ReturnType<typeof listRoles>>, TErr
 
 
 
+export const getCreateRoleUrl = () => {
+
+
+
+
+  return `/api/directory/roles`
+}
+
+/**
+ * @summary Create a role and assign its lead and optional deputy
+ */
+export const createRole = async (roleInput: RoleInput, options?: Parameters<typeof customFetch>[1]): Promise<Role> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Role>(getCreateRoleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(roleInput)
+  }
+);}
+
+
+
+
+
+export const getCreateRoleMutationKey = () => ['createRole'] as const;
+
+export const getCreateRoleMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRole>>, TError,CreateRoleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createRole>>, TError,CreateRoleMutationVariables, TContext> => {
+
+const mutationKey = getCreateRoleMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRole>>, CreateRoleMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createRole(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateRoleMutationResult = NonNullable<Awaited<ReturnType<typeof createRole>>>
+    export type CreateRoleMutationBody = BodyType<RoleInput>
+    export type CreateRoleMutationError = ErrorType<unknown>
+    export type CreateRoleMutationVariables = {data: BodyType<RoleInput>}
+
+    /**
+ * @summary Create a role and assign its lead and optional deputy
+ */
+export const useCreateRole = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRole>>, TError,CreateRoleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createRole>>,
+        TError,
+        CreateRoleMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateRoleMutationOptions(options));
+    }
+
+export const getUpdateRoleUrl = (roleId: string,) => {
+
+
+
+
+  return `/api/directory/roles/${roleId}`
+}
+
+/**
+ * @summary Update a role and its membership
+ */
+export const updateRole = async (roleId: string,
+    roleUpdate: RoleUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Role> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Role>(getUpdateRoleUrl(roleId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(roleUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateRoleMutationKey = () => ['updateRole'] as const;
+
+export const getUpdateRoleMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRole>>, TError,UpdateRoleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateRole>>, TError,UpdateRoleMutationVariables, TContext> => {
+
+const mutationKey = getUpdateRoleMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateRole>>, UpdateRoleMutationVariables> = (props) => {
+          const {roleId,data} = props ?? {};
+
+          return  updateRole(roleId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateRoleMutationResult = NonNullable<Awaited<ReturnType<typeof updateRole>>>
+    export type UpdateRoleMutationBody = BodyType<RoleUpdate>
+    export type UpdateRoleMutationError = ErrorType<unknown>
+    export type UpdateRoleMutationVariables = {roleId: string;data: BodyType<RoleUpdate>}
+
+    /**
+ * @summary Update a role and its membership
+ */
+export const useUpdateRole = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRole>>, TError,UpdateRoleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateRole>>,
+        TError,
+        UpdateRoleMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateRoleMutationOptions(options));
+    }
+
 export const getListMembersUrl = () => {
 
 
@@ -1644,4 +2170,181 @@ export function useListMembers<TData = Awaited<ReturnType<typeof listMembers>>, 
 
 
 
+
+export const getCreateMemberUrl = () => {
+
+
+
+
+  return `/api/directory/members`
+}
+
+/**
+ * @summary Create a directory member
+ */
+export const createMember = async (memberInput: MemberInput, options?: Parameters<typeof customFetch>[1]): Promise<Member> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Member>(getCreateMemberUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(memberInput)
+  }
+);}
+
+
+
+
+
+export const getCreateMemberMutationKey = () => ['createMember'] as const;
+
+export const getCreateMemberMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMember>>, TError,CreateMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMember>>, TError,CreateMemberMutationVariables, TContext> => {
+
+const mutationKey = getCreateMemberMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMember>>, CreateMemberMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMember(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMemberMutationResult = NonNullable<Awaited<ReturnType<typeof createMember>>>
+    export type CreateMemberMutationBody = BodyType<MemberInput>
+    export type CreateMemberMutationError = ErrorType<unknown>
+    export type CreateMemberMutationVariables = {data: BodyType<MemberInput>}
+
+    /**
+ * @summary Create a directory member
+ */
+export const useCreateMember = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMember>>, TError,CreateMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMember>>,
+        TError,
+        CreateMemberMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateMemberMutationOptions(options));
+    }
+
+export const getUpdateMemberUrl = (memberId: string,) => {
+
+
+
+
+  return `/api/directory/members/${memberId}`
+}
+
+/**
+ * @summary Update a directory member
+ */
+export const updateMember = async (memberId: string,
+    memberUpdate: MemberUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Member> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Member>(getUpdateMemberUrl(memberId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(memberUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateMemberMutationKey = () => ['updateMember'] as const;
+
+export const getUpdateMemberMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMember>>, TError,UpdateMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMember>>, TError,UpdateMemberMutationVariables, TContext> => {
+
+const mutationKey = getUpdateMemberMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMember>>, UpdateMemberMutationVariables> = (props) => {
+          const {memberId,data} = props ?? {};
+
+          return  updateMember(memberId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMemberMutationResult = NonNullable<Awaited<ReturnType<typeof updateMember>>>
+    export type UpdateMemberMutationBody = BodyType<MemberUpdate>
+    export type UpdateMemberMutationError = ErrorType<unknown>
+    export type UpdateMemberMutationVariables = {memberId: string;data: BodyType<MemberUpdate>}
+
+    /**
+ * @summary Update a directory member
+ */
+export const useUpdateMember = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMember>>, TError,UpdateMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMember>>,
+        TError,
+        UpdateMemberMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateMemberMutationOptions(options));
+    }
 

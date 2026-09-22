@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Member } from './member';
+import type { TopicFilters } from './topicFilters';
 
 export interface Session {
   user: Member;
   capabilities?: string[];
+  topicFilters?: TopicFilters;
 }

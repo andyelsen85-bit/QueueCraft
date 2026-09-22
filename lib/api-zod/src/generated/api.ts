@@ -26,9 +26,46 @@ export const GetSessionResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
-  "capabilities": zod.array(zod.string()).optional()
+  "capabilities": zod.array(zod.string()).optional(),
+  "topicFilters": zod.object({
+  "departmentId": zod.string().nullish(),
+  "roleId": zod.string().nullish(),
+  "status": zod.union([zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),zod.null()]).optional(),
+  "priority": zod.union([zod.enum(['P1', 'P2', 'P3', 'P4']),zod.null()]).optional()
+}).optional()
+})
+
+
+/**
+ * @summary Get the current user's saved topic filters
+ */
+export const GetTopicFilterPreferencesResponse = zod.object({
+  "departmentId": zod.string().nullish(),
+  "roleId": zod.string().nullish(),
+  "status": zod.union([zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),zod.null()]).optional(),
+  "priority": zod.union([zod.enum(['P1', 'P2', 'P3', 'P4']),zod.null()]).optional()
+})
+
+
+/**
+ * @summary Save the current user's topic filters
+ */
+export const UpdateTopicFilterPreferencesBody = zod.object({
+  "departmentId": zod.string().nullish(),
+  "roleId": zod.string().nullish(),
+  "status": zod.union([zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),zod.null()]).optional(),
+  "priority": zod.union([zod.enum(['P1', 'P2', 'P3', 'P4']),zod.null()]).optional()
+})
+
+export const UpdateTopicFilterPreferencesResponse = zod.object({
+  "departmentId": zod.string().nullish(),
+  "roleId": zod.string().nullish(),
+  "status": zod.union([zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),zod.null()]).optional(),
+  "priority": zod.union([zod.enum(['P1', 'P2', 'P3', 'P4']),zod.null()]).optional()
 })
 
 
@@ -90,7 +127,9 @@ export const GetDashboardActivityResponseItem = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "createdAt": zod.coerce.date(),
   "isBreakGlass": zod.boolean().default(getDashboardActivityResponseIsBreakGlassDefault)
@@ -114,14 +153,18 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "serviceHeadDeputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()])
 }),
   "role": zod.object({
@@ -133,16 +176,21 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "deputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
-  "memberCount": zod.number().int().optional()
+  "memberCount": zod.number().int().optional(),
+  "memberIds": zod.array(zod.string()).optional()
 }),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
@@ -151,14 +199,18 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "primaryAssignee": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]),
   "collaborators": zod.array(zod.object({
   "id": zod.string(),
@@ -167,7 +219,9 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "addedAt": zod.coerce.date(),
   "milestoneIds": zod.array(zod.string()).optional()
@@ -182,7 +236,9 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
   "validatedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -201,14 +257,18 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "serviceHeadDeputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()])
 }),
   "role": zod.object({
@@ -220,16 +280,21 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "deputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
-  "memberCount": zod.number().int().optional()
+  "memberCount": zod.number().int().optional(),
+  "memberIds": zod.array(zod.string()).optional()
 }),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
@@ -238,14 +303,18 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "primaryAssignee": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]),
   "collaborators": zod.array(zod.object({
   "id": zod.string(),
@@ -254,7 +323,9 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "addedAt": zod.coerce.date(),
   "milestoneIds": zod.array(zod.string()).optional()
@@ -269,7 +340,9 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
   "validatedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -287,7 +360,9 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
   "completionNote": zod.string().nullish(),
   "completedAt": zod.coerce.date().nullish()
@@ -304,14 +379,18 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "serviceHeadDeputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()])
 }),
   "role": zod.object({
@@ -323,16 +402,21 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "deputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
-  "memberCount": zod.number().int().optional()
+  "memberCount": zod.number().int().optional(),
+  "memberIds": zod.array(zod.string()).optional()
 }),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
@@ -341,14 +425,18 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "primaryAssignee": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]),
   "collaborators": zod.array(zod.object({
   "id": zod.string(),
@@ -357,7 +445,9 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "addedAt": zod.coerce.date(),
   "milestoneIds": zod.array(zod.string()).optional()
@@ -372,7 +462,9 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
   "validatedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -391,14 +483,18 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "serviceHeadDeputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()])
 }),
   "role": zod.object({
@@ -410,16 +506,21 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "deputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
-  "memberCount": zod.number().int().optional()
+  "memberCount": zod.number().int().optional(),
+  "memberIds": zod.array(zod.string()).optional()
 }),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
@@ -428,14 +529,18 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "primaryAssignee": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]),
   "collaborators": zod.array(zod.object({
   "id": zod.string(),
@@ -444,7 +549,9 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "addedAt": zod.coerce.date(),
   "milestoneIds": zod.array(zod.string()).optional()
@@ -459,7 +566,9 @@ export const GetMyWorkResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
   "validatedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -484,14 +593,18 @@ export const GetValidationQueueResponseItem = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "serviceHeadDeputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()])
 }),
   "role": zod.object({
@@ -503,16 +616,21 @@ export const GetValidationQueueResponseItem = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "deputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
-  "memberCount": zod.number().int().optional()
+  "memberCount": zod.number().int().optional(),
+  "memberIds": zod.array(zod.string()).optional()
 }),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
@@ -521,14 +639,18 @@ export const GetValidationQueueResponseItem = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "primaryAssignee": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]),
   "collaborators": zod.array(zod.object({
   "id": zod.string(),
@@ -537,7 +659,9 @@ export const GetValidationQueueResponseItem = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "addedAt": zod.coerce.date(),
   "milestoneIds": zod.array(zod.string()).optional()
@@ -552,7 +676,9 @@ export const GetValidationQueueResponseItem = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
   "validatedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -591,14 +717,18 @@ export const ListTopicsResponseItem = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "serviceHeadDeputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()])
 }),
   "role": zod.object({
@@ -610,16 +740,21 @@ export const ListTopicsResponseItem = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "deputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
-  "memberCount": zod.number().int().optional()
+  "memberCount": zod.number().int().optional(),
+  "memberIds": zod.array(zod.string()).optional()
 }),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
@@ -628,14 +763,18 @@ export const ListTopicsResponseItem = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "primaryAssignee": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]),
   "collaborators": zod.array(zod.object({
   "id": zod.string(),
@@ -644,7 +783,9 @@ export const ListTopicsResponseItem = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "addedAt": zod.coerce.date(),
   "milestoneIds": zod.array(zod.string()).optional()
@@ -659,7 +800,9 @@ export const ListTopicsResponseItem = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
   "validatedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -702,14 +845,18 @@ export const CreateTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "serviceHeadDeputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()])
 }),
   "role": zod.object({
@@ -721,16 +868,21 @@ export const CreateTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "deputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
-  "memberCount": zod.number().int().optional()
+  "memberCount": zod.number().int().optional(),
+  "memberIds": zod.array(zod.string()).optional()
 }),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
@@ -739,14 +891,18 @@ export const CreateTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "primaryAssignee": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]),
   "collaborators": zod.array(zod.object({
   "id": zod.string(),
@@ -755,7 +911,9 @@ export const CreateTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "addedAt": zod.coerce.date(),
   "milestoneIds": zod.array(zod.string()).optional()
@@ -770,7 +928,9 @@ export const CreateTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
   "validatedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -800,14 +960,18 @@ export const GetTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "serviceHeadDeputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()])
 }),
   "role": zod.object({
@@ -819,16 +983,21 @@ export const GetTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "deputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
-  "memberCount": zod.number().int().optional()
+  "memberCount": zod.number().int().optional(),
+  "memberIds": zod.array(zod.string()).optional()
 }),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
@@ -837,14 +1006,18 @@ export const GetTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "primaryAssignee": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]),
   "collaborators": zod.array(zod.object({
   "id": zod.string(),
@@ -853,7 +1026,9 @@ export const GetTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "addedAt": zod.coerce.date(),
   "milestoneIds": zod.array(zod.string()).optional()
@@ -868,7 +1043,9 @@ export const GetTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
   "validatedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -886,7 +1063,9 @@ export const GetTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
   "completionNote": zod.string().nullish(),
   "completedAt": zod.coerce.date().nullish()
@@ -900,7 +1079,9 @@ export const GetTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "createdAt": zod.coerce.date(),
   "isBreakGlass": zod.boolean().default(getTopicResponseTwoActivityItemIsBreakGlassDefault)
@@ -947,14 +1128,18 @@ export const UpdateTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "serviceHeadDeputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()])
 }),
   "role": zod.object({
@@ -966,16 +1151,21 @@ export const UpdateTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "deputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
-  "memberCount": zod.number().int().optional()
+  "memberCount": zod.number().int().optional(),
+  "memberIds": zod.array(zod.string()).optional()
 }),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
@@ -984,14 +1174,18 @@ export const UpdateTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "primaryAssignee": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]),
   "collaborators": zod.array(zod.object({
   "id": zod.string(),
@@ -1000,7 +1194,9 @@ export const UpdateTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "addedAt": zod.coerce.date(),
   "milestoneIds": zod.array(zod.string()).optional()
@@ -1015,7 +1211,9 @@ export const UpdateTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
   "validatedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -1051,14 +1249,18 @@ export const ValidateTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "serviceHeadDeputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()])
 }),
   "role": zod.object({
@@ -1070,16 +1272,21 @@ export const ValidateTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "deputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
-  "memberCount": zod.number().int().optional()
+  "memberCount": zod.number().int().optional(),
+  "memberIds": zod.array(zod.string()).optional()
 }),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
@@ -1088,14 +1295,18 @@ export const ValidateTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "primaryAssignee": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]),
   "collaborators": zod.array(zod.object({
   "id": zod.string(),
@@ -1104,7 +1315,9 @@ export const ValidateTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "addedAt": zod.coerce.date(),
   "milestoneIds": zod.array(zod.string()).optional()
@@ -1119,7 +1332,9 @@ export const ValidateTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
   "validatedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -1157,14 +1372,18 @@ export const ValidateTopicBreakGlassResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "serviceHeadDeputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()])
 }),
   "role": zod.object({
@@ -1176,16 +1395,21 @@ export const ValidateTopicBreakGlassResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "deputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
-  "memberCount": zod.number().int().optional()
+  "memberCount": zod.number().int().optional(),
+  "memberIds": zod.array(zod.string()).optional()
 }),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
@@ -1194,14 +1418,18 @@ export const ValidateTopicBreakGlassResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "primaryAssignee": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]),
   "collaborators": zod.array(zod.object({
   "id": zod.string(),
@@ -1210,7 +1438,9 @@ export const ValidateTopicBreakGlassResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "addedAt": zod.coerce.date(),
   "milestoneIds": zod.array(zod.string()).optional()
@@ -1225,7 +1455,9 @@ export const ValidateTopicBreakGlassResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
   "validatedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -1257,14 +1489,18 @@ export const AssignTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "serviceHeadDeputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()])
 }),
   "role": zod.object({
@@ -1276,16 +1512,21 @@ export const AssignTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "deputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
-  "memberCount": zod.number().int().optional()
+  "memberCount": zod.number().int().optional(),
+  "memberIds": zod.array(zod.string()).optional()
 }),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
@@ -1294,14 +1535,18 @@ export const AssignTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "primaryAssignee": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]),
   "collaborators": zod.array(zod.object({
   "id": zod.string(),
@@ -1310,7 +1555,9 @@ export const AssignTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "addedAt": zod.coerce.date(),
   "milestoneIds": zod.array(zod.string()).optional()
@@ -1325,7 +1572,9 @@ export const AssignTopicResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
   "validatedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -1353,7 +1602,9 @@ export const AddTopicCollaboratorResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "addedAt": zod.coerce.date(),
   "milestoneIds": zod.array(zod.string()).optional()
@@ -1392,7 +1643,9 @@ export const AddTopicMilestoneResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
   "completionNote": zod.string().nullish(),
   "completedAt": zod.coerce.date().nullish()
@@ -1435,7 +1688,9 @@ export const UpdateMilestoneResponse = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
   "completionNote": zod.string().nullish(),
   "completedAt": zod.coerce.date().nullish()
@@ -1453,17 +1708,101 @@ export const ListDepartmentsResponseItem = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "serviceHeadDeputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()])
 })
 export const ListDepartmentsResponse = zod.array(ListDepartmentsResponseItem)
+
+
+/**
+ * @summary Create a department and assign its service authorities
+ */
+export const createDepartmentBodyNameMin = 2;
+export const createDepartmentBodyNameMax = 120;
+
+
+
+export const CreateDepartmentBody = zod.object({
+  "name": zod.string().min(createDepartmentBodyNameMin).max(createDepartmentBodyNameMax),
+  "serviceHeadId": zod.string(),
+  "serviceHeadDeputyId": zod.string().nullish()
+})
+
+export const CreateDepartmentResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "serviceHead": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().email(),
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
+}),
+  "serviceHeadDeputy": zod.union([zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().email(),
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Update a department and its service authorities
+ */
+export const UpdateDepartmentParams = zod.object({
+  "departmentId": zod.coerce.string()
+})
+
+export const updateDepartmentBodyNameMin = 2;
+export const updateDepartmentBodyNameMax = 120;
+
+
+
+export const UpdateDepartmentBody = zod.object({
+  "name": zod.string().min(updateDepartmentBodyNameMin).max(updateDepartmentBodyNameMax).optional(),
+  "serviceHeadId": zod.string().optional(),
+  "serviceHeadDeputyId": zod.string().nullish()
+})
+
+export const UpdateDepartmentResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "serviceHead": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().email(),
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
+}),
+  "serviceHeadDeputy": zod.union([zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().email(),
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
+}),zod.null()])
+})
 
 
 /**
@@ -1478,18 +1817,113 @@ export const ListRolesResponseItem = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),
   "deputy": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 }),zod.null()]).optional(),
-  "memberCount": zod.number().int().optional()
+  "memberCount": zod.number().int().optional(),
+  "memberIds": zod.array(zod.string()).optional()
 })
 export const ListRolesResponse = zod.array(ListRolesResponseItem)
+
+
+/**
+ * @summary Create a role and assign its lead and optional deputy
+ */
+export const createRoleBodyNameMin = 2;
+export const createRoleBodyNameMax = 120;
+
+
+
+export const CreateRoleBody = zod.object({
+  "name": zod.string().min(createRoleBodyNameMin).max(createRoleBodyNameMax),
+  "departmentId": zod.string(),
+  "leadId": zod.string(),
+  "deputyId": zod.string().nullish(),
+  "memberIds": zod.array(zod.string()).optional()
+})
+
+export const CreateRoleResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "departmentId": zod.string(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().email(),
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
+}),
+  "deputy": zod.union([zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().email(),
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
+}),zod.null()]).optional(),
+  "memberCount": zod.number().int().optional(),
+  "memberIds": zod.array(zod.string()).optional()
+})
+
+
+/**
+ * @summary Update a role and its membership
+ */
+export const UpdateRoleParams = zod.object({
+  "roleId": zod.coerce.string()
+})
+
+export const updateRoleBodyNameMin = 2;
+export const updateRoleBodyNameMax = 120;
+
+
+
+export const UpdateRoleBody = zod.object({
+  "name": zod.string().min(updateRoleBodyNameMin).max(updateRoleBodyNameMax).optional(),
+  "departmentId": zod.string().optional(),
+  "leadId": zod.string().optional(),
+  "deputyId": zod.string().nullish(),
+  "memberIds": zod.array(zod.string()).optional()
+})
+
+export const UpdateRoleResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "departmentId": zod.string(),
+  "lead": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().email(),
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
+}),
+  "deputy": zod.union([zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().email(),
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
+}),zod.null()]).optional(),
+  "memberCount": zod.number().int().optional(),
+  "memberIds": zod.array(zod.string()).optional()
+})
 
 
 /**
@@ -1500,8 +1934,81 @@ export const ListMembersResponseItem = zod.object({
   "name": zod.string(),
   "initials": zod.string(),
   "email": zod.string().email(),
-  "title": zod.string().nullish()
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
 })
 export const ListMembersResponse = zod.array(ListMembersResponseItem)
+
+
+/**
+ * @summary Create a directory member
+ */
+export const createMemberBodyNameMin = 2;
+export const createMemberBodyNameMax = 120;
+
+export const createMemberBodyEmailMax = 254;
+
+export const createMemberBodyTitleMax = 160;
+
+export const createMemberBodyExternalSubjectMax = 255;
+
+export const createMemberBodyIsCioDefault = false;
+
+export const CreateMemberBody = zod.object({
+  "name": zod.string().min(createMemberBodyNameMin).max(createMemberBodyNameMax),
+  "email": zod.string().email().max(createMemberBodyEmailMax),
+  "title": zod.string().max(createMemberBodyTitleMax).nullish(),
+  "externalSubject": zod.string().max(createMemberBodyExternalSubjectMax).nullish(),
+  "isCio": zod.boolean().default(createMemberBodyIsCioDefault)
+})
+
+export const CreateMemberResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().email(),
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Update a directory member
+ */
+export const UpdateMemberParams = zod.object({
+  "memberId": zod.coerce.string()
+})
+
+export const updateMemberBodyNameMin = 2;
+export const updateMemberBodyNameMax = 120;
+
+export const updateMemberBodyEmailMax = 254;
+
+export const updateMemberBodyTitleMax = 160;
+
+export const updateMemberBodyExternalSubjectMax = 255;
+
+
+
+export const UpdateMemberBody = zod.object({
+  "name": zod.string().min(updateMemberBodyNameMin).max(updateMemberBodyNameMax).optional(),
+  "email": zod.string().email().max(updateMemberBodyEmailMax).optional(),
+  "title": zod.string().max(updateMemberBodyTitleMax).nullish(),
+  "externalSubject": zod.string().max(updateMemberBodyExternalSubjectMax).nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
+})
+
+export const UpdateMemberResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().email(),
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional()
+})
 
 

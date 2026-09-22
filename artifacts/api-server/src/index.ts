@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { deliverPendingNotifications } from "./services/mailer";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +23,6 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  void deliverPendingNotifications();
+  setInterval(() => void deliverPendingNotifications(), 30_000).unref();
 });

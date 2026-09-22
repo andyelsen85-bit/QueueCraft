@@ -44,6 +44,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Session"
+  /preferences/topic-filters:
+    get:
+      operationId: getTopicFilterPreferences
+      tags: [session]
+      summary: Get the current user's saved topic filters
+      responses:
+        "200":
+          description: Saved topic filters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopicFilters"
+    patch:
+      operationId: updateTopicFilterPreferences
+      tags: [session]
+      summary: Save the current user's topic filters
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TopicFilters"
+      responses:
+        "200":
+          description: Saved topic filters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopicFilters"
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -305,6 +334,43 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Department"
+    post:
+      operationId: createDepartment
+      tags: [directory]
+      summary: Create a department and assign its service authorities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentInput"
+      responses:
+        "201":
+          description: Created department
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+  /directory/departments/{departmentId}:
+    patch:
+      operationId: updateDepartment
+      tags: [directory]
+      summary: Update a department and its service authorities
+      parameters:
+        - $ref: "#/components/parameters/DepartmentPathId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentUpdate"
+      responses:
+        "200":
+          description: Updated department
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
   /directory/roles:
     get:
       operationId: listRoles
@@ -319,6 +385,43 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Role"
+    post:
+      operationId: createRole
+      tags: [directory]
+      summary: Create a role and assign its lead and optional deputy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleInput"
+      responses:
+        "201":
+          description: Created role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+  /directory/roles/{roleId}:
+    patch:
+      operationId: updateRole
+      tags: [directory]
+      summary: Update a role and its membership
+      parameters:
+        - $ref: "#/components/parameters/RolePathId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleUpdate"
+      responses:
+        "200":
+          description: Updated role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
   /directory/members:
     get:
       operationId: listMembers
@@ -333,6 +436,43 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Member"
+    post:
+      operationId: createMember
+      tags: [directory]
+      summary: Create a directory member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberInput"
+      responses:
+        "201":
+          description: Created member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+  /directory/members/{memberId}:
+    patch:
+      operationId: updateMember
+      tags: [directory]
+      summary: Update a directory member
+      parameters:
+        - $ref: "#/components/parameters/MemberId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberUpdate"
+      responses:
+        "200":
+          description: Updated member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
 components:
   parameters:
     TopicId:
@@ -343,6 +483,24 @@ components:
         type: string
     MilestoneId:
       name: milestoneId
+      in: path
+      required: true
+      schema:
+        type: string
+    MemberId:
+      name: memberId
+      in: path
+      required: true
+      schema:
+        type: string
+    DepartmentPathId:
+      name: departmentId
+      in: path
+      required: true
+      schema:
+        type: string
+    RolePathId:
+      name: roleId
       in: path
       required: true
       schema:
@@ -411,6 +569,21 @@ components:
           type: array
           items:
             type: string
+        topicFilters:
+          $ref: "#/components/schemas/TopicFilters"
+    TopicFilters:
+      type: object
+      properties:
+        departmentId: { type: ["string", "null"] }
+        roleId: { type: ["string", "null"] }
+        status:
+          anyOf:
+            - $ref: "#/components/schemas/TopicStatus"
+            - type: "null"
+        priority:
+          anyOf:
+            - $ref: "#/components/schemas/TopicPriority"
+            - type: "null"
     TopicStatus:
       type: string
       enum: [pending_validation, open, in_progress, completed, closed, returned, rejected]
@@ -432,6 +605,26 @@ components:
         initials: { type: string }
         email: { type: string, format: email }
         title: { type: ["string", "null"] }
+        status: { type: string, enum: [active, disabled] }
+        isCio: { type: boolean }
+    MemberInput:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        email: { type: string, format: email, maxLength: 254 }
+        title: { type: ["string", "null"], maxLength: 160 }
+        externalSubject: { type: ["string", "null"], maxLength: 255 }
+        isCio: { type: boolean, default: false }
+    MemberUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        email: { type: string, format: email, maxLength: 254 }
+        title: { type: ["string", "null"], maxLength: 160 }
+        externalSubject: { type: ["string", "null"], maxLength: 255 }
+        status: { type: string, enum: [active, disabled] }
+        isCio: { type: boolean }
     Department:
       type: object
       required: [id, name, serviceHead, serviceHeadDeputy]
@@ -444,6 +637,19 @@ components:
           anyOf:
             - $ref: "#/components/schemas/Member"
             - type: "null"
+    DepartmentInput:
+      type: object
+      required: [name, serviceHeadId]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        serviceHeadId: { type: string }
+        serviceHeadDeputyId: { type: ["string", "null"] }
+    DepartmentUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        serviceHeadId: { type: string }
+        serviceHeadDeputyId: { type: ["string", "null"] }
     Role:
       type: object
       required: [id, name, departmentId, lead]
@@ -458,6 +664,30 @@ components:
             - $ref: "#/components/schemas/Member"
             - type: "null"
         memberCount: { type: integer }
+        memberIds:
+          type: array
+          items: { type: string }
+    RoleInput:
+      type: object
+      required: [name, departmentId, leadId]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        departmentId: { type: string }
+        leadId: { type: string }
+        deputyId: { type: ["string", "null"] }
+        memberIds:
+          type: array
+          items: { type: string }
+    RoleUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        departmentId: { type: string }
+        leadId: { type: string }
+        deputyId: { type: ["string", "null"] }
+        memberIds:
+          type: array
+          items: { type: string }
     TopicCollaborator:
       type: object
       required: [id, member, addedAt]

@@ -1,6 +1,8 @@
 import {
   boolean,
   date,
+  integer,
+  jsonb,
   pgEnum,
   pgTable,
   primaryKey,
@@ -28,6 +30,12 @@ export const milestoneStatusEnum = pgEnum("milestone_status", [
   "completed",
   "blocked",
 ]);
+export const memberStatusEnum = pgEnum("member_status", ["active", "disabled"]);
+export const notificationStatusEnum = pgEnum("notification_status", [
+  "pending",
+  "sent",
+  "failed",
+]);
 
 export const membersTable = pgTable("members", {
   id: text("id").primaryKey(),
@@ -35,6 +43,14 @@ export const membersTable = pgTable("members", {
   initials: text("initials").notNull(),
   email: text("email").notNull().unique(),
   title: text("title"),
+  externalSubject: text("external_subject").unique(),
+  authProvider: text("auth_provider"),
+  status: memberStatusEnum("status").notNull().default("active"),
+  isCio: boolean("is_cio").notNull().default(false),
+  topicFilterDepartmentId: text("topic_filter_department_id"),
+  topicFilterRoleId: text("topic_filter_role_id"),
+  topicFilterStatus: topicStatusEnum("topic_filter_status"),
+  topicFilterPriority: topicPriorityEnum("topic_filter_priority"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -150,6 +166,36 @@ export const activityTable = pgTable("activity", {
   action: text("action").notNull(),
   detail: text("detail"),
   isBreakGlass: boolean("is_break_glass").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const auditLogTable = pgTable("audit_log", {
+  id: text("id").primaryKey(),
+  actorId: text("actor_id")
+    .notNull()
+    .references(() => membersTable.id),
+  action: text("action").notNull(),
+  resourceType: text("resource_type").notNull(),
+  resourceId: text("resource_id"),
+  requestId: text("request_id"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  details: jsonb("details").$type<Record<string, unknown>>().notNull().default({}),
+  isBreakGlass: boolean("is_break_glass").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const notificationOutboxTable = pgTable("notification_outbox", {
+  id: text("id").primaryKey(),
+  topicId: text("topic_id").references(() => topicsTable.id),
+  recipient: text("recipient").notNull(),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  status: notificationStatusEnum("status").notNull().default("pending"),
+  error: text("error"),
+  attempts: integer("attempts").notNull().default(0),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

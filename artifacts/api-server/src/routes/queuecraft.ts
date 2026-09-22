@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray } from "drizzle-orm";
-import { Router, type IRouter } from "express";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
+import { Router, type IRouter, type Request, type Response } from "express";
 import {
   db,
   activityTable,
+  auditLogTable,
   collaboratorMilestonesTable,
   departmentsTable,
   membersTable,
@@ -44,6 +45,24 @@ import {
   UpdateTopicBody,
   UpdateTopicParams,
   UpdateTopicResponse,
+  GetTopicFilterPreferencesResponse,
+  UpdateTopicFilterPreferencesBody,
+  UpdateTopicFilterPreferencesResponse,
+  CreateDepartmentBody,
+  CreateDepartmentResponse,
+  UpdateDepartmentBody,
+  UpdateDepartmentParams,
+  UpdateDepartmentResponse,
+  CreateRoleBody,
+  CreateRoleResponse,
+  UpdateRoleBody,
+  UpdateRoleParams,
+  UpdateRoleResponse,
+  CreateMemberBody,
+  CreateMemberResponse,
+  UpdateMemberBody,
+  UpdateMemberParams,
+  UpdateMemberResponse,
   ValidateTopicBody,
   ValidateTopicBreakGlassBody,
   ValidateTopicBreakGlassParams,
@@ -51,9 +70,24 @@ import {
   ValidateTopicParams,
   ValidateTopicResponse,
 } from "@workspace/api-zod";
+import { breakGlassLimiter } from "../middleware/security";
+import { queueMail } from "../services/mailer";
 
 const router: IRouter = Router();
-const currentUserId = "member-andy";
+
+function currentUserId(req: Request) {
+  if (!req.session.userId) throw new Error("Authenticated session has no user");
+  return req.session.userId;
+}
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
 
 const dateOnly = (value: Date | string | null | undefined) => {
   if (!value) return null;
@@ -114,6 +148,7 @@ async function loadSnapshot() {
       lead,
       deputy: member(role.deputyId),
       memberCount: roleMembers.filter((entry) => entry.roleId === id).length,
+      memberIds: roleMembers.filter((entry) => entry.roleId === id).map((entry) => entry.memberId),
     };
   };
 
@@ -216,24 +251,115 @@ async function loadSnapshot() {
 }
 
 async function addActivity(
+  req: Request,
   topicId: string | null,
   action: string,
   detail: string,
   isBreakGlass = false,
+  executor: any = db,
 ) {
-  await db.insert(activityTable).values({
+  await executor.insert(activityTable).values({
     id: randomUUID(),
     topicId,
-    actorId: currentUserId,
+    actorId: currentUserId(req),
     action,
     detail,
     isBreakGlass,
   });
+  await executor.insert(auditLogTable).values({
+    id: randomUUID(),
+    actorId: currentUserId(req),
+    action,
+    resourceType: topicId ? "topic" : "system",
+    resourceId: topicId,
+    requestId: String(req.id),
+    ipAddress: req.ip,
+    userAgent: req.get("user-agent"),
+    details: { detail },
+    isBreakGlass,
+  });
 }
 
-router.get("/session", async (_req, res): Promise<void> => {
+function getCapabilities(
+  userId: string,
+  snapshot: Awaited<ReturnType<typeof loadSnapshot>>,
+) {
+  const user = snapshot.memberById.get(userId);
+  const isServiceAuthority = snapshot.departments.some((department) =>
+    [department.serviceHeadId, department.serviceHeadDeputyId].includes(userId),
+  );
+  const isRoleAuthority = snapshot.roles.some((role) =>
+    [role.leadId, role.deputyId].includes(userId),
+  );
+  const capabilities = ["topic.create", "topic.edit", "topic.assign"];
+  if (isServiceAuthority) capabilities.push("validation.approve", "directory.manage");
+  if (isServiceAuthority || user?.isCio) capabilities.push("validation.break_glass");
+  if (user?.isCio) capabilities.push("directory.manage", "directory.manage_cio");
+  if (isRoleAuthority) capabilities.push("role.execute");
+  return [...new Set(capabilities)];
+}
+
+function requireCapability(
+  req: Request,
+  res: Response,
+  snapshot: Awaited<ReturnType<typeof loadSnapshot>>,
+  capability: string,
+) {
+  if (!getCapabilities(currentUserId(req), snapshot).includes(capability)) {
+    res.status(403).json({ error: `Missing capability: ${capability}` });
+    return false;
+  }
+  return true;
+}
+
+function canManageTopic(
+  userId: string,
+  topic: (Awaited<ReturnType<typeof loadSnapshot>>["topics"])[number],
+  snapshot: Awaited<ReturnType<typeof loadSnapshot>>,
+) {
+  const role = snapshot.roleById.get(topic.roleId);
+  const department = snapshot.departmentById.get(topic.departmentId);
+  const collaborator = snapshot.collaborators.some(
+    (entry) => entry.topicId === topic.id && entry.memberId === userId,
+  );
+  return Boolean(
+    topic.creatorId === userId ||
+      topic.primaryAssigneeId === userId ||
+      collaborator ||
+      [role?.leadId, role?.deputyId].includes(userId) ||
+      [department?.serviceHeadId, department?.serviceHeadDeputyId].includes(userId),
+  );
+}
+
+function canManageDepartment(
+  userId: string,
+  departmentId: string,
+  snapshot: Awaited<ReturnType<typeof loadSnapshot>>,
+) {
+  if (snapshot.memberById.get(userId)?.isCio) return true;
+  const department = snapshot.departmentById.get(departmentId);
+  return Boolean(
+    department &&
+      [department.serviceHeadId, department.serviceHeadDeputyId].includes(userId),
+  );
+}
+
+function requireTopicManager(
+  req: Request,
+  res: Response,
+  topic: (Awaited<ReturnType<typeof loadSnapshot>>["topics"])[number],
+  snapshot: Awaited<ReturnType<typeof loadSnapshot>>,
+) {
+  if (!canManageTopic(currentUserId(req), topic, snapshot)) {
+    res.status(403).json({ error: "You do not have management access to this topic" });
+    return false;
+  }
+  return true;
+}
+
+router.get("/session", async (req, res): Promise<void> => {
   const snapshot = await loadSnapshot();
-  const user = snapshot.memberById.get(currentUserId);
+  const user = snapshot.memberById.get(currentUserId(req));
   if (!user) {
     res.status(401).json({ error: "No active user" });
     return;
@@ -241,13 +367,71 @@ router.get("/session", async (_req, res): Promise<void> => {
   res.json(
     GetSessionResponse.parse({
       user,
-      capabilities: [
-        "topic.create",
-        "topic.assign",
-        "topic.edit",
-        "validation.approve",
-        "validation.break_glass",
-      ],
+      capabilities: getCapabilities(user.id, snapshot),
+      topicFilters: {
+        departmentId: user.topicFilterDepartmentId,
+        roleId: user.topicFilterRoleId,
+        status: user.topicFilterStatus,
+        priority: user.topicFilterPriority,
+      },
+    }),
+  );
+});
+
+router.get("/preferences/topic-filters", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  const user = snapshot.memberById.get(currentUserId(req));
+  if (!user) {
+    res.status(401).json({ error: "No active user" });
+    return;
+  }
+  res.json(
+    GetTopicFilterPreferencesResponse.parse({
+      departmentId: user.topicFilterDepartmentId,
+      roleId: user.topicFilterRoleId,
+      status: user.topicFilterStatus,
+      priority: user.topicFilterPriority,
+    }),
+  );
+});
+
+router.patch("/preferences/topic-filters", async (req, res): Promise<void> => {
+  const body = UpdateTopicFilterPreferencesBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+  if (body.data.departmentId) {
+    const [department] = await db
+      .select({ id: departmentsTable.id })
+      .from(departmentsTable)
+      .where(eq(departmentsTable.id, body.data.departmentId))
+      .limit(1);
+    if (!department) {
+      res.status(400).json({ error: "Unknown department filter" });
+      return;
+    }
+  }
+  const [updated] = await db
+    .update(membersTable)
+    .set({
+      topicFilterDepartmentId: body.data.departmentId ?? null,
+      topicFilterRoleId: body.data.roleId ?? null,
+      topicFilterStatus: body.data.status ?? null,
+      topicFilterPriority: body.data.priority ?? null,
+    })
+    .where(eq(membersTable.id, currentUserId(req)))
+    .returning();
+  if (!updated) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  res.json(
+    UpdateTopicFilterPreferencesResponse.parse({
+      departmentId: updated.topicFilterDepartmentId,
+      roleId: updated.topicFilterRoleId,
+      status: updated.topicFilterStatus,
+      priority: updated.topicFilterPriority,
     }),
   );
 });
@@ -255,6 +439,72 @@ router.get("/session", async (_req, res): Promise<void> => {
 router.get("/directory/members", async (_req, res): Promise<void> => {
   const snapshot = await loadSnapshot();
   res.json(ListMembersResponse.parse(snapshot.members));
+});
+
+router.post("/directory/members", async (req, res): Promise<void> => {
+  const body = CreateMemberBody.safeParse(req.body);
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "directory.manage")) return;
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+  if (body.data.isCio && !getCapabilities(currentUserId(req), snapshot).includes("directory.manage_cio")) {
+    res.status(403).json({ error: "Only the CIO may grant CIO authority" });
+    return;
+  }
+  const [created] = await db.transaction(async (tx) => {
+    const rows = await tx
+      .insert(membersTable)
+      .values({
+        id: randomUUID(),
+        name: body.data.name.trim(),
+        initials: initials(body.data.name),
+        email: body.data.email.toLowerCase(),
+        title: body.data.title,
+        externalSubject: body.data.externalSubject,
+        isCio: body.data.isCio,
+      })
+      .returning();
+    await addActivity(req, null, "Directory member created", rows[0].email, false, tx);
+    return rows;
+  });
+  res.status(201).json(CreateMemberResponse.parse(created));
+});
+
+router.patch("/directory/members/:memberId", async (req, res): Promise<void> => {
+  const params = UpdateMemberParams.safeParse(req.params);
+  const body = UpdateMemberBody.safeParse(req.body);
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "directory.manage")) return;
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Invalid member update" });
+    return;
+  }
+  if (body.data.isCio !== undefined && !getCapabilities(currentUserId(req), snapshot).includes("directory.manage_cio")) {
+    res.status(403).json({ error: "Only the CIO may change CIO authority" });
+    return;
+  }
+  const [updated] = await db.transaction(async (tx) => {
+    const rows = await tx
+      .update(membersTable)
+      .set({
+        ...body.data,
+        email: body.data.email?.toLowerCase(),
+        initials: body.data.name ? initials(body.data.name) : undefined,
+      })
+      .where(eq(membersTable.id, params.data.memberId))
+      .returning();
+    if (rows[0]) {
+      await addActivity(req, null, "Directory member updated", rows[0].email, false, tx);
+    }
+    return rows;
+  });
+  if (!updated) {
+    res.status(404).json({ error: "Member not found" });
+    return;
+  }
+  res.json(UpdateMemberResponse.parse(updated));
 });
 
 router.get("/directory/departments", async (_req, res): Promise<void> => {
@@ -266,11 +516,156 @@ router.get("/directory/departments", async (_req, res): Promise<void> => {
   );
 });
 
+router.post("/directory/departments", async (req, res): Promise<void> => {
+  const body = CreateDepartmentBody.safeParse(req.body);
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "directory.manage")) return;
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+  const [created] = await db.transaction(async (tx) => {
+    const rows = await tx
+      .insert(departmentsTable)
+      .values({
+        id: randomUUID(),
+        name: body.data.name.trim(),
+        serviceHeadId: body.data.serviceHeadId,
+        serviceHeadDeputyId: body.data.serviceHeadDeputyId,
+      })
+      .returning();
+    await addActivity(req, null, "Department created", rows[0].name, false, tx);
+    return rows;
+  });
+  const refreshed = await loadSnapshot();
+  res.status(201).json(CreateDepartmentResponse.parse(refreshed.buildDepartment(created.id)));
+});
+
+router.patch("/directory/departments/:departmentId", async (req, res): Promise<void> => {
+  const params = UpdateDepartmentParams.safeParse(req.params);
+  const body = UpdateDepartmentBody.safeParse(req.body);
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "directory.manage")) return;
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Invalid department update" });
+    return;
+  }
+  if (!canManageDepartment(currentUserId(req), params.data.departmentId, snapshot)) {
+    res.status(403).json({ error: "You may only update departments in your assigned scope" });
+    return;
+  }
+  const [updated] = await db.transaction(async (tx) => {
+    const rows = await tx
+      .update(departmentsTable)
+      .set(body.data)
+      .where(eq(departmentsTable.id, params.data.departmentId))
+      .returning();
+    if (rows[0]) {
+      await addActivity(req, null, "Department updated", rows[0].name, false, tx);
+    }
+    return rows;
+  });
+  if (!updated) {
+    res.status(404).json({ error: "Department not found" });
+    return;
+  }
+  const refreshed = await loadSnapshot();
+  res.json(UpdateDepartmentResponse.parse(refreshed.buildDepartment(updated.id)));
+});
+
 router.get("/directory/roles", async (_req, res): Promise<void> => {
   const snapshot = await loadSnapshot();
   res.json(
     ListRolesResponse.parse(snapshot.roles.map((role) => snapshot.buildRole(role.id))),
   );
+});
+
+router.post("/directory/roles", async (req, res): Promise<void> => {
+  const body = CreateRoleBody.safeParse(req.body);
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "directory.manage")) return;
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+  if (!canManageDepartment(currentUserId(req), body.data.departmentId, snapshot)) {
+    res.status(403).json({ error: "You may only create roles in your assigned departments" });
+    return;
+  }
+  const id = randomUUID();
+  await db.transaction(async (tx) => {
+    await tx.insert(rolesTable).values({
+      id,
+      name: body.data.name.trim(),
+      departmentId: body.data.departmentId,
+      leadId: body.data.leadId,
+      deputyId: body.data.deputyId,
+    });
+    const memberIds = [...new Set([...(body.data.memberIds ?? []), body.data.leadId, body.data.deputyId].filter(Boolean))] as string[];
+    if (memberIds.length) {
+      await tx.insert(roleMembersTable).values(memberIds.map((memberId) => ({ roleId: id, memberId })));
+    }
+    await addActivity(req, null, "Role created", body.data.name, false, tx);
+  });
+  const refreshed = await loadSnapshot();
+  res.status(201).json(CreateRoleResponse.parse(refreshed.buildRole(id)));
+});
+
+router.patch("/directory/roles/:roleId", async (req, res): Promise<void> => {
+  const params = UpdateRoleParams.safeParse(req.params);
+  const body = UpdateRoleBody.safeParse(req.body);
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "directory.manage")) return;
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Invalid role update" });
+    return;
+  }
+  const currentRole = snapshot.roleById.get(params.data.roleId);
+  if (!currentRole) {
+    res.status(404).json({ error: "Role not found" });
+    return;
+  }
+  if (
+    !canManageDepartment(currentUserId(req), currentRole.departmentId, snapshot) ||
+    (body.data.departmentId &&
+      !canManageDepartment(currentUserId(req), body.data.departmentId, snapshot))
+  ) {
+    res.status(403).json({ error: "You may only update roles in your assigned departments" });
+    return;
+  }
+  await db.transaction(async (tx) => {
+    await tx
+      .update(rolesTable)
+      .set({
+        name: body.data.name,
+        departmentId: body.data.departmentId,
+        leadId: body.data.leadId,
+        deputyId: body.data.deputyId,
+      })
+      .where(eq(rolesTable.id, params.data.roleId));
+    if (body.data.memberIds) {
+      await tx.delete(roleMembersTable).where(eq(roleMembersTable.roleId, params.data.roleId));
+      const current = snapshot.roleById.get(params.data.roleId);
+      const memberIds = [...new Set([
+        ...body.data.memberIds,
+        body.data.leadId ?? current?.leadId,
+        body.data.deputyId === undefined ? current?.deputyId : body.data.deputyId,
+      ].filter(Boolean))] as string[];
+      if (memberIds.length) {
+        await tx
+          .insert(roleMembersTable)
+          .values(memberIds.map((memberId) => ({ roleId: params.data.roleId, memberId })));
+      }
+    }
+    await addActivity(req, null, "Role updated", params.data.roleId, false, tx);
+  });
+  const refreshed = await loadSnapshot();
+  const role = refreshed.roleById.get(params.data.roleId);
+  if (!role) {
+    res.status(404).json({ error: "Role not found" });
+    return;
+  }
+  res.json(UpdateRoleResponse.parse(refreshed.buildRole(role.id)));
 });
 
 router.get("/topics", async (req, res): Promise<void> => {
@@ -310,22 +705,25 @@ router.post("/topics", async (req, res): Promise<void> => {
     return;
   }
   const id = randomUUID();
-  const [created] = await db
-    .insert(topicsTable)
-    .values({
-      id,
-      title: parsed.data.title,
-      description: parsed.data.description,
-      departmentId: parsed.data.departmentId,
-      roleId: parsed.data.roleId,
-      priority: parsed.data.priority,
-      creatorId: currentUserId,
-      primaryAssigneeId: parsed.data.primaryAssigneeId,
-      targetDate: dateOnly(parsed.data.targetDate),
-      status: "pending_validation",
-    })
-    .returning();
-  await addActivity(id, "Topic created", "Submitted for Service Head validation.");
+  const [created] = await db.transaction(async (tx) => {
+    const rows = await tx
+      .insert(topicsTable)
+      .values({
+        id,
+        title: parsed.data.title,
+        description: parsed.data.description,
+        departmentId: parsed.data.departmentId,
+        roleId: parsed.data.roleId,
+        priority: parsed.data.priority,
+        creatorId: currentUserId(req),
+        primaryAssigneeId: parsed.data.primaryAssigneeId,
+        targetDate: dateOnly(parsed.data.targetDate),
+        status: "pending_validation",
+      })
+      .returning();
+    await addActivity(req, id, "Topic created", "Submitted for Service Head validation.", false, tx);
+    return rows;
+  });
   const refreshed = await loadSnapshot();
   res.status(201).json(CreateTopicResponse.parse(refreshed.buildTopic(created)));
 });
@@ -352,23 +750,50 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid topic update" });
     return;
   }
+  const current = await loadSnapshot();
+  const currentTopic = current.topics.find((topic) => topic.id === params.data.topicId);
+  if (!currentTopic) {
+    res.status(404).json({ error: "Topic not found" });
+    return;
+  }
+  if (!requireTopicManager(req, res, currentTopic, current)) return;
+  if (
+    currentTopic.status === "pending_validation" &&
+    body.data.status !== undefined &&
+    body.data.status !== "pending_validation"
+  ) {
+    res.status(409).json({ error: "Pending topics must use an authorized validation endpoint" });
+    return;
+  }
+  if (
+    currentTopic.status !== "pending_validation" &&
+    body.data.status === "pending_validation"
+  ) {
+    res.status(409).json({ error: "Validated topics cannot be reset to pending validation" });
+    return;
+  }
   const completedAt = body.data.status === "completed" ? new Date() : undefined;
-  const [updated] = await db
-    .update(topicsTable)
-    .set({
-      ...body.data,
-      targetDate:
-        body.data.targetDate === undefined ? undefined : dateOnly(body.data.targetDate),
-      completedAt,
-      updatedAt: new Date(),
-    })
-    .where(eq(topicsTable.id, params.data.topicId))
-    .returning();
+  const [updated] = await db.transaction(async (tx) => {
+    const rows = await tx
+      .update(topicsTable)
+      .set({
+        ...body.data,
+        targetDate:
+          body.data.targetDate === undefined ? undefined : dateOnly(body.data.targetDate),
+        completedAt,
+        updatedAt: new Date(),
+      })
+      .where(eq(topicsTable.id, params.data.topicId))
+      .returning();
+    if (rows[0]) {
+      await addActivity(req, rows[0].id, "Topic updated", "Topic details or status were updated.", false, tx);
+    }
+    return rows;
+  });
   if (!updated) {
     res.status(404).json({ error: "Topic not found" });
     return;
   }
-  await addActivity(updated.id, "Topic updated", "Topic details or status were updated.");
   const snapshot = await loadSnapshot();
   res.json(UpdateTopicResponse.parse(snapshot.buildTopic(updated)));
 });
@@ -389,64 +814,129 @@ router.post("/topics/:topicId/validate", async (req, res): Promise<void> => {
   const department = snapshot.departmentById.get(topic.departmentId);
   if (
     !department ||
-    ![department.serviceHeadId, department.serviceHeadDeputyId].includes(currentUserId)
+    ![department.serviceHeadId, department.serviceHeadDeputyId].includes(currentUserId(req))
   ) {
     res.status(403).json({ error: "Use break-glass validation outside your scope" });
     return;
   }
-  const [updated] = await db
-    .update(topicsTable)
-    .set({
-      status: "open",
-      validationMode: "standard",
-      validationReason: body.data.note,
-      validatorId: currentUserId,
-      validatedAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .where(eq(topicsTable.id, topic.id))
-    .returning();
-  await addActivity(topic.id, "Topic validated", body.data.note ?? "Validated by service authority.");
+  const [updated] = await db.transaction(async (tx) => {
+    const [validated] = await tx
+      .update(topicsTable)
+      .set({
+        status: "open",
+        validationMode: "standard",
+        validationReason: body.data.note,
+        validatorId: currentUserId(req),
+        validatedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(topicsTable.id, topic.id), eq(topicsTable.status, "pending_validation")))
+      .returning();
+    if (validated) {
+      await addActivity(
+        req,
+        topic.id,
+        "Topic validated",
+        body.data.note ?? "Validated by service authority.",
+        false,
+        tx,
+      );
+    }
+    return [validated];
+  });
+  if (!updated) {
+    res.status(409).json({ error: "Topic has already left pending validation" });
+    return;
+  }
   const refreshed = await loadSnapshot();
   res.json(ValidateTopicResponse.parse(refreshed.buildTopic(updated)));
 });
 
-router.post("/topics/:topicId/validation-break-glass", async (req, res): Promise<void> => {
+router.post(
+  "/topics/:topicId/validation-break-glass",
+  breakGlassLimiter,
+  async (req, res): Promise<void> => {
   const params = ValidateTopicBreakGlassParams.safeParse(req.params);
   const body = ValidateTopicBreakGlassBody.safeParse(req.body);
   if (!params.success || !body.success) {
     res.status(400).json({ error: "A detailed break-glass explanation is required" });
     return;
   }
-  const [updated] = await db
-    .update(topicsTable)
-    .set({
-      status: "open",
-      validationMode: "break_glass",
-      validationReason: body.data.reason,
-      validatorId: currentUserId,
-      validatedAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .where(eq(topicsTable.id, params.data.topicId))
-    .returning();
-  if (!updated) {
+  const snapshotBefore = await loadSnapshot();
+  if (!requireCapability(req, res, snapshotBefore, "validation.break_glass")) return;
+  const topic = snapshotBefore.topics.find((item) => item.id === params.data.topicId);
+  if (!topic) {
     res.status(404).json({ error: "Topic not found" });
     return;
   }
-  await addActivity(
-    updated.id,
-    "Break-glass validation",
-    `${body.data.reason} Responsible authority notification queued.`,
-    true,
-  );
+  const authorityDepartment = snapshotBefore.departmentById.get(topic.departmentId);
+  if (
+    authorityDepartment &&
+    [authorityDepartment.serviceHeadId, authorityDepartment.serviceHeadDeputyId].includes(
+      currentUserId(req),
+    )
+  ) {
+    res.status(400).json({ error: "Use standard validation inside your assigned scope" });
+    return;
+  }
+  const recipients = authorityDepartment
+    ? [
+        authorityDepartment.serviceHeadId,
+        authorityDepartment.serviceHeadDeputyId,
+      ]
+        .filter(Boolean)
+        .map((id) => snapshotBefore.memberById.get(id as string)?.email)
+        .filter(Boolean) as string[]
+    : [];
+  const [updated] = await db.transaction(async (tx) => {
+    const [validated] = await tx
+      .update(topicsTable)
+      .set({
+        status: "open",
+        validationMode: "break_glass",
+        validationReason: body.data.reason,
+        validatorId: currentUserId(req),
+        validatedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(topicsTable.id, params.data.topicId),
+          eq(topicsTable.status, "pending_validation"),
+        ),
+      )
+      .returning();
+    if (!validated) return [undefined];
+    await addActivity(
+      req,
+      validated.id,
+      "Break-glass validation",
+      `${body.data.reason} Responsible authority notification queued.`,
+      true,
+      tx,
+    );
+    for (const recipient of recipients) {
+      await queueMail(tx, {
+        topicId: validated.id,
+        recipient,
+        subject: `QueueCraft break-glass validation: ${validated.title}`,
+        body: `A validation-only break-glass action was used for "${validated.title}".\n\nReason: ${body.data.reason}\n\nValidator: ${snapshotBefore.memberById.get(currentUserId(req))?.name ?? currentUserId(req)}`,
+      });
+    }
+    return [validated];
+  });
+  if (!updated) {
+    res.status(409).json({ error: "Topic has already left pending validation" });
+    return;
+  }
   req.log.warn(
     { topicId: updated.id, departmentId: updated.departmentId },
     "Break-glass validation used; responsible authority notification queued",
   );
   const snapshot = await loadSnapshot();
   res.json(ValidateTopicBreakGlassResponse.parse(snapshot.buildTopic(updated)));
-});
+  },
+);
 
 router.post("/topics/:topicId/assign", async (req, res): Promise<void> => {
   const params = AssignTopicParams.safeParse(req.params);
@@ -455,16 +945,41 @@ router.post("/topics/:topicId/assign", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid assignment" });
     return;
   }
-  const [updated] = await db
-    .update(topicsTable)
-    .set({ primaryAssigneeId: body.data.memberId, status: "in_progress", updatedAt: new Date() })
-    .where(eq(topicsTable.id, params.data.topicId))
-    .returning();
+  const before = await loadSnapshot();
+  const topic = before.topics.find((item) => item.id === params.data.topicId);
+  if (!topic) {
+    res.status(404).json({ error: "Topic not found" });
+    return;
+  }
+  if (!requireTopicManager(req, res, topic, before)) return;
+  if (topic.status === "pending_validation") {
+    res.status(409).json({ error: "A topic must be validated before assignment" });
+    return;
+  }
+  if (!before.memberById.has(body.data.memberId)) {
+    res.status(400).json({ error: "Assignee not found" });
+    return;
+  }
+  const [updated] = await db.transaction(async (tx) => {
+    const rows = await tx
+      .update(topicsTable)
+      .set({ primaryAssigneeId: body.data.memberId, status: "in_progress", updatedAt: new Date() })
+      .where(
+        and(
+          eq(topicsTable.id, params.data.topicId),
+          ne(topicsTable.status, "pending_validation"),
+        ),
+      )
+      .returning();
+    if (rows[0]) {
+      await addActivity(req, rows[0].id, "Primary assignee changed", "Accountable owner updated.", false, tx);
+    }
+    return rows;
+  });
   if (!updated) {
     res.status(404).json({ error: "Topic not found" });
     return;
   }
-  await addActivity(updated.id, "Primary assignee changed", "Accountable owner updated.");
   const snapshot = await loadSnapshot();
   res.json(AssignTopicResponse.parse(snapshot.buildTopic(updated)));
 });
@@ -476,17 +991,39 @@ router.post("/topics/:topicId/collaborators", async (req, res): Promise<void> =>
     res.status(400).json({ error: "Invalid collaborator" });
     return;
   }
-  const id = randomUUID();
-  const [created] = await db
-    .insert(topicCollaboratorsTable)
-    .values({ id, topicId: params.data.topicId, memberId: body.data.memberId })
-    .returning();
-  if (body.data.milestoneIds?.length) {
-    await db.insert(collaboratorMilestonesTable).values(
-      body.data.milestoneIds.map((milestoneId) => ({ collaboratorId: id, milestoneId })),
-    );
+  const before = await loadSnapshot();
+  const existingTopic = before.topics.find((item) => item.id === params.data.topicId);
+  if (!existingTopic) {
+    res.status(404).json({ error: "Topic not found" });
+    return;
   }
-  await addActivity(params.data.topicId, "Collaborator added", "Topic-scoped access granted.");
+  if (!requireTopicManager(req, res, existingTopic, before)) return;
+  if (!before.memberById.has(body.data.memberId)) {
+    res.status(400).json({ error: "Collaborator not found" });
+    return;
+  }
+  if (
+    body.data.milestoneIds?.some(
+      (id) => !before.milestones.some((milestone) => milestone.id === id && milestone.topicId === existingTopic.id),
+    )
+  ) {
+    res.status(400).json({ error: "A collaborator milestone does not belong to this topic" });
+    return;
+  }
+  const id = randomUUID();
+  const [created] = await db.transaction(async (tx) => {
+    const rows = await tx
+      .insert(topicCollaboratorsTable)
+      .values({ id, topicId: params.data.topicId, memberId: body.data.memberId })
+      .returning();
+    if (body.data.milestoneIds?.length) {
+      await tx.insert(collaboratorMilestonesTable).values(
+        body.data.milestoneIds.map((milestoneId) => ({ collaboratorId: id, milestoneId })),
+      );
+    }
+    await addActivity(req, params.data.topicId, "Collaborator added", "Topic-scoped access granted.", false, tx);
+    return rows;
+  });
   const snapshot = await loadSnapshot();
   const collaborator = snapshot.collaborators.find((item) => item.id === created.id);
   const topic = snapshot.topics.find((item) => item.id === params.data.topicId);
@@ -502,18 +1039,28 @@ router.post("/topics/:topicId/milestones", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid milestone" });
     return;
   }
-  const [created] = await db
-    .insert(milestonesTable)
-    .values({
-      id: randomUUID(),
-      topicId: params.data.topicId,
-      title: body.data.title,
-      description: body.data.description,
-      targetDate: dateOnly(body.data.targetDate),
-      assigneeId: body.data.assigneeId,
-    })
-    .returning();
-  await addActivity(params.data.topicId, "Milestone added", created.title);
+  const before = await loadSnapshot();
+  const topic = before.topics.find((item) => item.id === params.data.topicId);
+  if (!topic) {
+    res.status(404).json({ error: "Topic not found" });
+    return;
+  }
+  if (!requireTopicManager(req, res, topic, before)) return;
+  const [created] = await db.transaction(async (tx) => {
+    const rows = await tx
+      .insert(milestonesTable)
+      .values({
+        id: randomUUID(),
+        topicId: params.data.topicId,
+        title: body.data.title,
+        description: body.data.description,
+        targetDate: dateOnly(body.data.targetDate),
+        assigneeId: body.data.assigneeId,
+      })
+      .returning();
+    await addActivity(req, params.data.topicId, "Milestone added", rows[0].title, false, tx);
+    return rows;
+  });
   const snapshot = await loadSnapshot();
   res.status(201).json(AddTopicMilestoneResponse.parse(snapshot.buildMilestone(created)));
 });
@@ -525,31 +1072,48 @@ router.patch("/milestones/:milestoneId", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid milestone update" });
     return;
   }
+  const before = await loadSnapshot();
+  const existingMilestone = before.milestones.find(
+    (milestone) => milestone.id === params.data.milestoneId,
+  );
+  const topic = existingMilestone
+    ? before.topics.find((item) => item.id === existingMilestone.topicId)
+    : undefined;
+  if (!existingMilestone || !topic) {
+    res.status(404).json({ error: "Milestone not found" });
+    return;
+  }
+  if (!requireTopicManager(req, res, topic, before)) return;
   const completedAt = body.data.status === "completed" ? new Date() : undefined;
-  const [updated] = await db
-    .update(milestonesTable)
-    .set({
-      ...body.data,
-      targetDate:
-        body.data.targetDate === undefined ? undefined : dateOnly(body.data.targetDate),
-      completedAt,
-    })
-    .where(eq(milestonesTable.id, params.data.milestoneId))
-    .returning();
+  const [updated] = await db.transaction(async (tx) => {
+    const rows = await tx
+      .update(milestonesTable)
+      .set({
+        ...body.data,
+        targetDate:
+          body.data.targetDate === undefined ? undefined : dateOnly(body.data.targetDate),
+        completedAt,
+      })
+      .where(eq(milestonesTable.id, params.data.milestoneId))
+      .returning();
+    if (rows[0]) {
+      await addActivity(req, rows[0].topicId, "Milestone updated", `${rows[0].title}: ${rows[0].status}`, false, tx);
+    }
+    return rows;
+  });
   if (!updated) {
     res.status(404).json({ error: "Milestone not found" });
     return;
   }
-  await addActivity(updated.topicId, "Milestone updated", `${updated.title}: ${updated.status}`);
   const snapshot = await loadSnapshot();
   res.json(UpdateMilestoneResponse.parse(snapshot.buildMilestone(updated)));
 });
 
-router.get("/validation-queue", async (_req, res): Promise<void> => {
+router.get("/validation-queue", async (req, res): Promise<void> => {
   const snapshot = await loadSnapshot();
   const responsibleDepartmentIds = snapshot.departments
     .filter((department) =>
-      [department.serviceHeadId, department.serviceHeadDeputyId].includes(currentUserId),
+      [department.serviceHeadId, department.serviceHeadDeputyId].includes(currentUserId(req)),
     )
     .map((department) => department.id);
   const queue = snapshot.topics.filter(
@@ -560,25 +1124,25 @@ router.get("/validation-queue", async (_req, res): Promise<void> => {
   res.json(GetValidationQueueResponse.parse(queue.map(snapshot.buildTopic)));
 });
 
-router.get("/my-work", async (_req, res): Promise<void> => {
+router.get("/my-work", async (req, res): Promise<void> => {
   const snapshot = await loadSnapshot();
   const builtTopics = snapshot.topics.map(snapshot.buildTopic);
   const collaboratedTopicIds = new Set(
     snapshot.collaborators
-      .filter((entry) => entry.memberId === currentUserId)
+      .filter((entry) => entry.memberId === currentUserId(req))
       .map((entry) => entry.topicId),
   );
   const responsibleDepartmentIds = snapshot.departments
     .filter((department) =>
-      [department.serviceHeadId, department.serviceHeadDeputyId].includes(currentUserId),
+      [department.serviceHeadId, department.serviceHeadDeputyId].includes(currentUserId(req)),
     )
     .map((department) => department.id);
   res.json(
     GetMyWorkResponse.parse({
-      created: builtTopics.filter((topic) => topic.creator.id === currentUserId),
-      assigned: builtTopics.filter((topic) => topic.primaryAssignee?.id === currentUserId),
+      created: builtTopics.filter((topic) => topic.creator.id === currentUserId(req)),
+      assigned: builtTopics.filter((topic) => topic.primaryAssignee?.id === currentUserId(req)),
       milestones: snapshot.milestones
-        .filter((milestone) => milestone.assigneeId === currentUserId)
+        .filter((milestone) => milestone.assigneeId === currentUserId(req))
         .map(snapshot.buildMilestone),
       collaborations: builtTopics.filter((topic) => collaboratedTopicIds.has(topic.id)),
       validationQueue: builtTopics.filter(

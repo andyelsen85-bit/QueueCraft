@@ -1,7 +1,7 @@
 FROM node:24-alpine AS builder
 RUN corepack enable
 WORKDIR /app
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig*.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig*.json ./
 COPY artifacts/api-server/package.json artifacts/api-server/package.json
 COPY lib/api-zod/package.json lib/api-zod/package.json
 COPY lib/db/package.json lib/db/package.json

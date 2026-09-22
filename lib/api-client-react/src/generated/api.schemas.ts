@@ -13,6 +13,14 @@ export interface Error {
   error: string;
 }
 
+export type MemberStatus = typeof MemberStatus[keyof typeof MemberStatus];
+
+
+export const MemberStatus = {
+  active: 'active',
+  disabled: 'disabled',
+} as const;
+
 export interface Member {
   id: string;
   name: string;
@@ -20,11 +28,8 @@ export interface Member {
   email: string;
   /** @nullable */
   title?: string | null;
-}
-
-export interface Session {
-  user: Member;
-  capabilities?: string[];
+  status?: MemberStatus;
+  isCio?: boolean;
 }
 
 export type TopicStatus = typeof TopicStatus[keyof typeof TopicStatus];
@@ -50,6 +55,21 @@ export const TopicPriority = {
   P4: 'P4',
 } as const;
 
+export interface TopicFilters {
+  /** @nullable */
+  departmentId?: string | null;
+  /** @nullable */
+  roleId?: string | null;
+  status?: TopicStatus | null;
+  priority?: TopicPriority | null;
+}
+
+export interface Session {
+  user: Member;
+  capabilities?: string[];
+  topicFilters?: TopicFilters;
+}
+
 export type MilestoneStatus = typeof MilestoneStatus[keyof typeof MilestoneStatus];
 
 
@@ -68,11 +88,84 @@ export const ValidationMode = {
   break_glass: 'break_glass',
 } as const;
 
+export interface MemberInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name: string;
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  title?: string | null;
+  /**
+     * @maxLength 255
+     * @nullable
+     */
+  externalSubject?: string | null;
+  isCio?: boolean;
+}
+
+export type MemberUpdateStatus = typeof MemberUpdateStatus[keyof typeof MemberUpdateStatus];
+
+
+export const MemberUpdateStatus = {
+  active: 'active',
+  disabled: 'disabled',
+} as const;
+
+export interface MemberUpdate {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name?: string;
+  /** @maxLength 254 */
+  email?: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  title?: string | null;
+  /**
+     * @maxLength 255
+     * @nullable
+     */
+  externalSubject?: string | null;
+  status?: MemberUpdateStatus;
+  isCio?: boolean;
+}
+
 export interface Department {
   id: string;
   name: string;
   serviceHead: Member;
   serviceHeadDeputy: Member | null;
+}
+
+export interface DepartmentInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name: string;
+  serviceHeadId: string;
+  /** @nullable */
+  serviceHeadDeputyId?: string | null;
+}
+
+export interface DepartmentUpdate {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name?: string;
+  serviceHeadId?: string;
+  /** @nullable */
+  serviceHeadDeputyId?: string | null;
 }
 
 export interface Role {
@@ -82,6 +175,33 @@ export interface Role {
   lead: Member;
   deputy?: Member | null;
   memberCount?: number;
+  memberIds?: string[];
+}
+
+export interface RoleInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name: string;
+  departmentId: string;
+  leadId: string;
+  /** @nullable */
+  deputyId?: string | null;
+  memberIds?: string[];
+}
+
+export interface RoleUpdate {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name?: string;
+  departmentId?: string;
+  leadId?: string;
+  /** @nullable */
+  deputyId?: string | null;
+  memberIds?: string[];
 }
 
 export interface TopicCollaborator {

@@ -17,6 +17,20 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
+let _csrfToken: string | null = null;
+
+async function getCsrfToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  if (_csrfToken) return _csrfToken;
+  const response = await fetch("/api/auth/csrf", {
+    credentials: "include",
+    headers: { accept: "application/json" },
+  });
+  if (!response.ok) return null;
+  const data = (await response.json()) as { csrfToken?: string };
+  _csrfToken = data.csrfToken ?? null;
+  return _csrfToken;
+}
 
 /**
  * Set a base URL that is prepended to every relative request URL
@@ -358,9 +372,19 @@ export async function customFetch<T = unknown>(
     }
   }
 
+  if (!["GET", "HEAD", "OPTIONS"].includes(method) && !headers.has("x-csrf-token")) {
+    const csrfToken = await getCsrfToken();
+    if (csrfToken) headers.set("x-csrf-token", csrfToken);
+  }
+
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  const response = await fetch(input, {
+    ...init,
+    method,
+    headers,
+    credentials: init.credentials ?? "include",
+  });
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

@@ -1,7 +1,7 @@
 FROM node:24-alpine AS builder
 RUN corepack enable
 WORKDIR /app
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig*.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig*.json ./
 COPY artifacts/queuecraft/package.json artifacts/queuecraft/package.json
 COPY lib/api-client-react/package.json lib/api-client-react/package.json
 RUN pnpm install --frozen-lockfile
