@@ -1,0 +1,48 @@
+import { Route, Switch, useLocation } from "wouter"
+import { AppLayout } from "./components/layout"
+import { useGetSession } from "@workspace/api-client-react"
+import { Loader2 } from "lucide-react"
+import { Dashboard } from "./pages/dashboard"
+import { MyWork } from "./pages/my-work"
+import { Topics } from "./pages/topics"
+import { TopicDetail } from "./pages/topic-detail"
+import { Validation } from "./pages/validation"
+import { Directory } from "./pages/directory"
+import NotFound from "./pages/not-found"
+
+export function AppRouter() {
+  const { isLoading, error } = useGetSession()
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <h2 className="text-2xl font-bold tracking-tight text-destructive">Connection Error</h2>
+          <p className="text-muted-foreground">Unable to connect to QueueCraft API.</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <AppLayout>
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/my-work" component={MyWork} />
+        <Route path="/topics" component={Topics} />
+        <Route path="/topics/:topicId" component={TopicDetail} />
+        <Route path="/validation" component={Validation} />
+        <Route path="/directory" component={Directory} />
+        <Route component={NotFound} />
+      </Switch>
+    </AppLayout>
+  )
+}

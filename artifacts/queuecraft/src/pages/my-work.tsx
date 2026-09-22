@@ -1,0 +1,144 @@
+import { useGetMyWork } from "@workspace/api-client-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { TabsContent, TabsList, TabsRoot, TabsTrigger } from "@/components/ui/tabs"
+import { StatusBadge, PriorityBadge } from "@/components/badges"
+import { format } from "date-fns"
+import { Link } from "wouter"
+import { ArrowRight } from "lucide-react"
+
+export function MyWork() {
+  const { data: myWork, isLoading } = useGetMyWork()
+
+  if (isLoading) {
+    return (
+      <div className="p-8 space-y-6">
+        <Skeleton className="h-10 w-48" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-[400px] w-full" />
+      </div>
+    )
+  }
+
+  if (!myWork) return null
+
+  const TopicList = ({ topics, emptyMessage }: { topics: typeof myWork.created, emptyMessage: string }) => {
+    if (topics.length === 0) {
+      return (
+        <div className="p-12 text-center text-sm text-muted-foreground border-2 border-dashed border-muted rounded-sm">
+          {emptyMessage}
+        </div>
+      )
+    }
+
+    return (
+      <div className="space-y-2">
+        {topics.map(t => (
+          <Link key={t.id} href={`/topics/${t.id}`} className="block group">
+            <Card className="transition-colors hover:border-primary/50 hover:bg-muted/30">
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="w-12 text-center">
+                  <PriorityBadge priority={t.priority} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-semibold truncate group-hover:text-primary transition-colors">{t.title}</h3>
+                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground font-mono">
+                    <span>{t.department.name}</span>
+                    <span>•</span>
+                    <span>{t.role.name}</span>
+                  </div>
+                </div>
+                <div className="flex-none">
+                  <StatusBadge status={t.status} />
+                </div>
+                <div className="flex-none text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ArrowRight className="h-4 w-4" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex-1 space-y-6 p-8">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">My Work</h1>
+        <p className="text-muted-foreground mt-1">Your responsibilities, created topics, and active assignments.</p>
+      </div>
+
+      <TabsRoot defaultValue="assigned">
+        <TabsList className="w-full justify-start border-b border-border bg-transparent rounded-none p-0 h-auto">
+          <TabsTrigger 
+            value="assigned" 
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
+          >
+            Assigned Topics ({myWork.assigned.length})
+          </TabsTrigger>
+          <TabsTrigger 
+            value="milestones" 
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
+          >
+            My Milestones ({myWork.milestones.length})
+          </TabsTrigger>
+          <TabsTrigger 
+            value="created" 
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
+          >
+            Created by Me ({myWork.created.length})
+          </TabsTrigger>
+          <TabsTrigger 
+            value="collaborating" 
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
+          >
+            Collaborating ({myWork.collaborations.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <div className="mt-6">
+          <TabsContent value="assigned">
+            <TopicList topics={myWork.assigned} emptyMessage="No topics currently assigned as primary responsibility." />
+          </TabsContent>
+
+          <TabsContent value="milestones">
+            {myWork.milestones.length === 0 ? (
+              <div className="p-12 text-center text-sm text-muted-foreground border-2 border-dashed border-muted rounded-sm">
+                No active milestones assigned to you.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {myWork.milestones.map(m => (
+                  <Card key={m.id}>
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-semibold truncate">{m.title}</h3>
+                        {m.targetDate && (
+                          <div className="text-xs text-muted-foreground mt-1 font-mono">
+                            Target: {format(new Date(m.targetDate), 'yyyy-MM-dd')}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-none">
+                        <StatusBadge status={m.status} />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="created">
+            <TopicList topics={myWork.created} emptyMessage="You haven't created any topics." />
+          </TabsContent>
+
+          <TabsContent value="collaborating">
+            <TopicList topics={myWork.collaborations} emptyMessage="You are not a collaborator on any active topics." />
+          </TabsContent>
+        </div>
+      </TabsRoot>
+    </div>
+  )
+}

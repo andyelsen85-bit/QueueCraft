@@ -1,10 +1,11 @@
-# [Project name]
+# QueueCraft
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+QueueCraft routes internal IT topics through Service Head validation to one accountable owner, with topic-scoped collaborators and parallel milestones.
 
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/queuecraft run dev` — run the QueueCraft frontend
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
@@ -22,19 +23,33 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/api-spec/openapi.yaml` — API contract source of truth
+- `lib/db/src/schema/queuecraft.ts` — domain schema
+- `artifacts/api-server/src/routes/queuecraft.ts` — API implementation
+- `artifacts/queuecraft/` — QueueCraft frontend
+- `deploy/docker/` — hardened image definitions
+- `deploy/kubernetes/queuecraft.yaml` — Kubernetes deployment example
+- `docs/decisions/` — approved architecture exceptions
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Every topic requires Service Head or Service Head Deputy validation; Role Leads and their optional deputies manage execution but never validate.
+- Validation break-glass is limited to CIO and service authorities and applies only to validation.
+- Additional collaborators receive topic-level access without becoming members of the owning role.
+- Production PostgreSQL runs as a stateful Kubernetes pod by explicit exception; see `docs/decisions/001-production-postgres-pod.md`.
+- AD FS/LDAPS and SMTP are production integration boundaries; the preview identity is intentionally non-production.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Operational dashboard and recent activity
+- Personal work view
+- Topic creation, filtering, assignment, collaborators, and milestones
+- Service authority validation queue and audited break-glass flow
+- Department, role, leader, deputy, and member directory
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Use a fresh modern technical identity, not the corporate visual identity.
 
 ## Gotchas
 

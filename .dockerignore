@@ -1,0 +1,9 @@
+.git
+.github
+.agents
+.local
+node_modules
+**/node_modules
+**/dist
+attached_assets
+*.log
