@@ -10,7 +10,6 @@ import type { Member } from './member';
 export interface TopicAllocation {
   topicId: string;
   member: Member;
-  weekStart: Date;
   /**
      * @minimum 0
      * @maximum 100

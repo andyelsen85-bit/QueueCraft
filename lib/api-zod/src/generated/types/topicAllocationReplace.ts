@@ -8,6 +8,5 @@
 import type { TopicAllocationInput } from './topicAllocationInput';
 
 export interface TopicAllocationReplace {
-  weekStart: Date;
   allocations: TopicAllocationInput[];
 }

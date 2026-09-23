@@ -25,8 +25,16 @@ export const topicStatusEnum = pgEnum("topic_status", [
   "rejected",
 ]);
 
-export const topicPriorityEnum = pgEnum("topic_priority", ["P1", "P2", "P3", "P4"]);
-export const validationModeEnum = pgEnum("validation_mode", ["standard", "break_glass"]);
+export const topicPriorityEnum = pgEnum("topic_priority", [
+  "P1",
+  "P2",
+  "P3",
+  "P4",
+]);
+export const validationModeEnum = pgEnum("validation_mode", [
+  "standard",
+  "break_glass",
+]);
 export const milestoneStatusEnum = pgEnum("milestone_status", [
   "not_started",
   "in_progress",
@@ -40,23 +48,36 @@ export const notificationStatusEnum = pgEnum("notification_status", [
   "failed",
 ]);
 
-export const membersTable = pgTable("members", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  initials: text("initials").notNull(),
-  email: text("email").notNull().unique(),
-  title: text("title"),
-  externalSubject: text("external_subject").unique(),
-  authProvider: text("auth_provider"),
-  status: memberStatusEnum("status").notNull().default("active"),
-  isCio: boolean("is_cio").notNull().default(false),
-  dailyBusinessPercent: integer("daily_business_percent").notNull().default(0),
-  topicFilterDepartmentId: text("topic_filter_department_id"),
-  topicFilterRoleId: text("topic_filter_role_id"),
-  topicFilterStatus: topicStatusEnum("topic_filter_status"),
-  topicFilterPriority: topicPriorityEnum("topic_filter_priority"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (table) => [check("members_daily_business_percent_range", sql`${table.dailyBusinessPercent} between 0 and 100`)]);
+export const membersTable = pgTable(
+  "members",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    initials: text("initials").notNull(),
+    email: text("email").notNull().unique(),
+    title: text("title"),
+    externalSubject: text("external_subject").unique(),
+    authProvider: text("auth_provider"),
+    status: memberStatusEnum("status").notNull().default("active"),
+    isCio: boolean("is_cio").notNull().default(false),
+    dailyBusinessPercent: integer("daily_business_percent")
+      .notNull()
+      .default(0),
+    topicFilterDepartmentId: text("topic_filter_department_id"),
+    topicFilterRoleId: text("topic_filter_role_id"),
+    topicFilterStatus: topicStatusEnum("topic_filter_status"),
+    topicFilterPriority: topicPriorityEnum("topic_filter_priority"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "members_daily_business_percent_range",
+      sql`${table.dailyBusinessPercent} between 0 and 100`,
+    ),
+  ],
+);
 
 export const departmentsTable = pgTable("departments", {
   id: text("id").primaryKey(),
@@ -64,13 +85,17 @@ export const departmentsTable = pgTable("departments", {
   serviceHeadId: text("service_head_id")
     .notNull()
     .references(() => membersTable.id),
-  serviceHeadDeputyId: text("service_head_deputy_id").references(() => membersTable.id),
+  serviceHeadDeputyId: text("service_head_deputy_id").references(
+    () => membersTable.id,
+  ),
 });
 
 export const applicationSettingsTable = pgTable("application_settings", {
   id: text("id").primaryKey().default("runtime"),
   encryptedValue: text("encrypted_value").notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   updatedById: text("updated_by_id").references(() => membersTable.id),
 });
 
@@ -127,18 +152,24 @@ export const topicsTable = pgTable("topics", {
   creatorId: text("creator_id")
     .notNull()
     .references(() => membersTable.id),
-  primaryAssigneeId: text("primary_assignee_id").references(() => membersTable.id),
+  primaryAssigneeId: text("primary_assignee_id").references(
+    () => membersTable.id,
+  ),
   targetDate: date("target_date", { mode: "string" }),
   estimatedStartDate: date("estimated_start_date", { mode: "string" }),
   estimatedFinishDate: date("estimated_finish_date", { mode: "string" }),
   estimatedEffortHours: integer("estimated_effort_hours"),
-  validationMode: validationModeEnum("validation_mode").notNull().default("standard"),
+  validationMode: validationModeEnum("validation_mode")
+    .notNull()
+    .default("standard"),
   validationReason: text("validation_reason"),
   validatorId: text("validator_id").references(() => membersTable.id),
   validatedAt: timestamp("validated_at", { withTimezone: true }),
   completionSummary: text("completion_summary"),
   completedAt: timestamp("completed_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()
@@ -156,20 +187,33 @@ export const topicCollaboratorsTable = pgTable("topic_collaborators", {
   addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const milestonesTable = pgTable("milestones", {
-  id: text("id").primaryKey(),
-  topicId: text("topic_id")
-    .notNull()
-    .references(() => topicsTable.id),
-  title: text("title").notNull(),
-  description: text("description"),
-  status: milestoneStatusEnum("status").notNull().default("not_started"),
-  targetDate: date("target_date", { mode: "string" }),
-  assigneeId: text("assignee_id").references(() => membersTable.id),
-  completionNote: text("completion_note"),
-  completedAt: timestamp("completed_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const milestonesTable = pgTable(
+  "milestones",
+  {
+    id: text("id").primaryKey(),
+    topicId: text("topic_id")
+      .notNull()
+      .references(() => topicsTable.id),
+    title: text("title").notNull(),
+    description: text("description"),
+    status: milestoneStatusEnum("status").notNull().default("not_started"),
+    beginDate: date("begin_date", { mode: "string" }),
+    targetDate: date("target_date", { mode: "string" }),
+    assigneeId: text("assignee_id").references(() => membersTable.id),
+    workloadPercent: integer("workload_percent").notNull().default(0),
+    completionNote: text("completion_note"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "milestones_workload_percent_range",
+      sql`${table.workloadPercent} between 0 and 100`,
+    ),
+  ],
+);
 
 export const collaboratorMilestonesTable = pgTable(
   "collaborator_milestones",
@@ -181,34 +225,56 @@ export const collaboratorMilestonesTable = pgTable(
       .notNull()
       .references(() => milestonesTable.id),
   },
-  (table) => [primaryKey({ columns: [table.collaboratorId, table.milestoneId] })],
-);
-
-export const topicWeeklyAllocationsTable = pgTable(
-  "topic_weekly_allocations",
-  {
-    topicId: text("topic_id").notNull().references(() => topicsTable.id),
-    memberId: text("member_id").notNull().references(() => membersTable.id),
-    weekStart: date("week_start", { mode: "string" }).notNull(),
-    allocationPercent: integer("allocation_percent").notNull().default(0),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-  },
   (table) => [
-    primaryKey({ columns: [table.topicId, table.memberId, table.weekStart] }),
-    check("topic_weekly_allocations_percent_range", sql`${table.allocationPercent} between 0 and 100`),
+    primaryKey({ columns: [table.collaboratorId, table.milestoneId] }),
   ],
 );
 
-export const topicFinishDateRevisionsTable = pgTable("topic_finish_date_revisions", {
-  id: text("id").primaryKey(),
-  topicId: text("topic_id").notNull().references(() => topicsTable.id),
-  previousTargetDate: date("previous_target_date", { mode: "string" }),
-  newTargetDate: date("new_target_date", { mode: "string" }),
-  note: text("note").notNull(),
-  actorId: text("actor_id").notNull().references(() => membersTable.id),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const topicAllocationsTable = pgTable(
+  "topic_allocations",
+  {
+    topicId: text("topic_id")
+      .notNull()
+      .references(() => topicsTable.id),
+    memberId: text("member_id")
+      .notNull()
+      .references(() => membersTable.id),
+    allocationPercent: integer("allocation_percent").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    primaryKey({ columns: [table.topicId, table.memberId] }),
+    check(
+      "topic_allocations_percent_range",
+      sql`${table.allocationPercent} between 0 and 100`,
+    ),
+  ],
+);
+
+export const topicFinishDateRevisionsTable = pgTable(
+  "topic_finish_date_revisions",
+  {
+    id: text("id").primaryKey(),
+    topicId: text("topic_id")
+      .notNull()
+      .references(() => topicsTable.id),
+    previousTargetDate: date("previous_target_date", { mode: "string" }),
+    newTargetDate: date("new_target_date", { mode: "string" }),
+    note: text("note").notNull(),
+    actorId: text("actor_id")
+      .notNull()
+      .references(() => membersTable.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+);
 
 export const activityTable = pgTable("activity", {
   id: text("id").primaryKey(),
@@ -219,7 +285,9 @@ export const activityTable = pgTable("activity", {
   action: text("action").notNull(),
   detail: text("detail"),
   isBreakGlass: boolean("is_break_glass").notNull().default(false),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const auditLogTable = pgTable("audit_log", {
@@ -233,9 +301,14 @@ export const auditLogTable = pgTable("audit_log", {
   requestId: text("request_id"),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
-  details: jsonb("details").$type<Record<string, unknown>>().notNull().default({}),
+  details: jsonb("details")
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({}),
   isBreakGlass: boolean("is_break_glass").notNull().default(false),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const notificationOutboxTable = pgTable("notification_outbox", {
@@ -247,19 +320,39 @@ export const notificationOutboxTable = pgTable("notification_outbox", {
   status: notificationStatusEnum("status").notNull().default("pending"),
   error: text("error"),
   attempts: integer("attempts").notNull().default(0),
-  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   sentAt: timestamp("sent_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
-export const notificationRulesTable = pgTable("notification_rules", {
-  id: text("id").primaryKey(),
-  action: text("action").notNull(),
-  roleId: text("role_id").notNull().references(() => rolesTable.id),
-  enabled: boolean("enabled").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-}, (table) => [uniqueIndex("notification_rules_action_role_unique").on(table.action, table.roleId)]);
+export const notificationRulesTable = pgTable(
+  "notification_rules",
+  {
+    id: text("id").primaryKey(),
+    action: text("action").notNull(),
+    roleId: text("role_id")
+      .notNull()
+      .references(() => rolesTable.id),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("notification_rules_action_role_unique").on(
+      table.action,
+      table.roleId,
+    ),
+  ],
+);
 
 export const insertTopicSchema = createInsertSchema(topicsTable).omit({
   createdAt: true,
@@ -287,7 +380,7 @@ export const queuecraftTables = {
   topicCollaboratorsTable,
   milestonesTable,
   collaboratorMilestonesTable,
-  topicWeeklyAllocationsTable,
+  topicAllocationsTable,
   topicFinishDateRevisionsTable,
   activityTable,
   auditLogTable,

@@ -15,8 +15,15 @@ export interface Milestone {
   description?: string | null;
   status: MilestoneStatus;
   /** @nullable */
+  beginDate?: Date | null;
+  /** @nullable */
   targetDate?: Date | null;
   assignee?: Member | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  workloadPercent?: number;
   /** @nullable */
   completionNote?: string | null;
   /** @nullable */

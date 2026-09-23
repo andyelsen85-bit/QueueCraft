@@ -5,9 +5,13 @@
  * QueueCraft operations and topic-routing API
  * OpenAPI spec version: 0.1.0
  */
+import type { OccupancyTopicAllocationType } from './occupancyTopicAllocationType';
 
 export interface OccupancyTopic {
   topicId: string;
+  /** @nullable */
+  milestoneId?: string | null;
   title: string;
+  allocationType: OccupancyTopicAllocationType;
   allocationPercent: number;
 }

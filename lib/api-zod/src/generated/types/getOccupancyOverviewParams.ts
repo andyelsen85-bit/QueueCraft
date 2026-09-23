@@ -5,8 +5,10 @@
  * QueueCraft operations and topic-routing API
  * OpenAPI spec version: 0.1.0
  */
-import type { WeekStartParameter } from './weekStartParameter';
+import type { EndDateParameter } from './endDateParameter';
+import type { StartDateParameter } from './startDateParameter';
 
 export type GetOccupancyOverviewParams = {
-weekStart: WeekStartParameter;
+startDate: StartDateParameter;
+endDate: EndDateParameter;
 };

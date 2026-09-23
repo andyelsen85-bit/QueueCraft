@@ -1,0 +1,1 @@
+- [Drizzle migrations on an existing database](drizzle-existing-db.md) — preserve deterministic custom migrations and keep snapshot metadata aligned; do not replay an empty journal blindly.

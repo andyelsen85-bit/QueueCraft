@@ -20,9 +20,16 @@ export interface MilestoneUpdate {
   description?: string | null;
   status?: MilestoneStatus;
   /** @nullable */
+  beginDate?: Date | null;
+  /** @nullable */
   targetDate?: Date | null;
   /** @nullable */
   assigneeId?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  workloadPercent?: number;
   /**
      * @maxLength 1000
      * @nullable

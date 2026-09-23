@@ -15,6 +15,7 @@ import {
   pool,
   rolesTable,
   topicFinishDateRevisionsTable,
+  topicAllocationsTable,
   topicsTable,
 } from "@workspace/db";
 import app from "./app";
@@ -54,6 +55,10 @@ before(async () => {
     })
     .onConflictDoNothing();
   await db
+    .update(departmentsTable)
+    .set({ serviceHeadId: "member-andy" })
+    .where(eq(departmentsTable.id, "dept-platform"));
+  await db
     .insert(rolesTable)
     .values({
       id: "role-ci-validation",
@@ -72,7 +77,9 @@ describe("QueueCraft security and preference flows", () => {
   test("backup registry covers every QueueCraft schema table", () => {
     const schemaTables = Object.values(queuecraftSchema).flatMap((value) => {
       try {
-        return [getTableConfig(value as Parameters<typeof getTableConfig>[0]).name];
+        return [
+          getTableConfig(value as Parameters<typeof getTableConfig>[0]).name,
+        ];
       } catch {
         return [];
       }
@@ -84,13 +91,14 @@ describe("QueueCraft security and preference flows", () => {
 
   test("rejects backups with missing or unknown tables", () => {
     assert.throws(
-      () => validateBackup({
-        format: BACKUP_FORMAT,
-        version: BACKUP_VERSION,
-        manifest: BACKUP_MANIFEST,
-        fingerprint: BACKUP_FINGERPRINT,
-        tables: {},
-      }),
+      () =>
+        validateBackup({
+          format: BACKUP_FORMAT,
+          version: BACKUP_VERSION,
+          manifest: BACKUP_MANIFEST,
+          fingerprint: BACKUP_FINGERPRINT,
+          tables: {},
+        }),
       /table coverage/,
     );
   });
@@ -107,15 +115,17 @@ describe("QueueCraft security and preference flows", () => {
     });
     const exported = await exportBackup();
     const parsed = JSON.parse(JSON.stringify(exported));
-    const createdAt = (parsed.tables.audit_log[0] as { createdAt: string }).createdAt;
+    const createdAt = (parsed.tables.audit_log[0] as { createdAt: string })
+      .createdAt;
     assert.equal(typeof createdAt, "string");
     const collisionId = randomUUID();
     const recoveryAdminId = randomUUID();
     const restoreAuditId = randomUUID();
     const restoredEmail = `restored-${randomUUID()}@example.invalid`;
     const restoredSubject = `subject-${randomUUID()}`;
-    const restoredMember = (parsed.tables.members as Array<Record<string, unknown>>)
-      .find((row) => row.id === "member-andy");
+    const restoredMember = (
+      parsed.tables.members as Array<Record<string, unknown>>
+    ).find((row) => row.id === "member-andy");
     assert.ok(restoredMember);
     restoredMember.email = restoredEmail;
     restoredMember.externalSubject = restoredSubject;
@@ -158,18 +168,33 @@ describe("QueueCraft security and preference flows", () => {
       resourceType: "system",
       details: { format: "queuecraft-json", version: 2 },
     });
-    const preserved = await db.select().from(auditLogTable).where(eq(auditLogTable.id, newerId));
+    const preserved = await db
+      .select()
+      .from(auditLogTable)
+      .where(eq(auditLogTable.id, newerId));
     assert.equal(preserved.length, 1);
     assert.ok(preserved[0].createdAt instanceof Date);
-    const [restoredAndy] = await db.select().from(membersTable).where(eq(membersTable.id, "member-andy"));
+    const [restoredAndy] = await db
+      .select()
+      .from(membersTable)
+      .where(eq(membersTable.id, "member-andy"));
     assert.equal(restoredAndy.email, restoredEmail);
     assert.equal(restoredAndy.externalSubject, restoredSubject);
-    const [retainedActor] = await db.select().from(membersTable).where(eq(membersTable.id, collisionId));
+    const [retainedActor] = await db
+      .select()
+      .from(membersTable)
+      .where(eq(membersTable.id, collisionId));
     assert.equal(retainedActor.status, "disabled");
     assert.match(retainedActor.email, /^restored-archive-/);
-    const [recoveryAdmin] = await db.select().from(membersTable).where(eq(membersTable.id, recoveryAdminId));
+    const [recoveryAdmin] = await db
+      .select()
+      .from(membersTable)
+      .where(eq(membersTable.id, recoveryAdminId));
     assert.equal(recoveryAdmin.status, "disabled");
-    const restoreAudit = await db.select().from(auditLogTable).where(eq(auditLogTable.id, restoreAuditId));
+    const restoreAudit = await db
+      .select()
+      .from(auditLogTable)
+      .where(eq(auditLogTable.id, restoreAuditId));
     assert.equal(restoreAudit.length, 1);
     const sessions = await db.execute(sql`SELECT sid FROM user_sessions`);
     assert.equal(sessions.rows.length, 0);
@@ -267,12 +292,45 @@ describe("QueueCraft security and preference flows", () => {
     await db.delete(membersTable).where(eq(membersTable.id, response.body.id));
   });
 
+  test("allows service authorities to edit directory data without changing CIO authority", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = await agent.get("/api/auth/csrf").expect(200);
+    const unique = randomUUID();
+    const created = await agent
+      .post("/api/directory/members")
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({
+        name: "Editable Member",
+        email: `editable-${unique}@example.invalid`,
+      })
+      .expect(201);
+    await agent
+      .patch(`/api/directory/members/${created.body.id}`)
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({ title: "Updated by service authority", isCio: false })
+      .expect(200);
+    await agent
+      .patch(`/api/directory/members/${created.body.id}`)
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({ isCio: true })
+      .expect(403);
+    await agent
+      .patch("/api/directory/departments/dept-platform")
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({ name: "Platform Services" })
+      .expect(200);
+    await db.delete(membersTable).where(eq(membersTable.id, created.body.id));
+  });
+
   test("cannot bypass or replay pending topic validation", async () => {
     const agent = request.agent(app);
     await agent.get("/api/session").expect(200);
     const csrf = await agent.get("/api/auth/csrf").expect(200);
     const roles = await agent.get("/api/directory/roles").expect(200);
-    const role = roles.body.find((item: { departmentId: string }) => item.departmentId === "dept-platform");
+    const role = roles.body.find(
+      (item: { departmentId: string }) => item.departmentId === "dept-platform",
+    );
     assert.ok(role);
 
     const created = await agent
@@ -280,7 +338,8 @@ describe("QueueCraft security and preference flows", () => {
       .set("x-csrf-token", csrf.body.csrfToken)
       .send({
         title: `Validation policy ${randomUUID()}`,
-        description: "Temporary topic used to verify the validation transition policy.",
+        description:
+          "Temporary topic used to verify the validation transition policy.",
         departmentId: "dept-platform",
         roleId: role.id,
         priority: "P3",
@@ -313,7 +372,9 @@ describe("QueueCraft security and preference flows", () => {
       .send({ note: "Replay attempt" })
       .expect(409);
 
-    await db.delete(activityTable).where(eq(activityTable.topicId, created.body.id));
+    await db
+      .delete(activityTable)
+      .where(eq(activityTable.topicId, created.body.id));
     await db.delete(topicsTable).where(eq(topicsTable.id, created.body.id));
   });
 
@@ -322,14 +383,17 @@ describe("QueueCraft security and preference flows", () => {
     await agent.get("/api/session").expect(200);
     const csrf = await agent.get("/api/auth/csrf").expect(200);
     const roles = await agent.get("/api/directory/roles").expect(200);
-    const role = roles.body.find((item: { departmentId: string }) => item.departmentId === "dept-platform");
+    const role = roles.body.find(
+      (item: { departmentId: string }) => item.departmentId === "dept-platform",
+    );
     assert.ok(role);
     const created = await agent
       .post("/api/topics")
       .set("x-csrf-token", csrf.body.csrfToken)
       .send({
         title: `Milestone lifecycle ${randomUUID()}`,
-        description: "Temporary topic used to verify finish-date and milestone lifecycle.",
+        description:
+          "Temporary topic used to verify finish-date and milestone lifecycle.",
         departmentId: "dept-platform",
         roleId: role.id,
         priority: "P3",
@@ -344,22 +408,111 @@ describe("QueueCraft security and preference flows", () => {
     await agent
       .patch(`/api/topics/${created.body.id}/finish-date`)
       .set("x-csrf-token", csrf.body.csrfToken)
-      .send({ targetDate: "2030-01-15", note: "Scope clarified with the requester." })
+      .send({
+        targetDate: "2030-01-15",
+        note: "Scope clarified with the requester.",
+      })
       .expect(200);
 
     const milestone = await agent
       .post(`/api/topics/${created.body.id}/milestones`)
       .set("x-csrf-token", csrf.body.csrfToken)
-      .send({ title: "Temporary milestone" })
+      .send({
+        title: "Temporary milestone",
+        beginDate: "2030-01-01",
+        targetDate: "2030-01-15",
+      })
       .expect(201);
     await agent
       .delete(`/api/milestones/${milestone.body.id}`)
       .set("x-csrf-token", csrf.body.csrfToken)
       .expect(204);
 
-    await db.delete(topicFinishDateRevisionsTable).where(eq(topicFinishDateRevisionsTable.topicId, created.body.id));
-    await db.delete(activityTable).where(eq(activityTable.topicId, created.body.id));
+    await db
+      .delete(topicFinishDateRevisionsTable)
+      .where(eq(topicFinishDateRevisionsTable.topicId, created.body.id));
+    await db
+      .delete(activityTable)
+      .where(eq(activityTable.topicId, created.body.id));
     await db.delete(topicsTable).where(eq(topicsTable.id, created.body.id));
-    assert.equal((await db.select().from(milestonesTable).where(eq(milestonesTable.id, milestone.body.id))).length, 0);
+    assert.equal(
+      (
+        await db
+          .select()
+          .from(milestonesTable)
+          .where(eq(milestonesTable.id, milestone.body.id))
+      ).length,
+      0,
+    );
+  });
+
+  test("applies topic and milestone workload across their date ranges", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = await agent.get("/api/auth/csrf").expect(200);
+    const roles = await agent.get("/api/directory/roles").expect(200);
+    const role = roles.body.find(
+      (item: { departmentId: string }) => item.departmentId === "dept-platform",
+    );
+    assert.ok(role);
+    const created = await agent
+      .post("/api/topics")
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({
+        title: `Occupancy range ${randomUUID()}`,
+        description: "Temporary topic used to verify range-based occupancy.",
+        departmentId: "dept-platform",
+        roleId: role.id,
+        priority: "P3",
+        primaryAssigneeId: "member-andy",
+        estimatedStartDate: "2041-01-01",
+        estimatedFinishDate: "2041-01-31",
+      })
+      .expect(201);
+    await agent
+      .put(`/api/topics/${created.body.id}/allocations`)
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({
+        allocations: [{ memberId: "member-andy", allocationPercent: 20 }],
+      })
+      .expect(200);
+    const milestone = await agent
+      .post(`/api/topics/${created.body.id}/milestones`)
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({
+        title: "Focused delivery",
+        beginDate: "2041-01-08",
+        targetDate: "2041-01-17",
+        assigneeId: "member-andy",
+        workloadPercent: 15,
+      })
+      .expect(201);
+    const during = await agent
+      .get("/api/occupancy/overview?startDate=2041-01-13&endDate=2041-01-19")
+      .expect(200);
+    const row = during.body.find(
+      (item: { member: { id: string } }) => item.member.id === "member-andy",
+    );
+    assert.equal(row.topicAllocationPercent, 20);
+    assert.equal(row.milestoneAllocationPercent, 11);
+    assert.equal(row.totalOccupancyPercent, row.dailyBusinessPercent + 31);
+    const outside = await agent
+      .get("/api/occupancy/overview?startDate=2041-02-03&endDate=2041-02-09")
+      .expect(200);
+    const outsideRow = outside.body.find(
+      (item: { member: { id: string } }) => item.member.id === "member-andy",
+    );
+    assert.equal(outsideRow.topicAllocationPercent, 0);
+    assert.equal(outsideRow.milestoneAllocationPercent, 0);
+    await db
+      .delete(milestonesTable)
+      .where(eq(milestonesTable.id, milestone.body.id));
+    await db
+      .delete(topicAllocationsTable)
+      .where(eq(topicAllocationsTable.topicId, created.body.id));
+    await db
+      .delete(activityTable)
+      .where(eq(activityTable.topicId, created.body.id));
+    await db.delete(topicsTable).where(eq(topicsTable.id, created.body.id));
   });
 });

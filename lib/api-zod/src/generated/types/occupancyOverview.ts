@@ -10,10 +10,13 @@ import type { OccupancyTopic } from './occupancyTopic';
 
 export interface OccupancyOverview {
   member: Member;
-  weekStart: Date;
+  startDate: Date;
+  endDate: Date;
   dailyBusinessPercent: number;
   topics: OccupancyTopic[];
+  milestones: OccupancyTopic[];
   topicAllocationPercent: number;
+  milestoneAllocationPercent: number;
   totalOccupancyPercent: number;
   availablePercent: number;
   overAllocated: boolean;

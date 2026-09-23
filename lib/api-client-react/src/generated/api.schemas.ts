@@ -236,8 +236,15 @@ export interface Milestone {
   description?: string | null;
   status: MilestoneStatus;
   /** @nullable */
+  beginDate?: string | null;
+  /** @nullable */
   targetDate?: string | null;
   assignee?: Member | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  workloadPercent?: number;
   /** @nullable */
   completionNote?: string | null;
   /** @nullable */
@@ -283,7 +290,6 @@ export interface Topic {
 export interface TopicAllocation {
   topicId: string;
   member: Member;
-  weekStart: string;
   /**
      * @minimum 0
      * @maximum 100
@@ -416,10 +422,15 @@ export interface MilestoneInput {
      * @nullable
      */
   description?: string | null;
-  /** @nullable */
-  targetDate?: string | null;
+  beginDate: string;
+  targetDate: string;
   /** @nullable */
   assigneeId?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  workloadPercent?: number;
 }
 
 export interface MilestoneUpdate {
@@ -435,9 +446,16 @@ export interface MilestoneUpdate {
   description?: string | null;
   status?: MilestoneStatus;
   /** @nullable */
+  beginDate?: string | null;
+  /** @nullable */
   targetDate?: string | null;
   /** @nullable */
   assigneeId?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  workloadPercent?: number;
   /**
      * @maxLength 1000
      * @nullable
@@ -465,22 +483,35 @@ export interface TopicAllocationInput {
 }
 
 export interface TopicAllocationReplace {
-  weekStart: string;
   allocations: TopicAllocationInput[];
 }
 
+export type OccupancyTopicAllocationType = typeof OccupancyTopicAllocationType[keyof typeof OccupancyTopicAllocationType];
+
+
+export const OccupancyTopicAllocationType = {
+  topic: 'topic',
+  milestone: 'milestone',
+} as const;
+
 export interface OccupancyTopic {
   topicId: string;
+  /** @nullable */
+  milestoneId?: string | null;
   title: string;
+  allocationType: OccupancyTopicAllocationType;
   allocationPercent: number;
 }
 
 export interface OccupancyOverview {
   member: Member;
-  weekStart: string;
+  startDate: string;
+  endDate: string;
   dailyBusinessPercent: number;
   topics: OccupancyTopic[];
+  milestones: OccupancyTopic[];
   topicAllocationPercent: number;
+  milestoneAllocationPercent: number;
   totalOccupancyPercent: number;
   availablePercent: number;
   overAllocated: boolean;
@@ -535,7 +566,9 @@ export type StatusParameter = TopicStatus;
 
 export type PriorityParameter = TopicPriority;
 
-export type WeekStartParameter = string;
+export type StartDateParameter = string;
+
+export type EndDateParameter = string;
 
 export type GetDashboardActivityParams = {
 /**
@@ -559,6 +592,7 @@ limit?: LimitParameter;
 };
 
 export type GetOccupancyOverviewParams = {
-weekStart: WeekStartParameter;
+startDate: StartDateParameter;
+endDate: EndDateParameter;
 };
 

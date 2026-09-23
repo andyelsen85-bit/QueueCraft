@@ -17,8 +17,13 @@ export interface MilestoneInput {
      * @nullable
      */
   description?: string | null;
-  /** @nullable */
-  targetDate?: Date | null;
+  beginDate: Date;
+  targetDate: Date;
   /** @nullable */
   assigneeId?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  workloadPercent?: number;
 }

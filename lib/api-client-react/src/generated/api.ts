@@ -1146,22 +1146,20 @@ export const useUpdateTopicFinishDate = <TError = ErrorType<unknown>,
       return useMutation(getUpdateTopicFinishDateMutationOptions(options));
     }
 
-export const getGetTopicAllocationsUrl = (topicId: string,
-    weekStart: string,) => {
+export const getGetTopicAllocationsUrl = (topicId: string,) => {
 
 
 
 
-  return `/api/topics/${topicId}/allocations/${weekStart}`
+  return `/api/topics/${topicId}/allocations`
 }
 
 /**
- * @summary Get weekly member allocations for a topic
+ * @summary Get member allocations for a topic
  */
-export const getTopicAllocations = async (topicId: string,
-    weekStart: string, options?: Parameters<typeof customFetch>[1]): Promise<TopicAllocation[]> => {
+export const getTopicAllocations = async (topicId: string, options?: Parameters<typeof customFetch>[1]): Promise<TopicAllocation[]> => {
 
-  return customFetch<TopicAllocation[]>(getGetTopicAllocationsUrl(topicId,weekStart),
+  return customFetch<TopicAllocation[]>(getGetTopicAllocationsUrl(topicId),
   {
     ...options,
     method: 'GET'
@@ -1174,31 +1172,29 @@ export const getTopicAllocations = async (topicId: string,
 
 
 
-export const getGetTopicAllocationsQueryKey = (topicId: string,
-    weekStart: string,) => {
+export const getGetTopicAllocationsQueryKey = (topicId: string,) => {
     return [
-    `/api/topics/${topicId}/allocations/${weekStart}`
+    `/api/topics/${topicId}/allocations`
     ] as const;
     }
 
 
-export const getGetTopicAllocationsQueryOptions = <TData = Awaited<ReturnType<typeof getTopicAllocations>>, TError = ErrorType<unknown>>(topicId: string,
-    weekStart: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTopicAllocations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetTopicAllocationsQueryOptions = <TData = Awaited<ReturnType<typeof getTopicAllocations>>, TError = ErrorType<unknown>>(topicId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTopicAllocations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetTopicAllocationsQueryKey(topicId,weekStart);
+  const queryKey =  queryOptions?.queryKey ?? getGetTopicAllocationsQueryKey(topicId);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTopicAllocations>>> = ({ signal }) => getTopicAllocations(topicId,weekStart, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTopicAllocations>>> = ({ signal }) => getTopicAllocations(topicId, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: topicId !== null && topicId !== undefined && weekStart !== null && weekStart !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTopicAllocations>>, TError, TData> & { queryKey: QueryKey }
+   return  { queryKey, queryFn, enabled: topicId !== null && topicId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTopicAllocations>>, TError, TData> & { queryKey: QueryKey }
 }
 
 export type GetTopicAllocationsQueryResult = NonNullable<Awaited<ReturnType<typeof getTopicAllocations>>>
@@ -1206,16 +1202,15 @@ export type GetTopicAllocationsQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Get weekly member allocations for a topic
+ * @summary Get member allocations for a topic
  */
 
 export function useGetTopicAllocations<TData = Awaited<ReturnType<typeof getTopicAllocations>>, TError = ErrorType<unknown>>(
- topicId: string,
-    weekStart: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTopicAllocations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ topicId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTopicAllocations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetTopicAllocationsQueryOptions(topicId,weekStart,options)
+  const queryOptions = getGetTopicAllocationsQueryOptions(topicId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -1237,7 +1232,7 @@ export const getReplaceTopicAllocationsUrl = (topicId: string,) => {
 }
 
 /**
- * @summary Replace weekly member allocations for a topic
+ * @summary Replace member allocations for a topic
  */
 export const replaceTopicAllocations = async (topicId: string,
     topicAllocationReplace: TopicAllocationReplace, options?: Parameters<typeof customFetch>[1]): Promise<TopicAllocation[]> => {
@@ -1304,7 +1299,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ReplaceTopicAllocationsMutationVariables = {topicId: string;data: BodyType<TopicAllocationReplace>}
 
     /**
- * @summary Replace weekly member allocations for a topic
+ * @summary Replace member allocations for a topic
  */
 export const useReplaceTopicAllocations = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceTopicAllocations>>, TError,ReplaceTopicAllocationsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

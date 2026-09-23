@@ -1,0 +1,1 @@
+ALTER TABLE "milestones" ADD CONSTRAINT "milestones_workload_percent_range" CHECK ("milestones"."workload_percent" between 0 and 100);

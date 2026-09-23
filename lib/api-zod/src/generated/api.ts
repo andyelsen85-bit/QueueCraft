@@ -205,6 +205,9 @@ export const getMyWorkResponseAssignedItemValidatorOneDailyBusinessPercentMax = 
 export const getMyWorkResponseMilestonesItemAssigneeOneDailyBusinessPercentMin = 0;
 export const getMyWorkResponseMilestonesItemAssigneeOneDailyBusinessPercentMax = 100;
 
+export const getMyWorkResponseMilestonesItemWorkloadPercentMin = 0;
+export const getMyWorkResponseMilestonesItemWorkloadPercentMax = 100;
+
 export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDailyBusinessPercentMin = 0;
 export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDailyBusinessPercentMax = 100;
 
@@ -497,6 +500,7 @@ export const GetMyWorkResponse = zod.object({
   "title": zod.string(),
   "description": zod.string().nullish(),
   "status": zod.enum(['not_started', 'in_progress', 'completed', 'blocked']),
+  "beginDate": zod.coerce.date().nullish(),
   "targetDate": zod.coerce.date().nullish(),
   "assignee": zod.union([zod.object({
   "id": zod.string(),
@@ -508,6 +512,7 @@ export const GetMyWorkResponse = zod.object({
   "isCio": zod.boolean().optional(),
   "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseMilestonesItemAssigneeOneDailyBusinessPercentMin).max(getMyWorkResponseMilestonesItemAssigneeOneDailyBusinessPercentMax).optional()
 }),zod.null()]).optional(),
+  "workloadPercent": zod.number().int().min(getMyWorkResponseMilestonesItemWorkloadPercentMin).max(getMyWorkResponseMilestonesItemWorkloadPercentMax).optional(),
   "completionNote": zod.string().nullish(),
   "completedAt": zod.coerce.date().nullish()
 })),
@@ -1268,6 +1273,9 @@ export const getTopicResponseOneValidatorOneDailyBusinessPercentMax = 100;
 export const getTopicResponseTwoMilestonesItemAssigneeOneDailyBusinessPercentMin = 0;
 export const getTopicResponseTwoMilestonesItemAssigneeOneDailyBusinessPercentMax = 100;
 
+export const getTopicResponseTwoMilestonesItemWorkloadPercentMin = 0;
+export const getTopicResponseTwoMilestonesItemWorkloadPercentMax = 100;
+
 export const getTopicResponseTwoAllocationsItemMemberDailyBusinessPercentMin = 0;
 export const getTopicResponseTwoAllocationsItemMemberDailyBusinessPercentMax = 100;
 
@@ -1403,6 +1411,7 @@ export const GetTopicResponse = zod.object({
   "title": zod.string(),
   "description": zod.string().nullish(),
   "status": zod.enum(['not_started', 'in_progress', 'completed', 'blocked']),
+  "beginDate": zod.coerce.date().nullish(),
   "targetDate": zod.coerce.date().nullish(),
   "assignee": zod.union([zod.object({
   "id": zod.string(),
@@ -1414,6 +1423,7 @@ export const GetTopicResponse = zod.object({
   "isCio": zod.boolean().optional(),
   "dailyBusinessPercent": zod.number().int().min(getTopicResponseTwoMilestonesItemAssigneeOneDailyBusinessPercentMin).max(getTopicResponseTwoMilestonesItemAssigneeOneDailyBusinessPercentMax).optional()
 }),zod.null()]).optional(),
+  "workloadPercent": zod.number().int().min(getTopicResponseTwoMilestonesItemWorkloadPercentMin).max(getTopicResponseTwoMilestonesItemWorkloadPercentMax).optional(),
   "completionNote": zod.string().nullish(),
   "completedAt": zod.coerce.date().nullish()
 })),
@@ -1429,7 +1439,6 @@ export const GetTopicResponse = zod.object({
   "isCio": zod.boolean().optional(),
   "dailyBusinessPercent": zod.number().int().min(getTopicResponseTwoAllocationsItemMemberDailyBusinessPercentMin).max(getTopicResponseTwoAllocationsItemMemberDailyBusinessPercentMax).optional()
 }),
-  "weekStart": zod.coerce.date(),
   "allocationPercent": zod.number().int().min(getTopicResponseTwoAllocationsItemAllocationPercentMin).max(getTopicResponseTwoAllocationsItemAllocationPercentMax)
 })).optional(),
   "finishDateRevisions": zod.array(zod.object({
@@ -1809,11 +1818,10 @@ export const UpdateTopicFinishDateResponse = zod.object({
 
 
 /**
- * @summary Get weekly member allocations for a topic
+ * @summary Get member allocations for a topic
  */
 export const GetTopicAllocationsParams = zod.object({
-  "topicId": zod.coerce.string(),
-  "weekStart": zod.date()
+  "topicId": zod.coerce.string()
 })
 
 export const getTopicAllocationsResponseMemberDailyBusinessPercentMin = 0;
@@ -1836,14 +1844,13 @@ export const GetTopicAllocationsResponseItem = zod.object({
   "isCio": zod.boolean().optional(),
   "dailyBusinessPercent": zod.number().int().min(getTopicAllocationsResponseMemberDailyBusinessPercentMin).max(getTopicAllocationsResponseMemberDailyBusinessPercentMax).optional()
 }),
-  "weekStart": zod.coerce.date(),
   "allocationPercent": zod.number().int().min(getTopicAllocationsResponseAllocationPercentMin).max(getTopicAllocationsResponseAllocationPercentMax)
 })
 export const GetTopicAllocationsResponse = zod.array(GetTopicAllocationsResponseItem)
 
 
 /**
- * @summary Replace weekly member allocations for a topic
+ * @summary Replace member allocations for a topic
  */
 export const ReplaceTopicAllocationsParams = zod.object({
   "topicId": zod.coerce.string()
@@ -1855,7 +1862,6 @@ export const replaceTopicAllocationsBodyAllocationsItemAllocationPercentMax = 10
 
 
 export const ReplaceTopicAllocationsBody = zod.object({
-  "weekStart": zod.coerce.date(),
   "allocations": zod.array(zod.object({
   "memberId": zod.string(),
   "allocationPercent": zod.number().int().min(replaceTopicAllocationsBodyAllocationsItemAllocationPercentMin).max(replaceTopicAllocationsBodyAllocationsItemAllocationPercentMax)
@@ -1882,7 +1888,6 @@ export const ReplaceTopicAllocationsResponseItem = zod.object({
   "isCio": zod.boolean().optional(),
   "dailyBusinessPercent": zod.number().int().min(replaceTopicAllocationsResponseMemberDailyBusinessPercentMin).max(replaceTopicAllocationsResponseMemberDailyBusinessPercentMax).optional()
 }),
-  "weekStart": zod.coerce.date(),
   "allocationPercent": zod.number().int().min(replaceTopicAllocationsResponseAllocationPercentMin).max(replaceTopicAllocationsResponseAllocationPercentMax)
 })
 export const ReplaceTopicAllocationsResponse = zod.array(ReplaceTopicAllocationsResponseItem)
@@ -2415,17 +2420,26 @@ export const addTopicMilestoneBodyTitleMax = 160;
 
 export const addTopicMilestoneBodyDescriptionMax = 1000;
 
+export const addTopicMilestoneBodyWorkloadPercentDefault = 0;
+export const addTopicMilestoneBodyWorkloadPercentMin = 0;
+export const addTopicMilestoneBodyWorkloadPercentMax = 100;
+
 
 
 export const AddTopicMilestoneBody = zod.object({
   "title": zod.string().min(addTopicMilestoneBodyTitleMin).max(addTopicMilestoneBodyTitleMax),
   "description": zod.string().max(addTopicMilestoneBodyDescriptionMax).nullish(),
-  "targetDate": zod.coerce.date().nullish(),
-  "assigneeId": zod.string().nullish()
+  "beginDate": zod.coerce.date(),
+  "targetDate": zod.coerce.date(),
+  "assigneeId": zod.string().nullish(),
+  "workloadPercent": zod.number().int().min(addTopicMilestoneBodyWorkloadPercentMin).max(addTopicMilestoneBodyWorkloadPercentMax).default(addTopicMilestoneBodyWorkloadPercentDefault)
 })
 
 export const addTopicMilestoneResponseAssigneeOneDailyBusinessPercentMin = 0;
 export const addTopicMilestoneResponseAssigneeOneDailyBusinessPercentMax = 100;
+
+export const addTopicMilestoneResponseWorkloadPercentMin = 0;
+export const addTopicMilestoneResponseWorkloadPercentMax = 100;
 
 
 
@@ -2434,6 +2448,7 @@ export const AddTopicMilestoneResponse = zod.object({
   "title": zod.string(),
   "description": zod.string().nullish(),
   "status": zod.enum(['not_started', 'in_progress', 'completed', 'blocked']),
+  "beginDate": zod.coerce.date().nullish(),
   "targetDate": zod.coerce.date().nullish(),
   "assignee": zod.union([zod.object({
   "id": zod.string(),
@@ -2445,6 +2460,7 @@ export const AddTopicMilestoneResponse = zod.object({
   "isCio": zod.boolean().optional(),
   "dailyBusinessPercent": zod.number().int().min(addTopicMilestoneResponseAssigneeOneDailyBusinessPercentMin).max(addTopicMilestoneResponseAssigneeOneDailyBusinessPercentMax).optional()
 }),zod.null()]).optional(),
+  "workloadPercent": zod.number().int().min(addTopicMilestoneResponseWorkloadPercentMin).max(addTopicMilestoneResponseWorkloadPercentMax).optional(),
   "completionNote": zod.string().nullish(),
   "completedAt": zod.coerce.date().nullish()
 })
@@ -2462,6 +2478,9 @@ export const updateMilestoneBodyTitleMax = 160;
 
 export const updateMilestoneBodyDescriptionMax = 1000;
 
+export const updateMilestoneBodyWorkloadPercentMin = 0;
+export const updateMilestoneBodyWorkloadPercentMax = 100;
+
 export const updateMilestoneBodyCompletionNoteMax = 1000;
 
 
@@ -2470,13 +2489,18 @@ export const UpdateMilestoneBody = zod.object({
   "title": zod.string().min(updateMilestoneBodyTitleMin).max(updateMilestoneBodyTitleMax).optional(),
   "description": zod.string().max(updateMilestoneBodyDescriptionMax).nullish(),
   "status": zod.enum(['not_started', 'in_progress', 'completed', 'blocked']).optional(),
+  "beginDate": zod.coerce.date().nullish(),
   "targetDate": zod.coerce.date().nullish(),
   "assigneeId": zod.string().nullish(),
+  "workloadPercent": zod.number().int().min(updateMilestoneBodyWorkloadPercentMin).max(updateMilestoneBodyWorkloadPercentMax).optional(),
   "completionNote": zod.string().max(updateMilestoneBodyCompletionNoteMax).nullish()
 })
 
 export const updateMilestoneResponseAssigneeOneDailyBusinessPercentMin = 0;
 export const updateMilestoneResponseAssigneeOneDailyBusinessPercentMax = 100;
+
+export const updateMilestoneResponseWorkloadPercentMin = 0;
+export const updateMilestoneResponseWorkloadPercentMax = 100;
 
 
 
@@ -2485,6 +2509,7 @@ export const UpdateMilestoneResponse = zod.object({
   "title": zod.string(),
   "description": zod.string().nullish(),
   "status": zod.enum(['not_started', 'in_progress', 'completed', 'blocked']),
+  "beginDate": zod.coerce.date().nullish(),
   "targetDate": zod.coerce.date().nullish(),
   "assignee": zod.union([zod.object({
   "id": zod.string(),
@@ -2496,6 +2521,7 @@ export const UpdateMilestoneResponse = zod.object({
   "isCio": zod.boolean().optional(),
   "dailyBusinessPercent": zod.number().int().min(updateMilestoneResponseAssigneeOneDailyBusinessPercentMin).max(updateMilestoneResponseAssigneeOneDailyBusinessPercentMax).optional()
 }),zod.null()]).optional(),
+  "workloadPercent": zod.number().int().min(updateMilestoneResponseWorkloadPercentMin).max(updateMilestoneResponseWorkloadPercentMax).optional(),
   "completionNote": zod.string().nullish(),
   "completedAt": zod.coerce.date().nullish()
 })
@@ -2515,7 +2541,8 @@ export const DeleteMilestoneResponse = zod.void()
  * @summary Get member occupancy for a week
  */
 export const GetOccupancyOverviewQueryParams = zod.object({
-  "weekStart": zod.date()
+  "startDate": zod.date(),
+  "endDate": zod.date()
 })
 
 export const getOccupancyOverviewResponseMemberDailyBusinessPercentMin = 0;
@@ -2534,14 +2561,25 @@ export const GetOccupancyOverviewResponseItem = zod.object({
   "isCio": zod.boolean().optional(),
   "dailyBusinessPercent": zod.number().int().min(getOccupancyOverviewResponseMemberDailyBusinessPercentMin).max(getOccupancyOverviewResponseMemberDailyBusinessPercentMax).optional()
 }),
-  "weekStart": zod.coerce.date(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
   "dailyBusinessPercent": zod.number().int(),
   "topics": zod.array(zod.object({
   "topicId": zod.string(),
+  "milestoneId": zod.string().nullish(),
   "title": zod.string(),
+  "allocationType": zod.enum(['topic', 'milestone']),
+  "allocationPercent": zod.number().int()
+})),
+  "milestones": zod.array(zod.object({
+  "topicId": zod.string(),
+  "milestoneId": zod.string().nullish(),
+  "title": zod.string(),
+  "allocationType": zod.enum(['topic', 'milestone']),
   "allocationPercent": zod.number().int()
 })),
   "topicAllocationPercent": zod.number().int(),
+  "milestoneAllocationPercent": zod.number().int(),
   "totalOccupancyPercent": zod.number().int(),
   "availablePercent": zod.number().int(),
   "overAllocated": zod.boolean()
