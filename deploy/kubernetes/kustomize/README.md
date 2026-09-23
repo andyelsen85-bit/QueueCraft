@@ -44,19 +44,23 @@ srvnexusint.hopital.chdn.lan:8443/postgres:16.4-alpine
 
 ## Mirror the QueueCraft release images
 
-Replace `<tag>` with a Git tag such as `v1.0.0`, or with a generated SHA tag
-such as `sha-0123456`.
+Set `SOURCE_TAG` to a GitHub tag such as `v1.0.0`, `main`, or a generated SHA
+tag such as `sha-0123456`. Set `TARGET_TAG` to `test` or `prod` to match the
+corresponding overlay.
 
 ```bash
+SOURCE_TAG=v1.0.0
+TARGET_TAG=test
+
 docker login ghcr.io
 docker login srvnexusint.hopital.chdn.lan:6443
 
 for image in api web migration; do
-  docker pull ghcr.io/andyelsen85-bit/queuecraft-${image}:<tag>
+  docker pull ghcr.io/andyelsen85-bit/queuecraft-${image}:${SOURCE_TAG}
   docker tag \
-    ghcr.io/andyelsen85-bit/queuecraft-${image}:<tag> \
-    srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-${image}:<tag>
-  docker push srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-${image}:<tag>
+    ghcr.io/andyelsen85-bit/queuecraft-${image}:${SOURCE_TAG} \
+    srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-${image}:${TARGET_TAG}
+  docker push srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-${image}:${TARGET_TAG}
 done
 ```
 
