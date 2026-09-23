@@ -4,13 +4,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 export function LoginPage() {
-  const [local, setLocal] = React.useState(false)
+  const [adfs, setAdfs] = React.useState(false)
   const [bootstrap, setBootstrap] = React.useState(false)
   const [username, setUsername] = React.useState("admin")
   const [password, setPassword] = React.useState("")
   const [error, setError] = React.useState("")
   React.useEffect(() => {
-    Promise.all([fetch("/api/auth/providers").then((r) => r.json()), fetch("/api/auth/bootstrap").then((r) => r.json())]).then(([providers, first]) => { setLocal(Boolean(first.required)); setBootstrap(Boolean(first.required)); if (providers.adfs) setLocal(false) }).catch(() => setError("Unable to contact QueueCraft."))
+    Promise.all([fetch("/api/auth/providers").then((r) => r.json()), fetch("/api/auth/bootstrap").then((r) => r.json())]).then(([providers, first]) => { setAdfs(Boolean(providers.adfs)); setBootstrap(Boolean(first.required)) }).catch(() => setError("Unable to contact QueueCraft."))
   }, [])
   const submit = async () => {
     setError("")
@@ -29,7 +29,7 @@ export function LoginPage() {
         <div className="space-y-3"><Label>{bootstrap ? "Administrator password" : "Password"}</Label><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button className="w-full" onClick={() => void submit()}>{bootstrap ? "Create administrator" : "Sign in"}</Button>
-        {!bootstrap && !local && <Button variant="outline" className="w-full" onClick={sso}>Sign in with AD FS</Button>}
+        {!bootstrap && adfs && <Button variant="outline" className="w-full" onClick={sso}>Sign in with AD FS</Button>}
       </div>
     </div>
   )

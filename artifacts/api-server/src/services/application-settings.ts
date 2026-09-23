@@ -7,7 +7,7 @@ import { config } from "../config";
 export type RuntimeSettings = {
   publicBaseUrl?: string; adfsEnabled?: boolean; adfsIssuer?: string; adfsClientId?: string; adfsClientSecret?: string; adfsCaCertificate?: string;
   ldapsUrl?: string; ldapsBindDn?: string; ldapsBindPassword?: string; ldapsBaseDn?: string; ldapsUserFilter?: string; ldapsCaCertificate?: string;
-  smtpHost?: string; smtpPort?: number; smtpSecure?: boolean; smtpUser?: string; smtpPassword?: string; smtpFrom?: string;
+  smtpHost?: string; smtpPort?: number; smtpSecure?: boolean; smtpUser?: string; smtpPassword?: string; smtpFrom?: string; smtpFromName?: string;
   adminPasswordHash?: string;
 };
 
@@ -40,6 +40,6 @@ export function maskedStatus(settings: RuntimeSettings) {
     publicBaseUrl: settings.publicBaseUrl ?? config.publicBaseUrl ?? null,
     adfs: { enabled: settings.adfsEnabled ?? false, issuer: settings.adfsIssuer ?? config.oidc.issuer ?? null, clientId: settings.adfsClientId ?? config.oidc.clientId ?? null, clientSecretConfigured: present(settings.adfsClientSecret ?? config.oidc.clientSecret), caCertificateConfigured: present(settings.adfsCaCertificate), redirectUri },
     ldaps: { url: settings.ldapsUrl ?? config.ldap.url ?? null, bindDn: settings.ldapsBindDn ?? config.ldap.bindDn ?? null, bindPasswordConfigured: present(settings.ldapsBindPassword ?? config.ldap.bindPassword), baseDn: settings.ldapsBaseDn ?? config.ldap.baseDn ?? null, userFilter: settings.ldapsUserFilter ?? config.ldap.userFilter, caCertificateConfigured: present(settings.ldapsCaCertificate) },
-    smtp: { host: settings.smtpHost ?? config.smtp.host ?? null, port: settings.smtpPort ?? config.smtp.port, secure: settings.smtpSecure ?? config.smtp.secure, user: settings.smtpUser ?? config.smtp.user ?? null, passwordConfigured: present(settings.smtpPassword ?? config.smtp.password), from: settings.smtpFrom ?? config.smtp.from ?? null },
+    smtp: { host: settings.smtpHost ?? config.smtp.host ?? null, port: settings.smtpPort ?? config.smtp.port, secure: settings.smtpSecure ?? config.smtp.secure, user: settings.smtpUser ?? config.smtp.user ?? null, passwordConfigured: present(settings.smtpPassword ?? config.smtp.password), from: settings.smtpFrom ?? config.smtp.from ?? null, fromName: settings.smtpFromName ?? null },
   };
 }

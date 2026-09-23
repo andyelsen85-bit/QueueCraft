@@ -449,12 +449,14 @@ export function Topics() {
                     </div>
                   </div>
                   <div className="flex-none flex items-center gap-4">
-                    {t.estimatedFinishDate && (
-                      <div className="hidden text-right text-xs sm:block">
-                        <div className="font-mono uppercase text-muted-foreground">Est. finish</div>
-                        <div className="font-semibold">{format(new Date(t.estimatedFinishDate), "MMM d, yyyy")}</div>
-                      </div>
-                    )}
+                     <div className="hidden text-right text-xs sm:block">
+                       <div className="font-mono uppercase text-muted-foreground">Est. finish</div>
+                       <div className="font-semibold">{t.estimatedFinishDate ? format(new Date(t.estimatedFinishDate), "MMM d, yyyy") : "—"}</div>
+                     </div>
+                     <div className="hidden text-right text-xs sm:block">
+                       <div className="font-mono uppercase text-muted-foreground">Committed finish</div>
+                       <div className="font-semibold">{t.status === "closed" && t.targetDate ? format(new Date(t.targetDate), "MMM d, yyyy") : "—"}</div>
+                     </div>
                     <StatusBadge status={t.status} />
                   </div>
                 </CardContent>

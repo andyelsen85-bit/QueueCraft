@@ -49,6 +49,12 @@ type RoleDraft = {
   memberIds: string[]
 }
 
+type AdUser = {
+  subject: string
+  email: string
+  name: string
+}
+
 const emptyMember: MemberDraft = { name: "", email: "", title: "", externalSubject: "", isCio: false, dailyBusinessPercent: 0 }
 const emptyDepartment: DepartmentDraft = { name: "", serviceHeadId: "", serviceHeadDeputyId: "" }
 const emptyRole: RoleDraft = { name: "", departmentId: "", departmentIds: [], leadId: "", deputyId: "", memberIds: [] }
@@ -76,6 +82,13 @@ export function Directory() {
   const [memberDraft, setMemberDraft] = React.useState(emptyMember)
   const [departmentDraft, setDepartmentDraft] = React.useState(emptyDepartment)
   const [roleDraft, setRoleDraft] = React.useState(emptyRole)
+  const [adSearch, setAdSearch] = React.useState("")
+  const [adUsers, setAdUsers] = React.useState<AdUser[]>([])
+  const [selectedAdUsers, setSelectedAdUsers] = React.useState<string[]>([])
+  const [adLoading, setAdLoading] = React.useState(false)
+  const [adImporting, setAdImporting] = React.useState(false)
+  const [adMessage, setAdMessage] = React.useState("")
+  const [adError, setAdError] = React.useState("")
 
   const invalidateDirectory = () => {
     queryClient.invalidateQueries({ queryKey: getListDepartmentsQueryKey() })
@@ -167,6 +180,53 @@ export function Directory() {
     } catch {}
   }
 
+  const searchActiveDirectory = async () => {
+    setAdLoading(true)
+    setAdError("")
+    setAdMessage("")
+    try {
+      const response = await fetch(`/api/directory/ldap-users?search=${encodeURIComponent(adSearch.trim())}`, { credentials: "include" })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(body.error ?? "Active Directory search failed.")
+      setAdUsers(Array.isArray(body) ? body : [])
+      setSelectedAdUsers([])
+      if (!body.length) setAdMessage("No matching Active Directory users were found.")
+    } catch (searchError) {
+      setAdUsers([])
+      setAdError(searchError instanceof Error ? searchError.message : "Active Directory search failed.")
+    } finally {
+      setAdLoading(false)
+    }
+  }
+
+  const importActiveDirectoryUsers = async () => {
+    const users = adUsers.filter((user) => selectedAdUsers.includes(user.subject))
+    if (!users.length) return
+    setAdImporting(true)
+    setAdError("")
+    setAdMessage("")
+    try {
+      const csrfResponse = await fetch("/api/auth/csrf", { credentials: "include" })
+      const { csrfToken } = await csrfResponse.json()
+      const response = await fetch("/api/directory/ldap-users/import", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "x-csrf-token": csrfToken },
+        body: JSON.stringify({ users }),
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(body.error ?? "Active Directory users could not be imported.")
+      setAdMessage(`${body.imported ?? users.length} user${body.imported === 1 ? "" : "s"} imported. Existing members were skipped.`)
+      setAdUsers([])
+      setSelectedAdUsers([])
+      invalidateDirectory()
+    } catch (importError) {
+      setAdError(importError instanceof Error ? importError.message : "Active Directory users could not be imported.")
+    } finally {
+      setAdImporting(false)
+    }
+  }
+
   const loading = ld || lr || lm
   const error = de || re || me
   const memberOptions = members ?? []
@@ -190,6 +250,47 @@ export function Directory() {
         </div>
       </div>
       {error && <div className="rounded-sm border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">Directory data could not be loaded. Refresh and try again.</div>}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Import users from Active Directory</CardTitle>
+          <p className="text-sm text-muted-foreground">Search the configured directory, select users, and provision them as allowed QueueCraft members. Only imported active members can sign in with AD FS.</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              value={adSearch}
+              placeholder="Search by name, email, or account"
+              onChange={(event) => setAdSearch(event.target.value)}
+              onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void searchActiveDirectory() } }}
+            />
+            <Button type="button" variant="outline" onClick={() => void searchActiveDirectory()} disabled={adLoading}>{adLoading ? "Searching…" : "Search directory"}</Button>
+          </div>
+          {adError && <p className="text-sm text-destructive">{adError}</p>}
+          {adMessage && <p className="text-sm text-emerald-700">{adMessage}</p>}
+          {adUsers.length > 0 && (
+            <div className="space-y-3">
+              <div className="max-h-64 overflow-y-auto rounded-sm border divide-y">
+                {adUsers.map((user) => (
+                  <label key={user.subject} className="flex cursor-pointer items-center gap-3 p-3 hover:bg-muted/50">
+                    <input
+                      type="checkbox"
+                      checked={selectedAdUsers.includes(user.subject)}
+                      onChange={(event) => setSelectedAdUsers((current) => event.target.checked ? [...current, user.subject] : current.filter((subject) => subject !== user.subject))}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium">{user.name}</span>
+                      <span className="block truncate text-sm text-muted-foreground">{user.email}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <Button type="button" onClick={() => void importActiveDirectoryUsers()} disabled={adImporting || selectedAdUsers.length === 0}>
+                {adImporting ? "Importing…" : `Import ${selectedAdUsers.length || ""} selected user${selectedAdUsers.length === 1 ? "" : "s"}`}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
       <TabsRoot defaultValue="departments">
         <TabsList className="w-full justify-start border-b border-border bg-transparent rounded-none p-0 h-auto mb-6">
           <TabsTrigger value="departments" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"><ShieldCheck className="mr-2 h-4 w-4" />Departments</TabsTrigger>

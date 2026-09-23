@@ -1,5 +1,5 @@
 import * as React from "react"
-import { addMonths, eachDayOfInterval, endOfMonth, format, isSameMonth, startOfMonth, startOfWeek, endOfWeek } from "date-fns"
+import { addMonths, eachDayOfInterval, endOfMonth, format, isSameMonth, isWithinInterval, parseISO, startOfMonth, startOfWeek, endOfWeek } from "date-fns"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Link } from "wouter"
 import { useListTopics } from "@workspace/api-client-react"
@@ -21,7 +21,7 @@ export function Calendar() {
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Planning calendar</p>
           <h1 className="text-3xl font-bold tracking-tight">Topic Calendar</h1>
-          <p className="mt-1 text-muted-foreground">Topics appear on their estimated finish date, or committed finish date when no estimate is set.</p>
+          <p className="mt-1 text-muted-foreground">Topics span their estimated start through estimated finish dates. Closed topics may use their committed finish date.</p>
         </div>
         <div className="flex items-center gap-2 rounded-md border bg-muted/30 p-1">
           <Button variant="ghost" size="icon" onClick={() => setMonth((value) => addMonths(value, -1))}><ChevronLeft className="h-4 w-4" /></Button>
@@ -37,7 +37,12 @@ export function Calendar() {
           <div className="grid grid-cols-7">
             {days.map((day) => {
               const key = format(day, "yyyy-MM-dd")
-              const dayTopics = (topics ?? []).filter((topic) => (topic.estimatedFinishDate ?? topic.targetDate)?.slice(0, 10) === key)
+              const dayTopics = (topics ?? []).filter((topic) => {
+                const end = topic.estimatedFinishDate ?? (topic.status === "closed" ? topic.targetDate : null)
+                const start = topic.estimatedStartDate ?? end
+                if (!start || !end) return false
+                return isWithinInterval(parseISO(key), { start: parseISO(start.slice(0, 10)), end: parseISO(end.slice(0, 10)) })
+              })
               return (
                 <div key={key} className={`min-h-32 border-b border-r p-2 ${isSameMonth(day, month) ? "bg-background" : "bg-muted/20 text-muted-foreground"}`}>
                   <div className="mb-2 text-xs font-mono">{format(day, "d")}</div>
@@ -55,7 +60,7 @@ export function Calendar() {
             })}
           </div>
           {!isLoading && (topics ?? []).every((topic) => !topic.estimatedFinishDate && !topic.targetDate) && (
-            <div className="p-8 text-center text-sm text-muted-foreground">No topics have an estimated or committed finish date yet.</div>
+            <div className="p-8 text-center text-sm text-muted-foreground">No topics have an estimated period yet.</div>
           )}
         </CardContent>
       </Card>

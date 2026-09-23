@@ -8,7 +8,7 @@ import { logger } from "../lib/logger";
 
 async function getTransporter() {
   const settings = await getRuntimeSettings();
-  const smtp = { host: settings.smtpHost ?? config.smtp.host, port: settings.smtpPort ?? config.smtp.port, secure: settings.smtpSecure ?? config.smtp.secure, user: settings.smtpUser ?? config.smtp.user, password: settings.smtpPassword ?? config.smtp.password, from: settings.smtpFrom ?? config.smtp.from };
+  const smtp = { host: settings.smtpHost ?? config.smtp.host, port: settings.smtpPort ?? config.smtp.port, secure: settings.smtpSecure ?? config.smtp.secure, user: settings.smtpUser ?? config.smtp.user, password: settings.smtpPassword ?? config.smtp.password, from: settings.smtpFrom ?? config.smtp.from, fromName: settings.smtpFromName };
   if (!smtp.host) return { transporter: null, smtp };
   return { transporter: nodemailer.createTransport({
       host: smtp.host, port: smtp.port, secure: smtp.secure,
@@ -57,7 +57,7 @@ export async function deliverPendingNotifications() {
   for (const item of pending) {
     try {
       await transporter.sendMail({
-        from: smtp.from,
+        from: smtp.fromName ? { name: smtp.fromName, address: smtp.from } : smtp.from,
         to: item.recipient,
         subject: item.subject,
         text: item.body,

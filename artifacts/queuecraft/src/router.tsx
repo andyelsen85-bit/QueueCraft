@@ -15,7 +15,10 @@ import NotFound from "./pages/not-found"
 import { LoginPage } from "./pages/login"
 
 export function AppRouter() {
+  const [location] = useLocation()
   const { isLoading, error } = useGetSession()
+
+  if (location === "/login") return <LoginPage />
 
   if (isLoading) {
     return (

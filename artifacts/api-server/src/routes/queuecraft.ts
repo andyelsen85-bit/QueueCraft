@@ -12,6 +12,7 @@ import {
   roleMembersTable,
   roleDepartmentsTable,
   rolesTable,
+  notificationRulesTable,
   topicCollaboratorsTable,
   topicFinishDateRevisionsTable,
   topicWeeklyAllocationsTable,
@@ -88,6 +89,7 @@ import { breakGlassLimiter } from "../middleware/security";
 import { queueMail } from "../services/mailer";
 import { getRuntimeSettings, maskedStatus, updateRuntimeSettings, type RuntimeSettings } from "../services/application-settings";
 import { searchLdapsUsers } from "../services/ldaps";
+import { enqueueRuleNotifications, NOTIFICATION_ACTIONS } from "../services/notifications";
 
 const router: IRouter = Router();
 
@@ -325,6 +327,7 @@ async function addActivity(
     details: { detail },
     isBreakGlass,
   });
+  await enqueueRuleNotifications(executor, { action, topicId, detail, isBreakGlass });
 }
 
 function getCapabilities(
@@ -443,7 +446,7 @@ router.put("/admin/settings", async (req, res): Promise<void> => {
   const allowed = new Set<keyof RuntimeSettings>([
     "publicBaseUrl", "adfsEnabled", "adfsIssuer", "adfsClientId", "adfsClientSecret", "adfsCaCertificate",
     "ldapsUrl", "ldapsBindDn", "ldapsBindPassword", "ldapsBaseDn", "ldapsUserFilter", "ldapsCaCertificate",
-    "smtpHost", "smtpPort", "smtpSecure", "smtpUser", "smtpPassword", "smtpFrom",
+    "smtpHost", "smtpPort", "smtpSecure", "smtpUser", "smtpPassword", "smtpFrom", "smtpFromName",
   ]);
   const update: Partial<RuntimeSettings> = {};
   for (const [key, value] of Object.entries(body)) {
@@ -463,6 +466,39 @@ router.put("/admin/settings", async (req, res): Promise<void> => {
   const saved = await updateRuntimeSettings(update, currentUserId(req));
   res.setHeader("Cache-Control", "no-store");
   res.json(maskedStatus(saved));
+});
+
+router.get("/admin/notification-rules", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "settings.manage")) return;
+  const rules = await db.select().from(notificationRulesTable);
+  res.json(rules.map((rule) => ({
+    ...rule,
+    role: snapshot.roles.find((role) => role.id === rule.roleId) ? snapshot.buildRole(rule.roleId) : null,
+  })));
+});
+
+router.put("/admin/notification-rules/:ruleId", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "settings.manage")) return;
+  const { ruleId } = req.params;
+  const action = req.body?.action;
+  const roleId = req.body?.roleId;
+  const enabled = req.body?.enabled;
+  if (!NOTIFICATION_ACTIONS.includes(action) || typeof roleId !== "string" || !snapshot.roleById.has(roleId) || typeof enabled !== "boolean") {
+    res.status(400).json({ error: "Action, role, and enabled are required" });
+    return;
+  }
+  const [rule] = await db.insert(notificationRulesTable).values({ id: ruleId, action, roleId, enabled })
+    .onConflictDoUpdate({ target: notificationRulesTable.id, set: { action, roleId, enabled, updatedAt: new Date() } }).returning();
+  res.json(rule);
+});
+
+router.delete("/admin/notification-rules/:ruleId", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "settings.manage")) return;
+  await db.delete(notificationRulesTable).where(eq(notificationRulesTable.id, req.params.ruleId));
+  res.status(204).end();
 });
 
 router.get("/preferences/topic-filters", async (req, res): Promise<void> => {

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useGetOccupancyOverview, getGetOccupancyOverviewQueryKey } from "@workspace/api-client-react"
+import { useGetOccupancyOverview, getGetOccupancyOverviewQueryKey, useListDepartments, useListRoles } from "@workspace/api-client-react"
 import { useQueries } from "@tanstack/react-query"
 import { format, startOfWeek, addWeeks, subWeeks, parseISO, startOfMonth, endOfMonth, eachWeekOfInterval, addMonths, subMonths } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -12,6 +12,10 @@ import { ChevronLeft, ChevronRight, AlertTriangle, Calendar as CalendarIcon, Bri
 export function Occupancy() {
   const [currentWeek, setCurrentWeek] = React.useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   const [view, setView] = React.useState<"week" | "month">("week")
+  const [departmentId, setDepartmentId] = React.useState("")
+  const [roleId, setRoleId] = React.useState("")
+  const { data: departments } = useListDepartments()
+  const { data: roles } = useListRoles()
 
   const weekStartStr = format(currentWeek, 'yyyy-MM-dd')
   
@@ -48,7 +52,15 @@ export function Occupancy() {
       return { ...sample, dailyBusinessPercent, topics: [...topics.values()].map((topic) => ({ ...topic, allocationPercent: Math.round(topic.allocationPercent) })), topicAllocationPercent, totalOccupancyPercent, availablePercent: 100 - totalOccupancyPercent, overAllocated: totalOccupancyPercent > 100 }
     })
   }, [monthQueries])
-  const overviews = view === "week" ? weeklyOverviews : monthlyOverviews
+  const visibleMemberIds = React.useMemo(() => {
+    if (!departmentId && !roleId) return null
+    const matchingRoles = (roles ?? []).filter((role) =>
+      (!departmentId || role.departmentIds?.includes(departmentId) || role.departmentId === departmentId) &&
+      (!roleId || role.id === roleId),
+    )
+    return new Set(matchingRoles.flatMap((role) => [role.lead.id, role.deputy?.id, ...(role.memberIds ?? [])].filter(Boolean) as string[]))
+  }, [departmentId, roleId, roles])
+  const overviews = (view === "week" ? weeklyOverviews : monthlyOverviews)?.filter((overview) => !visibleMemberIds || visibleMemberIds.has(overview.member.id))
   const isLoading = view === "week" ? weeklyLoading : monthLoading
 
   const goNextWeek = () => setCurrentWeek(prev => view === "week" ? addWeeks(prev, 1) : addMonths(prev, 1))
@@ -73,6 +85,14 @@ export function Occupancy() {
         </div>
         
         <div className="flex flex-wrap items-center gap-2 bg-muted/30 p-1 rounded-md border">
+          <select aria-label="Filter department" className="h-9 rounded-md border bg-background px-2 text-sm" value={departmentId} onChange={(event) => { setDepartmentId(event.target.value); setRoleId("") }}>
+            <option value="">All departments</option>
+            {(departments ?? []).map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+          </select>
+          <select aria-label="Filter role" className="h-9 rounded-md border bg-background px-2 text-sm" value={roleId} onChange={(event) => setRoleId(event.target.value)}>
+            <option value="">All roles</option>
+            {(roles ?? []).filter((role) => !departmentId || role.departmentIds?.includes(departmentId) || role.departmentId === departmentId).map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+          </select>
           <div className="flex rounded-sm border bg-background p-0.5">
             <Button size="sm" variant={view === "week" ? "default" : "ghost"} onClick={() => setView("week")}>Week</Button>
             <Button size="sm" variant={view === "month" ? "default" : "ghost"} onClick={() => setView("month")}>Month</Button>

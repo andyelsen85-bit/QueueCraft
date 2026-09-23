@@ -9,6 +9,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { sql } from "drizzle-orm";
@@ -250,6 +251,15 @@ export const notificationOutboxTable = pgTable("notification_outbox", {
   sentAt: timestamp("sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const notificationRulesTable = pgTable("notification_rules", {
+  id: text("id").primaryKey(),
+  action: text("action").notNull(),
+  roleId: text("role_id").notNull().references(() => rolesTable.id),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (table) => [uniqueIndex("notification_rules_action_role_unique").on(table.action, table.roleId)]);
 
 export const insertTopicSchema = createInsertSchema(topicsTable).omit({
   createdAt: true,

@@ -818,9 +818,9 @@ export function TopicDetail() {
           <Card>
             <CardHeader className="pb-4 border-b border-border/50">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Committed Finish</CardTitle>
-                {!isPendingValidation && (
-                  <Dialog open={rescopeOpen} onOpenChange={setRescopeOpen}>
+              <CardTitle className="text-lg">Est. Finish</CardTitle>
+                {false && !isPendingValidation && (
+                    <Dialog open={rescopeOpen} onOpenChange={setRescopeOpen}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm"><History className="h-4 w-4 mr-2"/> Re-scope</Button>
                     </DialogTrigger>
@@ -846,35 +846,14 @@ export function TopicDetail() {
               </div>
             </CardHeader>
             <CardContent className="p-6">
-              {topic.targetDate ? (
+              {topic.estimatedFinishDate ? (
                 <div className="text-2xl font-bold tracking-tight mb-6 text-primary">
-                  {format(new Date(topic.targetDate), 'MMM d, yyyy')}
+                  {format(new Date(topic.estimatedFinishDate), 'MMM d, yyyy')}
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground mb-6">No committed finish date set.</div>
+                <div className="text-sm text-muted-foreground mb-6">No estimated finish date set.</div>
               )}
 
-              {topic.finishDateRevisions && topic.finishDateRevisions.length > 0 && (
-                <div>
-                  <div className="text-xs font-mono text-muted-foreground mb-3 uppercase tracking-wide">Revision History</div>
-                  <div className="space-y-3">
-                    {topic.finishDateRevisions.map(rev => (
-                      <div key={rev.id} className="p-3 bg-muted/30 border rounded-sm">
-                        <div className="flex items-center justify-between text-xs font-semibold mb-1">
-                          <span>{rev.actor.name}</span>
-                          <span className="text-muted-foreground">{format(new Date(rev.createdAt), 'MMM d, yyyy')}</span>
-                        </div>
-                        <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
-                          <span className="line-through">{rev.previousTargetDate ? format(new Date(rev.previousTargetDate), 'yyyy-MM-dd') : 'None'}</span>
-                          <span>→</span>
-                          <span className="font-bold text-foreground">{rev.newTargetDate ? format(new Date(rev.newTargetDate), 'yyyy-MM-dd') : 'None'}</span>
-                        </div>
-                        <div className="text-sm bg-background p-2 border rounded-sm">{rev.note}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>
