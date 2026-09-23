@@ -1,4 +1,4 @@
-FROM node:24-alpine AS builder
+FROM node:24-bookworm-slim AS builder
 RUN corepack enable
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig*.json ./
@@ -11,10 +11,11 @@ COPY lib/api-zod lib/api-zod
 COPY lib/db lib/db
 RUN pnpm --filter @workspace/api-server run build
 
-FROM node:24-alpine AS runtime
+FROM node:24-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
-RUN addgroup -S queuecraft && adduser -S queuecraft -G queuecraft
+RUN groupadd --system --gid 10001 queuecraft \
+  && useradd --system --uid 10001 --gid 10001 --home-dir /app queuecraft
 COPY --from=builder --chown=queuecraft:queuecraft /app/artifacts/api-server/dist ./dist
 USER queuecraft
 EXPOSE 8080
