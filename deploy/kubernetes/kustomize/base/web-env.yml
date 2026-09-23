@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-env
+  namespace: queuecraft
+data:
+  DISABLE_TLS: "false"
+  TLS_HOSTNAME: queuecraft.example.internal
+  TLS_SELFSIGNED_DAYS: "365"

@@ -20,7 +20,7 @@ jobs:
             dockerfile: deploy/docker/api.Dockerfile
           - image: queuecraft-web
             dockerfile: deploy/docker/web.Dockerfile
-          - image: queuecraft-migration
+          - image: queuecraft-builder
             dockerfile: deploy/docker/migration.Dockerfile
     steps:
       - uses: actions/checkout@v4

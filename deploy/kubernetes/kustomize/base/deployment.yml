@@ -1,101 +1,84 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: queuecraft-api
+  name: queuecraft-deployment
+  namespace: queuecraft
   labels:
-    app: queuecraft-api
+    app: queuecraft
     team: infra
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: queuecraft-api
+      app: queuecraft
   template:
     metadata:
       labels:
-        app: queuecraft-api
+        app: queuecraft
         team: infra
     spec:
       imagePullSecrets:
         - name: regcred
       initContainers:
-        - name: queuecraft-migrate
-          image: srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-migration
+        - name: queuecraft-init-migrate
+          image: srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-builder
           envFrom:
             - secretRef:
-                name: queuecraft-secrets
-          securityContext:
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: [ALL]
+                name: api-env-secret
       containers:
         - name: api
           image: srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-api
           ports:
-            - name: http
-              containerPort: 8080
+            - containerPort: 8080
+              protocol: TCP
           envFrom:
             - configMapRef:
                 name: api-env
             - secretRef:
-                name: queuecraft-secrets
+                name: api-env-secret
+          volumeMounts:
+            - name: secrets
+              mountPath: /var/secrets
           readinessProbe:
             httpGet:
               path: /api/healthz
-              port: http
+              port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /api/healthz
-              port: http
+              port: 8080
             initialDelaySeconds: 20
             periodSeconds: 20
-          securityContext:
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: [ALL]
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: queuecraft-web
-  labels:
-    app: queuecraft-web
-    team: infra
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: queuecraft-web
-  template:
-    metadata:
-      labels:
-        app: queuecraft-web
-        team: infra
-    spec:
-      imagePullSecrets:
-        - name: regcred
-      containers:
-        - name: web
+        - name: queuecraft-web
           image: srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-web
+          env:
+            - name: API_UPSTREAM
+              value: 127.0.0.1:8080
+          envFrom:
+            - configMapRef:
+                name: web-env
           ports:
-            - name: http
-              containerPort: 8080
+            - containerPort: 80
+              protocol: TCP
+            - containerPort: 443
+              protocol: TCP
+          volumeMounts:
+            - name: certs
+              mountPath: /etc/nginx/certs
           readinessProbe:
             httpGet:
               path: /
-              port: http
+              port: 80
           livenessProbe:
             httpGet:
               path: /
-              port: http
-          securityContext:
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: [ALL]
+              port: 80
+      volumes:
+        - name: certs
+          persistentVolumeClaim:
+            claimName: longhorn-queuecraft-certs-pvc
+        - name: secrets
+          persistentVolumeClaim:
+            claimName: longhorn-queuecraft-secrets-pvc

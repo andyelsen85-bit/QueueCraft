@@ -1,15 +1,13 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: queuecraft-prod
+namespace: queuecraft
 resources:
   - ../../base
-  - namespace.yml
-patches:
-  - path: ingress.yml
+  - api-env.yml
 images:
   - name: srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-api
-    newTag: prod
+    newTag: 'prod'
   - name: srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-web
-    newTag: prod
-  - name: srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-migration
-    newTag: prod
+    newTag: 'prod'
+  - name: srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-builder
+    newTag: 'prod'

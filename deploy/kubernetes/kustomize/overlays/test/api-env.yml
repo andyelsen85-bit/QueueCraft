@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-env
+  namespace: queuecraft
+data:
+  NODE_ENV: production
+  PORT: "8080"
+  LOG_LEVEL: info
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: api-env-secret
+  namespace: queuecraft
+spec:
+  encryptedData:
+    DATABASE_URL: REPLACE_WITH_KUBESEAL_OUTPUT
+    SESSION_SECRET: REPLACE_WITH_KUBESEAL_OUTPUT
+  template:
+    metadata:
+      name: api-env-secret
+      namespace: queuecraft
