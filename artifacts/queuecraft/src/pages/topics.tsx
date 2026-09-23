@@ -95,7 +95,11 @@ export function Topics() {
   const { data: departments } = useListDepartments()
   const { data: roles } = useListRoles()
   const filteredRoles = React.useMemo(
-    () => (roles ?? []).filter((role) => !departmentId || role.departmentId === departmentId),
+    () => (roles ?? []).filter((role) =>
+      !departmentId ||
+      role.departmentId === departmentId ||
+      role.departmentIds?.includes(departmentId),
+    ),
     [roles, departmentId],
   )
 
@@ -118,11 +122,12 @@ export function Topics() {
 
   const watchDept = form.watch("departmentId")
   React.useEffect(() => {
+    if (!filtersReady || !roles) return
     if (roleId && !filteredRoles.some((role) => role.id === roleId)) {
       setRoleId("")
       saveFilters({ roleId: "" })
     }
-  }, [filteredRoles, roleId, saveFilters])
+  }, [filteredRoles, filtersReady, roleId, roles, saveFilters])
 
   const onSubmit = (data: CreateFormValues) => {
     createTopic.mutate({ data: {
