@@ -146,7 +146,21 @@ router.post("/auth/bootstrap", authLimiter, async (req, res) => {
   if (password.length < 12) { res.status(400).json({ error: "Administrator password must be at least 12 characters" }); return; }
   const salt = randomBytes(16).toString("hex");
   const derived = (await scrypt(password, salt, 64)) as Buffer;
-  await updateRuntimeSettings({ adminPasswordHash: `${salt}:${derived.toString("hex")}` });
+  const adminId = "local-admin";
+  const [existingAdmin] = await db.select().from(membersTable).where(eq(membersTable.id, adminId)).limit(1);
+  if (!existingAdmin) {
+    await db.insert(membersTable).values({
+      id: adminId,
+      name: "QueueCraft Administrator",
+      initials: "QA",
+      email: "queuecraft-admin@localhost.invalid",
+      title: "System Administrator",
+      authProvider: "local",
+      status: "active",
+      isCio: true,
+    });
+  }
+  await updateRuntimeSettings({ adminPasswordHash: `${salt}:${derived.toString("hex")}`, adminMemberId: adminId });
   res.status(201).json({ created: true });
 });
 
@@ -161,7 +175,10 @@ router.post("/auth/local", authLimiter, async (req, res, next) => {
     if (!expected.length || expected.length !== derived.length || !timingSafeEqual(expected, derived)) {
       res.status(401).json({ error: "Invalid administrator credentials" }); return;
     }
-    const [member] = await db.select().from(membersTable).where(eq(membersTable.id, "member-andy")).limit(1);
+    if (username.toLowerCase() !== "admin") {
+      res.status(401).json({ error: "Invalid administrator credentials" }); return;
+    }
+    const [member] = await db.select().from(membersTable).where(eq(membersTable.id, settings.adminMemberId ?? "local-admin")).limit(1);
     if (!member) { res.status(500).json({ error: "Administrator member is not provisioned" }); return; }
     await regenerate(req);
     req.session.userId = member.id;

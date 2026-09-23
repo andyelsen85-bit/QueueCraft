@@ -9,6 +9,7 @@ export type RuntimeSettings = {
   ldapsUrl?: string; ldapsBindDn?: string; ldapsBindPassword?: string; ldapsBaseDn?: string; ldapsUserFilter?: string; ldapsCaCertificate?: string;
   smtpHost?: string; smtpPort?: number; smtpSecure?: boolean; smtpUser?: string; smtpPassword?: string; smtpFrom?: string; smtpFromName?: string;
   adminPasswordHash?: string;
+  adminMemberId?: string;
 };
 
 const key = createHash("sha256").update(config.sessionSecret).digest();
