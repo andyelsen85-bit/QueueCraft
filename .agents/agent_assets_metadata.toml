@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "KY-b-KAZ1h3oC1aFd51v3"
+uri = "file://deliverables/queuecraft-kubernetes-deployment.zip"
+type = "unspecified"
+title = "QueueCraft Kubernetes deployment files"
+description = "Updated package with Dockerfiles, GHCR workflow, Kubernetes base manifests, test and production overlays, and GHCR-to-Nexus retagging commands."
+logical_id = "f1d056db-dd7d-4124-8eb7-4c4985d2c875"
+content_hash = "sha256:de1c888886fc6678c9dbafd31d519403ba20e4ad31635fc7213b08586a58e2c6"
+size = 11382
+mtime_ms = 1790151133288
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:e2c07961-875e-4f9b-8be5-89e60317d03d/f1d056db-dd7d-4124-8eb7-4c4985d2c875/106a698d-c3b2-4b6a-b013-5657047a55e9"
+storage_version_token = "1790151140619054"
+content_type = "application/octet-stream"
