@@ -1,17 +1,16 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import {
+  departmentsTable,
   membersTable,
   notificationRulesTable,
   notificationOutboxTable,
   roleMembersTable,
   rolesTable,
+  topicsTable,
 } from "@workspace/db";
 
 export const NOTIFICATION_ACTIONS = [
-  "directory.member.created", "directory.member.updated",
-  "directory.department.created", "directory.department.updated",
-  "directory.role.created", "directory.role.updated",
   "topic.created", "topic.updated", "topic.finish_date_changed", "topic.allocations_replaced",
   "topic.assignee_changed", "topic.validation", "topic.collaborator_added",
   "topic.milestone_added", "topic.milestone_updated", "topic.milestone_deleted",
@@ -19,16 +18,10 @@ export const NOTIFICATION_ACTIONS = [
 export type NotificationAction = (typeof NOTIFICATION_ACTIONS)[number];
 
 const actionMap: Record<string, NotificationAction | undefined> = {
-  "Directory member created": "directory.member.created",
-  "Directory member updated": "directory.member.updated",
-  "Department created": "directory.department.created",
-  "Department updated": "directory.department.updated",
-  "Role created": "directory.role.created",
-  "Role updated": "directory.role.updated",
   "Topic created": "topic.created",
   "Topic updated": "topic.updated",
   "Committed finish date changed": "topic.finish_date_changed",
-  "Weekly allocations replaced": "topic.allocations_replaced",
+  "Topic allocations replaced": "topic.allocations_replaced",
   "Primary assignee changed": "topic.assignee_changed",
   "Topic validated": "topic.validation",
   "Collaborator added": "topic.collaborator_added",
@@ -41,26 +34,38 @@ export function notificationAction(label: string) {
   return actionMap[label];
 }
 
+export function collectTopicNotificationMemberIds(
+  roles: Array<{ leadId: string; deputyId: string | null }>,
+  departments: Array<{ serviceHeadId: string; serviceHeadDeputyId: string | null }>,
+  roleMembers: Array<{ memberId: string }>,
+) {
+  return [...new Set([
+    ...roles.flatMap((role) => [role.leadId, role.deputyId]),
+    ...departments.flatMap((department) => [department.serviceHeadId, department.serviceHeadDeputyId]),
+    ...roleMembers.map((entry) => entry.memberId),
+  ].filter(Boolean))] as string[];
+}
+
 export async function enqueueRuleNotifications(
   executor: any,
   input: { action: string; topicId?: string | null; detail: string; isBreakGlass?: boolean },
 ) {
   if (input.isBreakGlass) return;
   const action = notificationAction(input.action);
-  if (!action) return;
-  const rules = await executor.select().from(notificationRulesTable).where(
+  if (!action || !input.topicId) return;
+  const [rule] = await executor.select().from(notificationRulesTable).where(
     and(eq(notificationRulesTable.action, action), eq(notificationRulesTable.enabled, true)),
-  );
-  if (!rules.length) return;
-  const roleIds = [...new Set(rules.map((rule: { roleId: string }) => rule.roleId))] as string[];
-  const [roles, roleMembers] = await Promise.all([
-    executor.select().from(rolesTable).where(inArray(rolesTable.id, roleIds)),
-    executor.select().from(roleMembersTable).where(inArray(roleMembersTable.roleId, roleIds)),
+  ).limit(1);
+  if (!rule) return;
+  const [topic] = await executor.select().from(topicsTable).where(eq(topicsTable.id, input.topicId)).limit(1);
+  if (!topic) return;
+  const [roles, departments, roleMembers] = await Promise.all([
+    executor.select().from(rolesTable).where(eq(rolesTable.id, topic.roleId)),
+    executor.select().from(departmentsTable).where(eq(departmentsTable.id, topic.departmentId)),
+    executor.select().from(roleMembersTable).where(eq(roleMembersTable.roleId, topic.roleId)),
   ]);
-  const memberIds = [...new Set([
-    ...roles.flatMap((role: { leadId: string; deputyId: string | null }) => [role.leadId, role.deputyId]),
-    ...roleMembers.map((entry: { memberId: string }) => entry.memberId),
-  ].filter(Boolean))] as string[];
+  const memberIds = collectTopicNotificationMemberIds(roles, departments, roleMembers);
+  if (!memberIds.length) return;
   const recipients = await executor.select().from(membersTable).where(inArray(membersTable.id, memberIds));
   for (const recipient of recipients) {
     if (recipient.status !== "active" || !recipient.email) continue;

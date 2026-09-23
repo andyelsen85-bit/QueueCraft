@@ -34,6 +34,10 @@ import {
   encryptRuntimeSettings,
 } from "./services/application-settings";
 import { serializeOidcRequestBody } from "./services/oidc";
+import {
+  collectTopicNotificationMemberIds,
+  notificationAction,
+} from "./services/notifications";
 
 before(async () => {
   if (!process.env.CI) return;
@@ -240,6 +244,21 @@ describe("QueueCraft security and preference flows", () => {
       serializeOidcRequestBody(new URLSearchParams({ code: "abc", grant_type: "authorization_code" })),
       "code=abc&grant_type=authorization_code",
     );
+  });
+
+  test("includes topic role members and role and department authorities once", () => {
+    assert.deepEqual(
+      collectTopicNotificationMemberIds(
+        [{ leadId: "role-lead", deputyId: "shared-deputy" }],
+        [{ serviceHeadId: "department-lead", serviceHeadDeputyId: "shared-deputy" }],
+        [{ memberId: "member-a" }, { memberId: "role-lead" }],
+      ),
+      ["role-lead", "shared-deputy", "department-lead", "member-a"],
+    );
+  });
+
+  test("maps topic allocation changes to their notification action", () => {
+    assert.equal(notificationAction("Topic allocations replaced"), "topic.allocations_replaced");
   });
 
   test("rejects a state-changing request without a CSRF token", async () => {

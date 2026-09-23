@@ -86,7 +86,7 @@ import {
   GetOccupancyOverviewResponse,
 } from "@workspace/api-zod";
 import { breakGlassLimiter } from "../middleware/security";
-import { queueMail } from "../services/mailer";
+import { queueMail, sendTestMail } from "../services/mailer";
 import {
   getRuntimeSettings,
   maskedStatus,
@@ -654,14 +654,7 @@ router.get("/admin/notification-rules", async (req, res): Promise<void> => {
   const snapshot = await loadSnapshot();
   if (!requireCapability(req, res, snapshot, "settings.manage")) return;
   const rules = await db.select().from(notificationRulesTable);
-  res.json(
-    rules.map((rule) => ({
-      ...rule,
-      role: snapshot.roles.find((role) => role.id === rule.roleId)
-        ? snapshot.buildRole(rule.roleId)
-        : null,
-    })),
-  );
+  res.json(rules);
 });
 
 router.put(
@@ -671,28 +664,51 @@ router.put(
     if (!requireCapability(req, res, snapshot, "settings.manage")) return;
     const { ruleId } = req.params;
     const action = req.body?.action;
-    const roleId = req.body?.roleId;
     const enabled = req.body?.enabled;
     if (
       !NOTIFICATION_ACTIONS.includes(action) ||
-      typeof roleId !== "string" ||
-      !snapshot.roleById.has(roleId) ||
       typeof enabled !== "boolean"
     ) {
-      res.status(400).json({ error: "Action, role, and enabled are required" });
+      res.status(400).json({ error: "Action and enabled are required" });
+      return;
+    }
+    const [duplicate] = await db
+      .select({ id: notificationRulesTable.id })
+      .from(notificationRulesTable)
+      .where(and(eq(notificationRulesTable.action, action), ne(notificationRulesTable.id, ruleId)))
+      .limit(1);
+    if (duplicate) {
+      res.status(409).json({ error: "A notification rule already exists for this topic action" });
       return;
     }
     const [rule] = await db
       .insert(notificationRulesTable)
-      .values({ id: ruleId, action, roleId, enabled })
+      .values({ id: ruleId, action, enabled })
       .onConflictDoUpdate({
         target: notificationRulesTable.id,
-        set: { action, roleId, enabled, updatedAt: new Date() },
+        set: { action, enabled, updatedAt: new Date() },
       })
       .returning();
     res.json(rule);
   },
 );
+
+router.post("/admin/settings/test-email", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "settings.manage")) return;
+  const recipient = typeof req.body?.recipient === "string" ? req.body.recipient.trim() : "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+    res.status(400).json({ error: "A valid recipient email address is required" });
+    return;
+  }
+  try {
+    await sendTestMail(recipient);
+    res.json({ sent: true });
+  } catch (error) {
+    req.log.error({ err: error }, "SMTP test email failed");
+    res.status(502).json({ error: error instanceof Error ? error.message : "SMTP test email failed" });
+  }
+});
 
 router.delete(
   "/admin/notification-rules/:ruleId",

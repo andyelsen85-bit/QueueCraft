@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import nodemailer from "nodemailer";
 import { db, notificationOutboxTable } from "@workspace/db";
 import { and, eq, inArray, lte } from "drizzle-orm";
-import { config, smtpConfigured } from "../config";
+import { config } from "../config";
 import { getRuntimeSettings } from "./application-settings";
 import { logger } from "../lib/logger";
 
@@ -18,6 +18,17 @@ async function getTransporter() {
           : undefined,
       tls: { rejectUnauthorized: true },
     }), smtp };
+}
+
+export async function sendTestMail(recipient: string) {
+  const { transporter, smtp } = await getTransporter();
+  if (!transporter) throw new Error("SMTP is not configured");
+  await transporter.sendMail({
+    from: smtp.fromName ? { name: smtp.fromName, address: smtp.from } : smtp.from,
+    to: recipient,
+    subject: "QueueCraft test email",
+    text: "This is a QueueCraft SMTP test email. Your mail settings are working.",
+  });
 }
 
 export async function queueMail(executor: any, input: {

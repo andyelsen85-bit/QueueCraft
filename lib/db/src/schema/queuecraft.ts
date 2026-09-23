@@ -334,9 +334,6 @@ export const notificationRulesTable = pgTable(
   {
     id: text("id").primaryKey(),
     action: text("action").notNull(),
-    roleId: text("role_id")
-      .notNull()
-      .references(() => rolesTable.id),
     enabled: boolean("enabled").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -347,10 +344,7 @@ export const notificationRulesTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
-    uniqueIndex("notification_rules_action_role_unique").on(
-      table.action,
-      table.roleId,
-    ),
+    uniqueIndex("notification_rules_action_unique").on(table.action),
   ],
 );
 
