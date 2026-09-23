@@ -561,7 +561,7 @@ router.patch("/preferences/topic-filters", async (req, res): Promise<void> => {
 
 router.get("/directory/members", async (_req, res): Promise<void> => {
   const snapshot = await loadSnapshot();
-  res.json(ListMembersResponse.parse(snapshot.members));
+  res.json(ListMembersResponse.parse(snapshot.members.filter((member) => member.status === "active")));
 });
 
 router.post("/directory/members", async (req, res): Promise<void> => {
@@ -610,7 +610,13 @@ router.post("/directory/ldap-users/import", async (req, res): Promise<void> => {
   for (const user of users) {
     if (typeof user?.email !== "string" || typeof user?.name !== "string" || typeof user?.subject !== "string") continue;
     const existing = await db.select().from(membersTable).where(eq(membersTable.email, user.email.toLowerCase())).limit(1);
-    if (existing[0]) continue;
+    if (existing[0]) {
+      if (existing[0].status === "disabled") {
+        const [reactivated] = await db.update(membersTable).set({ status: "active", externalSubject: user.subject, authProvider: "adfs", name: user.name.trim(), initials: initials(user.name) }).where(eq(membersTable.id, existing[0].id)).returning();
+        imported.push(reactivated);
+      }
+      continue;
+    }
     const [member] = await db.insert(membersTable).values({ id: randomUUID(), name: user.name.trim(), initials: initials(user.name), email: user.email.toLowerCase(), externalSubject: user.subject, authProvider: "adfs", status: "active" }).returning();
     imported.push(member);
   }
@@ -650,6 +656,33 @@ router.patch("/directory/members/:memberId", async (req, res): Promise<void> => 
     return;
   }
   res.json(UpdateMemberResponse.parse(updated));
+});
+
+router.delete("/directory/members/:memberId", async (req, res): Promise<void> => {
+  const memberId = req.params.memberId;
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "directory.manage")) return;
+  if (memberId === currentUserId(req)) {
+    res.status(409).json({ error: "You cannot delete the account used by your current session." });
+    return;
+  }
+  const member = snapshot.memberById.get(memberId);
+  if (!member || member.status !== "active") {
+    res.status(404).json({ error: "Member not found" });
+    return;
+  }
+  const departmentReference = snapshot.departments.some((department) => department.serviceHeadId === memberId || department.serviceHeadDeputyId === memberId);
+  const roleReference = snapshot.roles.some((role) => role.leadId === memberId || role.deputyId === memberId);
+  if (departmentReference || roleReference) {
+    res.status(409).json({ error: "Reassign this member's department or role leadership responsibilities before deleting them." });
+    return;
+  }
+  await db.transaction(async (tx) => {
+    await tx.delete(roleMembersTable).where(eq(roleMembersTable.memberId, memberId));
+    await tx.update(membersTable).set({ status: "disabled", externalSubject: null }).where(eq(membersTable.id, memberId));
+    await addActivity(req, null, "Directory member deleted", member.email, false, tx);
+  });
+  res.status(204).end();
 });
 
 router.get("/directory/departments", async (_req, res): Promise<void> => {

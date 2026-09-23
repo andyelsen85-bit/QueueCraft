@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useQueryClient } from "@tanstack/react-query"
-import { Pencil, Plus, UsersRound, ShieldCheck, Network } from "lucide-react"
+import { Pencil, Plus, Trash2, UsersRound, ShieldCheck, Network } from "lucide-react"
 
 type MemberDraft = {
   name: string
@@ -89,6 +89,7 @@ export function Directory() {
   const [adImporting, setAdImporting] = React.useState(false)
   const [adMessage, setAdMessage] = React.useState("")
   const [adError, setAdError] = React.useState("")
+  const [memberActionError, setMemberActionError] = React.useState("")
 
   const invalidateDirectory = () => {
     queryClient.invalidateQueries({ queryKey: getListDepartmentsQueryKey() })
@@ -145,6 +146,27 @@ export function Directory() {
       setMemberDialog({ open: false })
       invalidateDirectory()
     } catch {}
+  }
+
+  const deleteMember = async (member: NonNullable<typeof members>[number]) => {
+    if (!window.confirm(`Delete ${member.name}? They will immediately lose access to QueueCraft.`)) return
+    setMemberActionError("")
+    try {
+      const csrfResponse = await fetch("/api/auth/csrf", { credentials: "include" })
+      const { csrfToken } = await csrfResponse.json()
+      const response = await fetch(`/api/directory/members/${member.id}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "x-csrf-token": csrfToken },
+      })
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        throw new Error(body.error ?? "Member could not be deleted.")
+      }
+      invalidateDirectory()
+    } catch (deleteError) {
+      setMemberActionError(deleteError instanceof Error ? deleteError.message : "Member could not be deleted.")
+    }
   }
 
   const submitDepartment = async (event: React.FormEvent) => {
@@ -334,6 +356,7 @@ export function Directory() {
         </TabsContent>
 
         <TabsContent value="members">
+          {memberActionError && <div className="mb-3 rounded-sm border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{memberActionError}</div>}
           <Card>
             <div className="divide-y divide-border">
               {members?.map((member) => (
@@ -349,6 +372,7 @@ export function Directory() {
                     {member.dailyBusinessPercent ?? 0}%
                   </div>
                   <Button variant="ghost" size="icon" aria-label={`Edit ${member.name}`} onClick={() => openMember(member)}><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" aria-label={`Delete ${member.name}`} onClick={() => void deleteMember(member)}><Trash2 className="h-4 w-4" /></Button>
                 </div>
               ))}
             </div>
