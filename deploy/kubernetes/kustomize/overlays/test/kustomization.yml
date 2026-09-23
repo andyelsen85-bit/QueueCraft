@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: queuecraft-test
+resources:
+  - ../../base
+  - namespace.yml
+patches:
+  - path: ingress.yml
+images:
+  - name: srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-api
+    newTag: test
+  - name: srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-web
+    newTag: test
+  - name: srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-migration
+    newTag: test

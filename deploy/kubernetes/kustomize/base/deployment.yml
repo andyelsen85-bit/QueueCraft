@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: queuecraft-api
+  labels:
+    app: queuecraft-api
+    team: infra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: queuecraft-api
+  template:
+    metadata:
+      labels:
+        app: queuecraft-api
+        team: infra
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      initContainers:
+        - name: queuecraft-migrate
+          image: srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-migration
+          envFrom:
+            - secretRef:
+                name: queuecraft-secrets
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+      containers:
+        - name: api
+          image: srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-api
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: api-env
+            - secretRef:
+                name: queuecraft-secrets
+          readinessProbe:
+            httpGet:
+              path: /api/healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/healthz
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: queuecraft-web
+  labels:
+    app: queuecraft-web
+    team: infra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: queuecraft-web
+  template:
+    metadata:
+      labels:
+        app: queuecraft-web
+        team: infra
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: web
+          image: srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-web
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]

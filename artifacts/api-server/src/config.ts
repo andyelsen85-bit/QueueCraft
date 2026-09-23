@@ -36,12 +36,12 @@ export const config = {
     cioGroupDn: optional("LDAPS_CIO_GROUP_DN"),
   },
   smtp: {
-    host: requiredInProduction("SMTP_HOST"),
+    host: optional("SMTP_HOST"),
     port: Number(optional("SMTP_PORT") ?? 587),
     secure: optional("SMTP_SECURE") === "true",
     user: optional("SMTP_USER"),
     password: optional("SMTP_PASSWORD"),
-    from: requiredInProduction("SMTP_FROM") ?? "queuecraft@localhost",
+    from: optional("SMTP_FROM") ?? "queuecraft@localhost",
   },
 };
 
@@ -57,7 +57,3 @@ export const ldapConfigured = Boolean(
 );
 
 export const smtpConfigured = Boolean(config.smtp.host);
-
-if (production && !oidcConfigured && !ldapConfigured) {
-  throw new Error("Production requires a complete AD FS OIDC or LDAPS configuration");
-}
