@@ -8,6 +8,7 @@ import { config, ldapConfigured, oidcConfigured } from "../config";
 import { getRuntimeSettings, maskedStatus } from "../services/application-settings";
 import { createAuthorizationRequest, redeemAuthorizationCode } from "../services/oidc";
 import { updateRuntimeSettings } from "../services/application-settings";
+import { authenticateWithLdaps } from "../services/ldaps";
 
 const router: IRouter = Router();
 
@@ -46,14 +47,14 @@ async function resolveMember(input: {
   if (
     member.externalSubject !== input.subject ||
     member.authProvider !== input.provider ||
-    (input.provider === "ldaps" && member.isCio !== Boolean(input.isCio))
+    (input.provider === "ldaps" && input.isCio !== undefined && member.isCio !== input.isCio)
   ) {
     const [updated] = await db
       .update(membersTable)
       .set({
         externalSubject: input.subject,
         authProvider: input.provider,
-        isCio: input.provider === "ldaps" ? Boolean(input.isCio) : member.isCio,
+        isCio: input.provider === "ldaps" && input.isCio !== undefined ? input.isCio : member.isCio,
       })
       .where(eq(membersTable.id, member.id))
       .returning();
@@ -66,7 +67,7 @@ router.get("/auth/providers", async (_req, res) => {
   const settings = maskedStatus(await getRuntimeSettings());
   res.json({
     adfs: Boolean(settings.adfs.enabled && settings.adfs.issuer && settings.adfs.clientId && settings.adfs.redirectUri),
-    ldaps: false,
+    ldaps: Boolean(settings.ldaps.url && settings.ldaps.bindDn && settings.ldaps.bindPasswordConfigured && settings.ldaps.baseDn),
     developmentPreview: !config.production,
   });
 });
@@ -185,7 +186,36 @@ router.post("/auth/local", authLimiter, async (req, res, next) => {
     req.session.authProvider = "local";
     res.json({ authenticated: true, csrfToken: ensureCsrfToken(req) });
   } catch (error) {
-    req.log.warn({ err: error, username: req.body?.username }, "LDAPS authentication failed");
+    req.log.warn({ err: error, username: req.body?.username }, "Local administrator authentication failed");
+    res.status(401).json({ error: "Authentication failed" });
+  }
+});
+
+router.post("/auth/ldap", authLimiter, async (req, res, next) => {
+  try {
+    const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    if (!username || !password) {
+      res.status(400).json({ error: "Username and password are required" });
+      return;
+    }
+    const identity = await authenticateWithLdaps(username, password);
+    const member = await resolveMember({
+      subject: identity.subject,
+      email: identity.email || undefined,
+      provider: "ldaps",
+      isCio: identity.isCio,
+    });
+    if (!member) {
+      res.status(403).json({ error: "Authenticated user is not provisioned in QueueCraft" });
+      return;
+    }
+    await regenerate(req);
+    req.session.userId = member.id;
+    req.session.authProvider = "ldaps";
+    res.json({ authenticated: true, csrfToken: ensureCsrfToken(req) });
+  } catch (error) {
+    req.log.warn({ err: error }, "LDAPS authentication failed");
     res.status(401).json({ error: "Authentication failed" });
   }
 });

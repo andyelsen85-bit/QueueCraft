@@ -4,7 +4,8 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
-import { pool } from "@workspace/db";
+import { db, membersTable, pool } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { config } from "../config";
 
 const PgSession = connectPgSimple(session);
@@ -82,12 +83,22 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction):
   next();
 }
 
-export function requireAuthenticated(req: Request, res: Response, next: NextFunction): void {
+export async function requireAuthenticated(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (!req.session.userId && !config.production) {
     req.session.userId = "member-andy";
     req.session.authProvider = "development";
   }
   if (!req.session.userId) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  const [member] = await db
+    .select({ status: membersTable.status })
+    .from(membersTable)
+    .where(eq(membersTable.id, req.session.userId))
+    .limit(1);
+  if (!member || member.status !== "active") {
+    req.session.destroy(() => undefined);
     res.status(401).json({ error: "Authentication required" });
     return;
   }

@@ -2,9 +2,12 @@ import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import request from "supertest";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { getTableConfig } from "drizzle-orm/pg-core";
+import * as queuecraftSchema from "@workspace/db/schema";
 import {
   activityTable,
+  auditLogTable,
   db,
   departmentsTable,
   membersTable,
@@ -15,6 +18,20 @@ import {
   topicsTable,
 } from "@workspace/db";
 import app from "./app";
+import {
+  BACKUP_FINGERPRINT,
+  BACKUP_FORMAT,
+  BACKUP_MANIFEST,
+  BACKUP_TABLES,
+  BACKUP_VERSION,
+  validateBackup,
+} from "./services/backup";
+import { exportBackup, restoreBackup } from "./services/backup";
+import { resolveEncryptionKey } from "./config";
+import {
+  decryptRuntimeSettings,
+  encryptRuntimeSettings,
+} from "./services/application-settings";
 
 before(async () => {
   if (!process.env.CI) return;
@@ -52,6 +69,146 @@ after(async () => {
 });
 
 describe("QueueCraft security and preference flows", () => {
+  test("backup registry covers every QueueCraft schema table", () => {
+    const schemaTables = Object.values(queuecraftSchema).flatMap((value) => {
+      try {
+        return [getTableConfig(value as Parameters<typeof getTableConfig>[0]).name];
+      } catch {
+        return [];
+      }
+    });
+    const backupTables = BACKUP_TABLES.map(([name]) => name);
+    assert.deepEqual(new Set(backupTables), new Set(schemaTables));
+    assert.equal(backupTables.length, schemaTables.length);
+  });
+
+  test("rejects backups with missing or unknown tables", () => {
+    assert.throws(
+      () => validateBackup({
+        format: BACKUP_FORMAT,
+        version: BACKUP_VERSION,
+        manifest: BACKUP_MANIFEST,
+        fingerprint: BACKUP_FINGERPRINT,
+        tables: {},
+      }),
+      /table coverage/,
+    );
+  });
+
+  test("restores a JSON round-trip while preserving newer immutable audit history", async () => {
+    const originalId = randomUUID();
+    const newerId = randomUUID();
+    await db.insert(auditLogTable).values({
+      id: originalId,
+      actorId: "member-andy",
+      action: "Round-trip fixture",
+      resourceType: "system",
+      details: {},
+    });
+    const exported = await exportBackup();
+    const parsed = JSON.parse(JSON.stringify(exported));
+    const createdAt = (parsed.tables.audit_log[0] as { createdAt: string }).createdAt;
+    assert.equal(typeof createdAt, "string");
+    const collisionId = randomUUID();
+    const recoveryAdminId = randomUUID();
+    const restoreAuditId = randomUUID();
+    const restoredEmail = `restored-${randomUUID()}@example.invalid`;
+    const restoredSubject = `subject-${randomUUID()}`;
+    const restoredMember = (parsed.tables.members as Array<Record<string, unknown>>)
+      .find((row) => row.id === "member-andy");
+    assert.ok(restoredMember);
+    restoredMember.email = restoredEmail;
+    restoredMember.externalSubject = restoredSubject;
+    await db.insert(membersTable).values({
+      id: collisionId,
+      name: "Retained audit actor",
+      initials: "RA",
+      email: restoredEmail,
+      externalSubject: restoredSubject,
+      status: "active",
+      isCio: true,
+    });
+    await db.insert(membersTable).values({
+      id: recoveryAdminId,
+      name: "Recovery administrator",
+      initials: "RA",
+      email: `recovery-${recoveryAdminId}@example.invalid`,
+      status: "active",
+      isCio: true,
+    });
+    await db.insert(auditLogTable).values({
+      id: newerId,
+      actorId: collisionId,
+      action: "Newer immutable history",
+      resourceType: "system",
+      details: {},
+    });
+    await db.execute(sql`
+      INSERT INTO user_sessions (sid, sess, expire)
+      VALUES (
+        ${`restore-test-${collisionId}`},
+        ${JSON.stringify({ userId: collisionId })},
+        NOW() + INTERVAL '1 hour'
+      )
+    `);
+    await restoreBackup(parsed, {
+      id: restoreAuditId,
+      actorId: recoveryAdminId,
+      action: "Backup restored",
+      resourceType: "system",
+      details: { format: "queuecraft-json", version: 2 },
+    });
+    const preserved = await db.select().from(auditLogTable).where(eq(auditLogTable.id, newerId));
+    assert.equal(preserved.length, 1);
+    assert.ok(preserved[0].createdAt instanceof Date);
+    const [restoredAndy] = await db.select().from(membersTable).where(eq(membersTable.id, "member-andy"));
+    assert.equal(restoredAndy.email, restoredEmail);
+    assert.equal(restoredAndy.externalSubject, restoredSubject);
+    const [retainedActor] = await db.select().from(membersTable).where(eq(membersTable.id, collisionId));
+    assert.equal(retainedActor.status, "disabled");
+    assert.match(retainedActor.email, /^restored-archive-/);
+    const [recoveryAdmin] = await db.select().from(membersTable).where(eq(membersTable.id, recoveryAdminId));
+    assert.equal(recoveryAdmin.status, "disabled");
+    const restoreAudit = await db.select().from(auditLogTable).where(eq(auditLogTable.id, restoreAuditId));
+    assert.equal(restoreAudit.length, 1);
+    const sessions = await db.execute(sql`SELECT sid FROM user_sessions`);
+    assert.equal(sessions.rows.length, 0);
+  });
+
+  test("requires an independent 32-byte application encryption key in production", () => {
+    const sessionSecret = "ab".repeat(32);
+    assert.throws(
+      () => resolveEncryptionKey(undefined, sessionSecret, true),
+      /required in production/,
+    );
+    assert.throws(
+      () => resolveEncryptionKey("short", sessionSecret, true),
+      /exactly 32 random bytes/,
+    );
+    assert.throws(
+      () => resolveEncryptionKey(sessionSecret, sessionSecret, true),
+      /independent/,
+    );
+    assert.equal(
+      resolveEncryptionKey("cd".repeat(32), sessionSecret, true).length,
+      32,
+    );
+  });
+
+  test("round-trips runtime settings with the versioned independent key", () => {
+    const settings = {
+      adfsClientSecret: "adfs-secret",
+      ldapsBindPassword: "ldap-secret",
+      smtpPassword: "smtp-secret",
+    };
+    const encrypted = encryptRuntimeSettings(settings);
+    assert.match(encrypted, /^v2\./);
+    assert.deepEqual(decryptRuntimeSettings(encrypted), {
+      settings,
+      migrated: false,
+    });
+  });
+
   test("rejects a state-changing request without a CSRF token", async () => {
     const agent = request.agent(app);
     await agent.get("/api/session").expect(200);

@@ -37,7 +37,7 @@ docker.io/library/nginx:1.27-alpine
 docker.io/library/postgres:16.4-alpine
 ```
 
-The PostgreSQL overlays currently expect the mirror at:
+The test PostgreSQL overlay currently expects the mirror at:
 
 ```text
 srvnexusint.hopital.chdn.lan:8443/postgres:16.4-alpine
@@ -71,14 +71,20 @@ The overlay files already define the same ConfigMap and SealedSecret structure
 as the supplied example:
 
 ```text
-overlays/test/api-env.yml  DATABASE_URL, SESSION_SECRET
+overlays/test/api-env.yml  DATABASE_URL, SESSION_SECRET, APP_ENCRYPTION_KEY
 overlays/test/pg-env.yml   POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
-overlays/prod/api-env.yml  DATABASE_URL, SESSION_SECRET
+overlays/prod/api-env.yml  DATABASE_URL, SESSION_SECRET, APP_ENCRYPTION_KEY
 ```
 
-`SESSION_SECRET` must be at least 32 random characters. QueueCraft also derives
-the encryption key for its runtime AD FS, LDAPS, and SMTP settings from this
-secret, so do not change it after configuration.
+`SESSION_SECRET` must be at least 32 random characters. QueueCraft encrypts
+runtime AD FS, LDAPS, and SMTP settings with the independent
+`APP_ENCRYPTION_KEY`, which must contain at least 32 random bytes (64
+hexadecimal characters or an equivalent base64 value). Keep the two values
+independent and do not use a recognizable placeholder in production.
+Retain the active `APP_ENCRYPTION_KEY` with application backups because runtime
+settings remain encrypted in the export. During an upgrade from an older
+QueueCraft release, retain the old `SESSION_SECRET` until the application has
+read and migrated the legacy ciphertext.
 
 Replace every `REPLACE_WITH_KUBESEAL_OUTPUT` value with output encrypted for
 your cluster and the `queuecraft` namespace. For example, prepare a temporary
@@ -88,6 +94,7 @@ Secret and seal it:
 kubectl -n queuecraft create secret generic api-env-secret \
   --from-literal=DATABASE_URL='postgresql://queuecraft:<url-encoded-password>@pg:5432/queuecraft' \
   --from-literal=SESSION_SECRET='<at-least-32-random-characters>' \
+  --from-literal=APP_ENCRYPTION_KEY='<64-random-hex-characters>' \
   --dry-run=client -o yaml |
 kubeseal --format yaml > api-env-sealed.yml
 ```
@@ -113,5 +120,10 @@ kubectl apply -k deploy/kubernetes/kustomize/overlays/prod
 
 The builder image runs database migrations as an init container before the API.
 The test overlay includes PostgreSQL and its Longhorn PVC. The production
-overlay expects its database through the sealed `DATABASE_URL`, like the
-supplied example.
+overlay uses the externally managed CHdN PostgreSQL service through its sealed
+`DATABASE_URL`; it does not deploy a project-owned PostgreSQL pod.
+
+The web container runs as UID/GID 101 and retains ports 80 and 443. Kubernetes
+adds only `NET_BIND_SERVICE` so the non-root Nginx process can bind those ports.
+The certificate PVC is mounted with pod `fsGroup: 101` so the entrypoint can
+reuse or generate certificates without root access.

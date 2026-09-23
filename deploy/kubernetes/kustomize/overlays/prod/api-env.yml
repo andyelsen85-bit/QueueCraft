@@ -17,6 +17,7 @@ spec:
   encryptedData:
     DATABASE_URL: REPLACE_WITH_KUBESEAL_OUTPUT
     SESSION_SECRET: REPLACE_WITH_KUBESEAL_OUTPUT
+    APP_ENCRYPTION_KEY: REPLACE_WITH_KUBESEAL_OUTPUT
   template:
     metadata:
       name: api-env-secret

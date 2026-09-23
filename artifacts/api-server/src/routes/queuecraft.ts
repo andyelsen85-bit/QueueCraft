@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray, ne } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import {
   db,
@@ -90,6 +90,7 @@ import { queueMail } from "../services/mailer";
 import { getRuntimeSettings, maskedStatus, updateRuntimeSettings, type RuntimeSettings } from "../services/application-settings";
 import { searchLdapsUsers } from "../services/ldaps";
 import { enqueueRuleNotifications, NOTIFICATION_ACTIONS } from "../services/notifications";
+import { BACKUP_FORMAT, BACKUP_VERSION, exportBackup, restoreBackup } from "../services/backup";
 
 const router: IRouter = Router();
 
@@ -445,7 +446,7 @@ router.put("/admin/settings", async (req, res): Promise<void> => {
   }
   const allowed = new Set<keyof RuntimeSettings>([
     "publicBaseUrl", "adfsEnabled", "adfsIssuer", "adfsClientId", "adfsClientSecret", "adfsCaCertificate",
-    "ldapsUrl", "ldapsBindDn", "ldapsBindPassword", "ldapsBaseDn", "ldapsUserFilter", "ldapsCaCertificate",
+    "ldapsUrl", "ldapsBindDn", "ldapsBindPassword", "ldapsBaseDn", "ldapsUserFilter", "ldapsCaCertificate", "ldapsCioGroupDn",
     "smtpHost", "smtpPort", "smtpSecure", "smtpUser", "smtpPassword", "smtpFrom", "smtpFromName",
   ]);
   const update: Partial<RuntimeSettings> = {};
@@ -463,9 +464,91 @@ router.put("/admin/settings", async (req, res): Promise<void> => {
       res.status(400).json({ error: `Invalid value for ${key}` }); return;
     }
   }
-  const saved = await updateRuntimeSettings(update, currentUserId(req));
+  const changedFields = Object.entries(update)
+    .filter(([, value]) => value !== "")
+    .map(([key]) => key)
+    .sort();
+  const saved = await db.transaction(async (tx) => {
+    const result = await updateRuntimeSettings(update, currentUserId(req), tx);
+    await addActivity(
+      req,
+      null,
+      "Application settings updated",
+      `Changed fields: ${changedFields.join(", ") || "none"}`,
+      false,
+      tx,
+    );
+    return result;
+  });
   res.setHeader("Cache-Control", "no-store");
   res.json(maskedStatus(saved));
+});
+
+router.delete("/admin/sessions/:memberId", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "directory.manage")) return;
+  const member = snapshot.memberById.get(req.params.memberId);
+  if (!member) {
+    res.status(404).json({ error: "Member not found" });
+    return;
+  }
+  const result = await db.transaction(async (tx) => {
+    const deleted = await tx.execute(sql`
+      DELETE FROM user_sessions
+      WHERE sess ->> 'userId' = ${member.id}
+    `);
+    await addActivity(
+      req,
+      null,
+      "Member sessions revoked",
+      `Sessions revoked for ${member.email}`,
+      false,
+      tx,
+    );
+    return deleted.rowCount ?? 0;
+  });
+  res.json({ revoked: result });
+});
+
+router.get("/admin/backup", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "settings.manage")) return;
+  await db.insert(auditLogTable).values({
+    id: randomUUID(),
+    actorId: currentUserId(req),
+    action: "Backup exported",
+    resourceType: "system",
+    requestId: String(req.id),
+    ipAddress: req.ip,
+    userAgent: req.get("user-agent"),
+    details: { tableCount: 16 },
+    isBreakGlass: false,
+  });
+  const backup = await exportBackup();
+  res.type("application/json");
+  res.setHeader("Content-Disposition", `attachment; filename="queuecraft-backup-${new Date().toISOString().slice(0, 10)}.json"`);
+  res.json(backup);
+});
+
+router.post("/admin/backup/restore", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "settings.manage")) return;
+  try {
+    await restoreBackup(req.body, {
+      id: randomUUID(),
+      actorId: currentUserId(req),
+      action: "Backup restored",
+      resourceType: "system",
+      requestId: String(req.id),
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+      details: { format: BACKUP_FORMAT, version: BACKUP_VERSION },
+      isBreakGlass: false,
+    });
+    res.json({ restored: true });
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : "Backup restore failed" });
+  }
 });
 
 router.get("/admin/notification-rules", async (req, res): Promise<void> => {
@@ -612,12 +695,12 @@ router.post("/directory/ldap-users/import", async (req, res): Promise<void> => {
     const existing = await db.select().from(membersTable).where(eq(membersTable.email, user.email.toLowerCase())).limit(1);
     if (existing[0]) {
       if (existing[0].status === "disabled") {
-        const [reactivated] = await db.update(membersTable).set({ status: "active", externalSubject: user.subject, authProvider: "adfs", name: user.name.trim(), initials: initials(user.name) }).where(eq(membersTable.id, existing[0].id)).returning();
+        const [reactivated] = await db.update(membersTable).set({ status: "active", externalSubject: user.subject, authProvider: "ldaps", name: user.name.trim(), initials: initials(user.name) }).where(eq(membersTable.id, existing[0].id)).returning();
         imported.push(reactivated);
       }
       continue;
     }
-    const [member] = await db.insert(membersTable).values({ id: randomUUID(), name: user.name.trim(), initials: initials(user.name), email: user.email.toLowerCase(), externalSubject: user.subject, authProvider: "adfs", status: "active" }).returning();
+    const [member] = await db.insert(membersTable).values({ id: randomUUID(), name: user.name.trim(), initials: initials(user.name), email: user.email.toLowerCase(), externalSubject: user.subject, authProvider: "ldaps", status: "active" }).returning();
     imported.push(member);
   }
   res.status(201).json({ imported: imported.length });
@@ -680,6 +763,10 @@ router.delete("/directory/members/:memberId", async (req, res): Promise<void> =>
   await db.transaction(async (tx) => {
     await tx.delete(roleMembersTable).where(eq(roleMembersTable.memberId, memberId));
     await tx.update(membersTable).set({ status: "disabled", externalSubject: null }).where(eq(membersTable.id, memberId));
+    await tx.execute(sql`
+      DELETE FROM user_sessions
+      WHERE sess ->> 'userId' = ${memberId}
+    `);
     await addActivity(req, null, "Directory member deleted", member.email, false, tx);
   });
   res.status(204).end();

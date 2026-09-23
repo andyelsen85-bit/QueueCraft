@@ -273,3 +273,24 @@ export type InsertTopic = z.infer<typeof insertTopicSchema>;
 export type TopicRecord = typeof topicsTable.$inferSelect;
 export type InsertMilestone = z.infer<typeof insertMilestoneSchema>;
 export type MilestoneRecord = typeof milestonesTable.$inferSelect;
+
+// Canonical table registry used by backup/restore coverage checks. New
+// application tables must be added here as part of their schema migration.
+export const queuecraftTables = {
+  membersTable,
+  departmentsTable,
+  applicationSettingsTable,
+  rolesTable,
+  roleDepartmentsTable,
+  roleMembersTable,
+  topicsTable,
+  topicCollaboratorsTable,
+  milestonesTable,
+  collaboratorMilestonesTable,
+  topicWeeklyAllocationsTable,
+  topicFinishDateRevisionsTable,
+  activityTable,
+  auditLogTable,
+  notificationOutboxTable,
+  notificationRulesTable,
+} as const;

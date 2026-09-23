@@ -28,15 +28,15 @@ QueueCraft routes internal IT topics through Service Head validation to one acco
 - `artifacts/api-server/src/routes/queuecraft.ts` — API implementation
 - `artifacts/queuecraft/` — QueueCraft frontend
 - `deploy/docker/` — hardened image definitions
-- `deploy/kubernetes/queuecraft.yaml` — Kubernetes deployment example
-- `docs/decisions/` — approved architecture exceptions
+- `deploy/kubernetes/kustomize/` — Change Manager deployment package
+- `docs/decisions/` — architecture decisions
 
 ## Architecture decisions
 
 - Every topic requires Service Head or Service Head Deputy validation; Role Leads and their optional deputies manage execution but never validate.
 - Validation break-glass is limited to CIO and service authorities and applies only to validation.
 - Additional collaborators receive topic-level access without becoming members of the owning role.
-- Production PostgreSQL runs as a stateful Kubernetes pod by explicit exception; see `docs/decisions/001-production-postgres-pod.md`.
+- Production PostgreSQL is externally managed and supplied through the production SealedSecret. The test overlay includes an isolated PostgreSQL instance for validation.
 - AD FS/LDAPS and SMTP are production integration boundaries; the preview identity is intentionally non-production.
 
 ## Product
