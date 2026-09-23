@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { DateField } from "@/components/ui/date-field";
 import {
   ChevronLeft,
   ChevronRight,
@@ -135,11 +136,15 @@ export function Occupancy() {
       view === "week" ? subWeeks(prev, 1) : subMonths(prev, 1),
     );
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.value) {
-      const date = parseISO(e.target.value);
+  const handleDateChange = (value: string) => {
+    if (value) {
+      const date = parseISO(value);
       if (!isNaN(date.getTime())) {
-        setCurrentWeek(startOfWeek(date, { weekStartsOn: 1 }));
+        setCurrentWeek(
+          view === "week"
+            ? startOfWeek(date, { weekStartsOn: 1 })
+            : startOfMonth(date),
+        );
       }
     }
   };
@@ -218,11 +223,8 @@ export function Occupancy() {
           </Button>
           <div className="relative">
             <CalendarIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type={view === "week" ? "date" : "month"}
-              value={
-                view === "week" ? weekStartStr : format(currentWeek, "yyyy-MM")
-              }
+            <DateField
+              value={weekStartStr}
               onChange={handleDateChange}
               className="w-[160px] pl-9 h-9 bg-transparent border-0 shadow-none focus-visible:ring-0"
             />

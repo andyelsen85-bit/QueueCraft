@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { StatusBadge, PriorityBadge } from "@/components/badges"
 import { Button } from "@/components/ui/button"
-import { format } from "date-fns"
+import { formatDate } from "@/lib/dates"
 import { Link } from "wouter"
 import { ShieldCheck, ShieldAlert, FileText, ArrowRight } from "lucide-react"
 
@@ -54,7 +54,7 @@ export function Validation() {
                       </div>
                       <div className="w-px h-4 bg-border" />
                       <div>
-                        <span className="text-muted-foreground">Created:</span> {format(new Date(t.createdAt), 'MMM d')}
+                         <span className="text-muted-foreground">Created:</span> {formatDate(t.createdAt)}
                       </div>
                     </div>
                   </div>

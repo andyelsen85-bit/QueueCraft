@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Activity, AlertTriangle, CheckCircle2, Clock, FolderKanban, ShieldAlert, ShieldCheck } from "lucide-react"
 import { StatusBadge } from "@/components/badges"
-import { format } from "date-fns"
+import { formatDateTime } from "@/lib/dates"
 
 export function Dashboard() {
   const { data: summary, isLoading: loadingSummary } = useGetDashboardSummary()
@@ -97,7 +97,7 @@ export function Dashboard() {
                         <p className="text-xs text-muted-foreground line-clamp-1">{act.detail}</p>
                       )}
                       <p className="text-xs text-muted-foreground font-mono">
-                        {format(new Date(act.createdAt), 'MMM d, HH:mm')}
+                        {formatDateTime(act.createdAt)}
                       </p>
                     </div>
                   </div>

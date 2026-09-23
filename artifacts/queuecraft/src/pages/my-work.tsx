@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TabsContent, TabsList, TabsRoot, TabsTrigger } from "@/components/ui/tabs"
 import { StatusBadge, PriorityBadge } from "@/components/badges"
-import { format } from "date-fns"
+import { formatDate } from "@/lib/dates"
 import { Link } from "wouter"
 import { ArrowRight } from "lucide-react"
 
@@ -122,7 +122,7 @@ export function MyWork() {
                         <h3 className="text-sm font-semibold truncate">{m.title}</h3>
                         {m.targetDate && (
                           <div className="text-xs text-muted-foreground mt-1 font-mono">
-                            Target: {format(new Date(m.targetDate), 'yyyy-MM-dd')}
+                            Target: {formatDate(m.targetDate)}
                           </div>
                         )}
                       </div>

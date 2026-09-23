@@ -33,13 +33,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/input";
+import { DateField } from "@/components/ui/date-field";
+import { formatDate } from "@/lib/dates";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format } from "date-fns";
 import { Search, Plus, SlidersHorizontal } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListTopicsQueryKey } from "@workspace/api-client-react";
@@ -345,11 +346,7 @@ export function Topics() {
                       <FormItem>
                         <FormLabel>Target Date (Optional)</FormLabel>
                         <FormControl>
-                          <Input
-                            type="date"
-                            {...field}
-                            value={field.value || ""}
-                          />
+                           <DateField {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -375,11 +372,7 @@ export function Topics() {
                         <FormItem>
                           <FormLabel>Estimated Start</FormLabel>
                           <FormControl>
-                            <Input
-                              type="date"
-                              {...field}
-                              value={field.value || ""}
-                            />
+                             <DateField {...field} value={field.value || ""} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -392,11 +385,7 @@ export function Topics() {
                         <FormItem>
                           <FormLabel>Estimated Finish</FormLabel>
                           <FormControl>
-                            <Input
-                              type="date"
-                              {...field}
-                              value={field.value || ""}
-                            />
+                             <DateField {...field} value={field.value || ""} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -603,7 +592,7 @@ export function Topics() {
                       <span>{t.role.name}</span>
                       <span>•</span>
                       <span>
-                        Created {format(new Date(t.createdAt), "MMM d, yyyy")}
+                         Created {formatDate(t.createdAt)}
                       </span>
                     </div>
                   </div>
@@ -614,10 +603,7 @@ export function Topics() {
                       </div>
                       <div className="font-semibold">
                         {t.estimatedFinishDate
-                          ? format(
-                              new Date(t.estimatedFinishDate),
-                              "MMM d, yyyy",
-                            )
+                           ? formatDate(t.estimatedFinishDate)
                           : "—"}
                       </div>
                     </div>
@@ -627,7 +613,7 @@ export function Topics() {
                       </div>
                       <div className="font-semibold">
                         {t.status === "closed" && t.targetDate
-                          ? format(new Date(t.targetDate), "MMM d, yyyy")
+                           ? formatDate(t.targetDate)
                           : "—"}
                       </div>
                     </div>

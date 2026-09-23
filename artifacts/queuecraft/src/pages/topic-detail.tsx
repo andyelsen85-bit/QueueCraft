@@ -22,7 +22,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams } from "wouter";
-import { format, startOfWeek, addWeeks, subWeeks } from "date-fns";
+import { startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,6 +36,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
+import { DateField } from "@/components/ui/date-field";
+import { formatDate, formatDateTime } from "@/lib/dates";
 import {
   Dialog,
   DialogContent,
@@ -492,7 +494,7 @@ export function TopicDetail() {
             <div className="w-px h-4 bg-border" />
             <div>
               <span className="text-muted-foreground">Date:</span>{" "}
-              {format(new Date(topic.createdAt), "MMM d, yyyy")}
+              {formatDate(topic.createdAt)}
             </div>
           </div>
         </div>
@@ -716,11 +718,7 @@ export function TopicDetail() {
                         <FormItem>
                           <FormLabel>Est. Start Date</FormLabel>
                           <FormControl>
-                            <Input
-                              type="date"
-                              {...field}
-                              value={field.value || ""}
-                            />
+                            <DateField {...field} value={field.value || ""} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -733,11 +731,7 @@ export function TopicDetail() {
                         <FormItem>
                           <FormLabel>Est. Finish Date</FormLabel>
                           <FormControl>
-                            <Input
-                              type="date"
-                              {...field}
-                              value={field.value || ""}
-                            />
+                            <DateField {...field} value={field.value || ""} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -783,7 +777,7 @@ export function TopicDetail() {
                     <span className="text-muted-foreground block text-xs uppercase mb-1 font-semibold">
                       Est. Start
                     </span>
-                    {format(new Date(topic.estimatedStartDate), "yyyy-MM-dd")}
+                    {formatDate(topic.estimatedStartDate)}
                   </div>
                 )}
                 {topic.estimatedFinishDate && (
@@ -791,7 +785,7 @@ export function TopicDetail() {
                     <span className="text-muted-foreground block text-xs uppercase mb-1 font-semibold">
                       Est. Finish
                     </span>
-                    {format(new Date(topic.estimatedFinishDate), "yyyy-MM-dd")}
+                    {formatDate(topic.estimatedFinishDate)}
                   </div>
                 )}
                 {topic.estimatedEffortHours != null && (
@@ -891,7 +885,7 @@ export function TopicDetail() {
                                   <FormItem>
                                     <FormLabel>Begin Date</FormLabel>
                                     <FormControl>
-                                      <Input type="date" {...field} required />
+                                      <DateField {...field} required />
                                     </FormControl>
                                   </FormItem>
                                 )}
@@ -903,7 +897,7 @@ export function TopicDetail() {
                                   <FormItem>
                                     <FormLabel>Target Date</FormLabel>
                                     <FormControl>
-                                      <Input type="date" {...field} required />
+                                      <DateField {...field} required />
                                     </FormControl>
                                   </FormItem>
                                 )}
@@ -994,16 +988,13 @@ export function TopicDetail() {
                               {m.beginDate && (
                                 <span className="flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />{" "}
-                                  {format(new Date(m.beginDate), "MMM d, yyyy")}
+                                  {formatDate(m.beginDate)}
                                 </span>
                               )}
                               {m.targetDate && (
                                 <span className="flex items-center gap-1">
                                   <Target className="h-3 w-3" />{" "}
-                                  {format(
-                                    new Date(m.targetDate),
-                                    "MMM d, yyyy",
-                                  )}
+                                  {formatDate(m.targetDate)}
                                 </span>
                               )}
                               {m.assignee && (
@@ -1121,8 +1112,7 @@ export function TopicDetail() {
                             <FormItem>
                               <FormLabel>Begin Date</FormLabel>
                               <FormControl>
-                                <Input
-                                  type="date"
+                                <DateField
                                   {...field}
                                   value={field.value || ""}
                                 />
@@ -1137,8 +1127,7 @@ export function TopicDetail() {
                             <FormItem>
                               <FormLabel>Target Date (Optional)</FormLabel>
                               <FormControl>
-                                <Input
-                                  type="date"
+                                <DateField
                                   {...field}
                                   value={field.value || ""}
                                 />
@@ -1320,10 +1309,7 @@ export function TopicDetail() {
                               </div>
                             )}
                             <div className="text-xs font-mono text-muted-foreground mt-1">
-                              {format(
-                                new Date(act.createdAt),
-                                "MMM d, yyyy HH:mm",
-                              )}
+                              {formatDateTime(act.createdAt)}
                             </div>
                           </div>
                         </div>
@@ -1501,7 +1487,7 @@ export function TopicDetail() {
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
                       By {topic.validator?.name} on{" "}
-                      {format(new Date(topic.validatedAt), "MMM d, HH:mm")}
+                      {formatDateTime(topic.validatedAt)}
                     </div>
                     {topic.validationReason && (
                       <div className="mt-2 text-xs italic opacity-80 border-t border-black/10 dark:border-white/10 pt-2">
@@ -1545,8 +1531,7 @@ export function TopicDetail() {
                               <FormItem>
                                 <FormLabel>New Target Date</FormLabel>
                                 <FormControl>
-                                  <Input
-                                    type="date"
+                                  <DateField
                                     {...field}
                                     value={field.value || ""}
                                   />
@@ -1593,7 +1578,7 @@ export function TopicDetail() {
             <CardContent className="p-6">
               {topic.estimatedFinishDate ? (
                 <div className="text-2xl font-bold tracking-tight mb-6 text-primary">
-                  {format(new Date(topic.estimatedFinishDate), "MMM d, yyyy")}
+                  {formatDate(topic.estimatedFinishDate)}
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground mb-6">
