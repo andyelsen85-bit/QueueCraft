@@ -16,7 +16,7 @@ async function getTransporter() {
         smtp.user && smtp.password
           ? { user: smtp.user, pass: smtp.password }
           : undefined,
-      tls: { rejectUnauthorized: true },
+      tls: { rejectUnauthorized: false },
     }), smtp };
 }
 
