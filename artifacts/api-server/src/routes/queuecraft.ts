@@ -87,6 +87,7 @@ import {
 import { breakGlassLimiter } from "../middleware/security";
 import { queueMail } from "../services/mailer";
 import { getRuntimeSettings, maskedStatus, updateRuntimeSettings, type RuntimeSettings } from "../services/application-settings";
+import { searchLdapsUsers } from "../services/ldaps";
 
 const router: IRouter = Router();
 
@@ -440,8 +441,8 @@ router.put("/admin/settings", async (req, res): Promise<void> => {
     return;
   }
   const allowed = new Set<keyof RuntimeSettings>([
-    "publicBaseUrl", "adfsIssuer", "adfsClientId", "adfsClientSecret", "adfsRedirectUri",
-    "ldapsUrl", "ldapsBindDn", "ldapsBindPassword", "ldapsBaseDn", "ldapsUserFilter", "ldapsCioGroupDn", "ldapsCaCertificate",
+    "publicBaseUrl", "adfsEnabled", "adfsIssuer", "adfsClientId", "adfsClientSecret", "adfsCaCertificate",
+    "ldapsUrl", "ldapsBindDn", "ldapsBindPassword", "ldapsBaseDn", "ldapsUserFilter", "ldapsCaCertificate",
     "smtpHost", "smtpPort", "smtpSecure", "smtpUser", "smtpPassword", "smtpFrom",
   ]);
   const update: Partial<RuntimeSettings> = {};
@@ -450,9 +451,9 @@ router.put("/admin/settings", async (req, res): Promise<void> => {
     if (key === "smtpPort") {
       if (!Number.isInteger(value) || Number(value) < 1 || Number(value) > 65535) { res.status(400).json({ error: "SMTP port must be between 1 and 65535" }); return; }
       update.smtpPort = Number(value);
-    } else if (key === "smtpSecure") {
+    } else if (key === "smtpSecure" || key === "adfsEnabled") {
       if (typeof value !== "boolean") { res.status(400).json({ error: "SMTP secure must be a boolean" }); return; }
-      update.smtpSecure = value;
+      if (key === "smtpSecure") update.smtpSecure = value; else update.adfsEnabled = value;
     } else if (typeof value === "string") {
       (update as Record<string, string>)[key] = value.trim();
     } else {
@@ -556,6 +557,28 @@ router.post("/directory/members", async (req, res): Promise<void> => {
     return rows;
   });
   res.status(201).json(CreateMemberResponse.parse(created));
+});
+
+router.get("/directory/ldap-users", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "directory.manage")) return;
+  try { res.json(await searchLdapsUsers(typeof req.query.search === "string" ? req.query.search : "")); }
+  catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : "Active Directory search failed" }); }
+});
+
+router.post("/directory/ldap-users/import", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "directory.manage")) return;
+  const users = Array.isArray(req.body?.users) ? req.body.users : [];
+  const imported = [];
+  for (const user of users) {
+    if (typeof user?.email !== "string" || typeof user?.name !== "string" || typeof user?.subject !== "string") continue;
+    const existing = await db.select().from(membersTable).where(eq(membersTable.email, user.email.toLowerCase())).limit(1);
+    if (existing[0]) continue;
+    const [member] = await db.insert(membersTable).values({ id: randomUUID(), name: user.name.trim(), initials: initials(user.name), email: user.email.toLowerCase(), externalSubject: user.subject, authProvider: "adfs", status: "active" }).returning();
+    imported.push(member);
+  }
+  res.status(201).json({ imported: imported.length });
 });
 
 router.patch("/directory/members/:memberId", async (req, res): Promise<void> => {

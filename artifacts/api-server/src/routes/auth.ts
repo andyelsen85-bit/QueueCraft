@@ -1,11 +1,13 @@
 import { Router, type IRouter, type Request } from "express";
-import { and, eq, or } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
+import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
 import { db, membersTable } from "@workspace/db";
 import { authLimiter, csrfProtection, ensureCsrfToken } from "../middleware/security";
 import { config, ldapConfigured, oidcConfigured } from "../config";
 import { getRuntimeSettings, maskedStatus } from "../services/application-settings";
-import { authenticateWithLdaps } from "../services/ldaps";
 import { createAuthorizationRequest, redeemAuthorizationCode } from "../services/oidc";
+import { updateRuntimeSettings } from "../services/application-settings";
 
 const router: IRouter = Router();
 
@@ -63,8 +65,8 @@ async function resolveMember(input: {
 router.get("/auth/providers", async (_req, res) => {
   const settings = maskedStatus(await getRuntimeSettings());
   res.json({
-    adfs: Boolean(settings.adfs.issuer && settings.adfs.clientId && settings.adfs.redirectUri),
-    ldaps: Boolean(settings.ldaps.url && settings.ldaps.bindDn && settings.ldaps.bindPasswordConfigured && settings.ldaps.baseDn),
+    adfs: Boolean(settings.adfs.enabled && settings.adfs.issuer && settings.adfs.clientId && settings.adfs.redirectUri),
+    ldaps: false,
     developmentPreview: !config.production,
   });
 });
@@ -75,7 +77,8 @@ router.get("/auth/csrf", (req, res) => {
 
 router.get("/auth/login", authLimiter, async (req, res, next) => {
   try {
-    if (!oidcConfigured) {
+    const providers = await getRuntimeSettings();
+    if (!providers.adfsEnabled) {
       res.status(503).json({ error: "AD FS authentication is not configured" });
       return;
     }
@@ -130,24 +133,39 @@ router.get("/auth/callback", authLimiter, async (req, res, next) => {
   }
 });
 
-router.post("/auth/ldap", authLimiter, async (req, res, next) => {
+router.get("/auth/bootstrap", async (_req, res) => {
+  const settings = await getRuntimeSettings();
+  res.json({ required: !settings.adminPasswordHash });
+});
+
+const scrypt = promisify(scryptCallback);
+router.post("/auth/bootstrap", authLimiter, async (req, res) => {
+  const settings = await getRuntimeSettings();
+  if (settings.adminPasswordHash) { res.status(409).json({ error: "Administrator password is already configured" }); return; }
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  if (password.length < 12) { res.status(400).json({ error: "Administrator password must be at least 12 characters" }); return; }
+  const salt = randomBytes(16).toString("hex");
+  const derived = (await scrypt(password, salt, 64)) as Buffer;
+  await updateRuntimeSettings({ adminPasswordHash: `${salt}:${derived.toString("hex")}` });
+  res.status(201).json({ created: true });
+});
+
+router.post("/auth/local", authLimiter, async (req, res, next) => {
   try {
     const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
     const password = typeof req.body?.password === "string" ? req.body.password : "";
-    const identity = await authenticateWithLdaps(username, password);
-    const member = await resolveMember({
-      subject: identity.subject,
-      email: identity.email,
-      provider: "ldaps",
-      isCio: identity.isCio,
-    });
-    if (!member) {
-      res.status(403).json({ error: "Authenticated user is not provisioned in QueueCraft" });
-      return;
+    const settings = await getRuntimeSettings();
+    const [salt, expectedHex] = (settings.adminPasswordHash ?? ":").split(":");
+    const derived = (await scrypt(password, salt, 64)) as Buffer;
+    const expected = Buffer.from(expectedHex, "hex");
+    if (!expected.length || expected.length !== derived.length || !timingSafeEqual(expected, derived)) {
+      res.status(401).json({ error: "Invalid administrator credentials" }); return;
     }
+    const [member] = await db.select().from(membersTable).where(eq(membersTable.id, "member-andy")).limit(1);
+    if (!member) { res.status(500).json({ error: "Administrator member is not provisioned" }); return; }
     await regenerate(req);
     req.session.userId = member.id;
-    req.session.authProvider = "ldaps";
+    req.session.authProvider = "local";
     res.json({ authenticated: true, csrfToken: ensureCsrfToken(req) });
   } catch (error) {
     req.log.warn({ err: error, username: req.body?.username }, "LDAPS authentication failed");

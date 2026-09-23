@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import { Home, FolderKanban, ListTodo, ShieldAlert, Users, CalendarDays, Settings, ChevronRight } from "lucide-react"
 import { useGetSession } from "@workspace/api-client-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation()
@@ -70,6 +71,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span className="text-xs text-sidebar-foreground/60 truncate">{session.user.title || 'Member'}</span>
               </div>
             </div>
+            <Button variant="ghost" size="sm" className="mt-3 w-full justify-start text-sidebar-foreground/70" onClick={async () => { const csrf = await fetch("/api/auth/csrf").then((r) => r.json()); await fetch("/api/auth/logout", { method: "POST", headers: { "x-csrf-token": csrf.csrfToken } }); window.location.href = "/login" }}>Log out</Button>
           </div>
         )}
       </div>

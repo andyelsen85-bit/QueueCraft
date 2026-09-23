@@ -14,7 +14,7 @@ export async function authenticateWithLdaps(username: string, password: string) 
   const ldap = {
     url: settings.ldapsUrl ?? config.ldap.url, bindDn: settings.ldapsBindDn ?? config.ldap.bindDn,
     bindPassword: settings.ldapsBindPassword ?? config.ldap.bindPassword, baseDn: settings.ldapsBaseDn ?? config.ldap.baseDn,
-    userFilter: settings.ldapsUserFilter ?? config.ldap.userFilter, cioGroupDn: settings.ldapsCioGroupDn ?? config.ldap.cioGroupDn, ca: settings.ldapsCaCertificate,
+    userFilter: settings.ldapsUserFilter ?? config.ldap.userFilter, ca: settings.ldapsCaCertificate,
   };
   if (!(ldap.url && ldap.bindDn && ldap.bindPassword && ldap.baseDn)) throw new Error("LDAPS fallback is not configured");
   if (!username || !password) throw new Error("Username and password are required");
@@ -61,9 +61,25 @@ export async function authenticateWithLdaps(username: string, password: string) 
       subject: dn,
       email: String(entry.mail ?? "").toLowerCase(),
       name: String(entry.displayName ?? username),
-      isCio: Boolean(ldap.cioGroupDn && groups.includes(ldap.cioGroupDn)),
+      isCio: false,
     };
   } finally {
     await serviceClient.unbind().catch(() => undefined);
   }
+}
+
+export async function searchLdapsUsers(search = "") {
+  const settings = await getRuntimeSettings();
+  const ldap = { url: settings.ldapsUrl ?? config.ldap.url, bindDn: settings.ldapsBindDn ?? config.ldap.bindDn, bindPassword: settings.ldapsBindPassword ?? config.ldap.bindPassword, baseDn: settings.ldapsBaseDn ?? config.ldap.baseDn, userFilter: settings.ldapsUserFilter ?? config.ldap.userFilter, ca: settings.ldapsCaCertificate };
+  if (!(ldap.url && ldap.bindDn && ldap.bindPassword && ldap.baseDn)) throw new Error("LDAPS import is not configured");
+  const client = new Client({ url: ldap.url, timeout: 8_000, connectTimeout: 8_000, tlsOptions: { rejectUnauthorized: true, ca: ldap.ca ? [ldap.ca] : undefined } });
+  try {
+    await client.bind(ldap.bindDn, ldap.bindPassword);
+    const filter = search ? `(&(objectClass=user)(|(sAMAccountName=*${escapeFilter(search)}*)(mail=*${escapeFilter(search)}*)(displayName=*${escapeFilter(search)}*)))` : "(objectClass=user)";
+    const result = await client.search(ldap.baseDn, { scope: "sub", filter, sizeLimit: 100, attributes: ["distinguishedName", "mail", "displayName", "sAMAccountName"] });
+    return result.searchEntries.map((entry) => {
+      const row = entry as Record<string, unknown>;
+      return { subject: String(row.distinguishedName ?? row.dn ?? ""), email: String(row.mail ?? "").toLowerCase(), name: String(row.displayName ?? row.sAMAccountName ?? "") };
+    }).filter((row) => row.subject && row.email && row.name);
+  } finally { await client.unbind().catch(() => undefined); }
 }

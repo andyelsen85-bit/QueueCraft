@@ -12,6 +12,7 @@ import { Occupancy } from "./pages/occupancy"
 import { Calendar } from "./pages/calendar"
 import { SettingsPage } from "./pages/settings"
 import NotFound from "./pages/not-found"
+import { LoginPage } from "./pages/login"
 
 export function AppRouter() {
   const { isLoading, error } = useGetSession()
@@ -24,6 +25,9 @@ export function AppRouter() {
     )
   }
 
+  if (error && ((error as any).status === 401 || (error as any).response?.status === 401)) {
+    return <LoginPage />
+  }
   if (error) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
