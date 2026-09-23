@@ -6,7 +6,7 @@ import { db, membersTable } from "@workspace/db";
 import { authLimiter, csrfProtection, ensureCsrfToken } from "../middleware/security";
 import { config, ldapConfigured, oidcConfigured } from "../config";
 import { getRuntimeSettings, maskedStatus } from "../services/application-settings";
-import { createAuthorizationRequest, redeemAuthorizationCode } from "../services/oidc";
+import { createAuthorizationRequest, oidcDiagnosticCode, redeemAuthorizationCode } from "../services/oidc";
 import { updateRuntimeSettings } from "../services/application-settings";
 import { authenticateWithLdaps } from "../services/ldaps";
 
@@ -67,6 +67,7 @@ router.get("/auth/providers", async (_req, res) => {
   const settings = maskedStatus(await getRuntimeSettings());
   res.json({
     adfs: Boolean(settings.adfs.enabled && settings.adfs.issuer && settings.adfs.clientId && settings.adfs.redirectUri),
+    adfsDisplayName: settings.adfs.displayName,
     ldaps: Boolean(settings.ldaps.url && settings.ldaps.bindDn && settings.ldaps.bindPasswordConfigured && settings.ldaps.baseDn),
     developmentPreview: !config.production,
   });
@@ -90,7 +91,9 @@ router.get("/auth/login", authLimiter, async (req, res, next) => {
     req.session.returnTo = safeReturnTo(req.query.returnTo);
     res.redirect(request.url.href);
   } catch (error) {
-    next(error);
+    const diagnosticCode = oidcDiagnosticCode(error);
+    req.log.error({ diagnosticCode }, "AD FS authorization request failed");
+    res.redirect(`/login?adfsError=${encodeURIComponent(diagnosticCode)}`);
   }
 });
 
@@ -116,7 +119,9 @@ router.get("/auth/callback", authLimiter, async (req, res, next) => {
     }
     const member = await resolveMember({
       subject,
-      email: typeof claims.email === "string" ? claims.email : undefined,
+      email: typeof claims[runtimeSettings.adfsEmailClaim ?? config.oidc.emailClaim] === "string"
+        ? String(claims[runtimeSettings.adfsEmailClaim ?? config.oidc.emailClaim])
+        : undefined,
       provider: "adfs",
     });
     if (!member) {
@@ -130,7 +135,9 @@ router.get("/auth/callback", authLimiter, async (req, res, next) => {
     ensureCsrfToken(req);
     res.redirect(returnTo);
   } catch (error) {
-    next(error);
+    const diagnosticCode = oidcDiagnosticCode(error);
+    req.log.error({ diagnosticCode }, "AD FS callback failed");
+    res.redirect(`/login?adfsError=${encodeURIComponent(diagnosticCode)}`);
   }
 });
 

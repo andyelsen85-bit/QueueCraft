@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label"
 
 export function LoginPage() {
   const [adfs, setAdfs] = React.useState(false)
+  const [adfsDisplayName, setAdfsDisplayName] = React.useState("Sign in with AD FS")
   const [ldaps, setLdaps] = React.useState(false)
   const [method, setMethod] = React.useState<"local" | "ldaps">("local")
   const [bootstrap, setBootstrap] = React.useState(false)
@@ -12,8 +13,11 @@ export function LoginPage() {
   const [password, setPassword] = React.useState("")
   const [error, setError] = React.useState("")
   React.useEffect(() => {
+    const adfsError = new URLSearchParams(window.location.search).get("adfsError")
+    if (adfsError) setError(`AD FS sign-in failed (${adfsError}). Check the AD FS settings and server logs.`)
     Promise.all([fetch("/api/auth/providers").then((r) => r.json()), fetch("/api/auth/bootstrap").then((r) => r.json())]).then(([providers, first]) => {
       setAdfs(Boolean(providers.adfs))
+      if (typeof providers.adfsDisplayName === "string" && providers.adfsDisplayName) setAdfsDisplayName(providers.adfsDisplayName)
       setLdaps(Boolean(providers.ldaps))
       setBootstrap(Boolean(first.required))
       if (providers.ldaps && !first.required) setMethod("ldaps")
@@ -37,7 +41,7 @@ export function LoginPage() {
         <div className="space-y-3"><Label>{bootstrap ? "Administrator password" : "Password"}</Label><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button className="w-full" onClick={() => void submit()}>{bootstrap ? "Create administrator" : method === "ldaps" ? "Sign in with LDAPS" : "Sign in as local administrator"}</Button>
-        {!bootstrap && adfs && <Button variant="outline" className="w-full" onClick={sso}>Sign in with AD FS</Button>}
+        {!bootstrap && adfs && <Button variant="outline" className="w-full" onClick={sso}>{adfsDisplayName}</Button>}
       </div>
     </div>
   )

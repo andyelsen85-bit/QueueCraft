@@ -78,9 +78,15 @@ export const config = {
   publicBaseUrl: optional("PUBLIC_BASE_URL"),
   oidc: {
     issuer: optional("ADFS_ISSUER_URL"),
+    discoveryUrl: optional("ADFS_DISCOVERY_URL"),
     clientId: optional("ADFS_CLIENT_ID"),
     clientSecret: optional("ADFS_CLIENT_SECRET"),
     redirectUri: optional("ADFS_REDIRECT_URI"),
+    displayName: optional("ADFS_DISPLAY_NAME") ?? "Sign in with AD FS",
+    scopes: optional("ADFS_SCOPES") ?? "openid profile email",
+    usernameClaim: optional("ADFS_USERNAME_CLAIM") ?? "upn",
+    emailClaim: optional("ADFS_EMAIL_CLAIM") ?? "email",
+    displayNameClaim: optional("ADFS_DISPLAY_NAME_CLAIM") ?? "name",
   },
   ldap: {
     url: optional("LDAPS_URL"),

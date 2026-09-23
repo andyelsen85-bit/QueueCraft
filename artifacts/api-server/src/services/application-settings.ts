@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { config } from "../config";
 
 export type RuntimeSettings = {
-  publicBaseUrl?: string; adfsEnabled?: boolean; adfsIssuer?: string; adfsClientId?: string; adfsClientSecret?: string; adfsCaCertificate?: string;
+  publicBaseUrl?: string; adfsEnabled?: boolean; adfsDisplayName?: string; adfsIssuer?: string; adfsDiscoveryUrl?: string; adfsClientId?: string; adfsClientSecret?: string; adfsRedirectUri?: string; adfsScopes?: string; adfsUsernameClaim?: string; adfsEmailClaim?: string; adfsDisplayNameClaim?: string; adfsCaCertificate?: string;
   ldapsUrl?: string; ldapsBindDn?: string; ldapsBindPassword?: string; ldapsBaseDn?: string; ldapsUserFilter?: string; ldapsCaCertificate?: string; ldapsCioGroupDn?: string;
   smtpHost?: string; smtpPort?: number; smtpSecure?: boolean; smtpUser?: string; smtpPassword?: string; smtpFrom?: string; smtpFromName?: string;
   adminPasswordHash?: string;
@@ -62,10 +62,23 @@ export async function updateRuntimeSettings(update: Partial<RuntimeSettings>, me
 export function maskedStatus(settings: RuntimeSettings) {
   const present = (value?: string | number | boolean) => Boolean(value);
   const base = settings.publicBaseUrl ?? config.publicBaseUrl;
-  const redirectUri = base ? `${base.replace(/\/+$/, "")}/api/auth/callback` : null;
+  const redirectUri = settings.adfsRedirectUri ?? config.oidc.redirectUri ?? (base ? `${base.replace(/\/+$/, "")}/api/auth/callback` : null);
   return {
     publicBaseUrl: settings.publicBaseUrl ?? config.publicBaseUrl ?? null,
-    adfs: { enabled: settings.adfsEnabled ?? false, issuer: settings.adfsIssuer ?? config.oidc.issuer ?? null, clientId: settings.adfsClientId ?? config.oidc.clientId ?? null, clientSecretConfigured: present(settings.adfsClientSecret ?? config.oidc.clientSecret), caCertificateConfigured: present(settings.adfsCaCertificate), redirectUri },
+    adfs: {
+      enabled: settings.adfsEnabled ?? false,
+      displayName: settings.adfsDisplayName ?? config.oidc.displayName,
+      issuer: settings.adfsIssuer ?? config.oidc.issuer ?? null,
+      discoveryUrl: settings.adfsDiscoveryUrl ?? config.oidc.discoveryUrl ?? null,
+      clientId: settings.adfsClientId ?? config.oidc.clientId ?? null,
+      clientSecretConfigured: present(settings.adfsClientSecret ?? config.oidc.clientSecret),
+      redirectUri,
+      scopes: settings.adfsScopes ?? config.oidc.scopes,
+      usernameClaim: settings.adfsUsernameClaim ?? config.oidc.usernameClaim,
+      emailClaim: settings.adfsEmailClaim ?? config.oidc.emailClaim,
+      displayNameClaim: settings.adfsDisplayNameClaim ?? config.oidc.displayNameClaim,
+      caCertificateConfigured: present(settings.adfsCaCertificate),
+    },
     ldaps: { url: settings.ldapsUrl ?? config.ldap.url ?? null, bindDn: settings.ldapsBindDn ?? config.ldap.bindDn ?? null, bindPasswordConfigured: present(settings.ldapsBindPassword ?? config.ldap.bindPassword), baseDn: settings.ldapsBaseDn ?? config.ldap.baseDn ?? null, userFilter: settings.ldapsUserFilter ?? config.ldap.userFilter, caCertificateConfigured: present(settings.ldapsCaCertificate), cioGroupDn: settings.ldapsCioGroupDn ?? config.ldap.cioGroupDn ?? null },
     smtp: { host: settings.smtpHost ?? config.smtp.host ?? null, port: settings.smtpPort ?? config.smtp.port, secure: settings.smtpSecure ?? config.smtp.secure, user: settings.smtpUser ?? config.smtp.user ?? null, passwordConfigured: present(settings.smtpPassword ?? config.smtp.password), from: settings.smtpFrom ?? config.smtp.from ?? null, fromName: settings.smtpFromName ?? null },
   };

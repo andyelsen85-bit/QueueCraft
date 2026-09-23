@@ -33,6 +33,7 @@ import {
   decryptRuntimeSettings,
   encryptRuntimeSettings,
 } from "./services/application-settings";
+import { serializeOidcRequestBody } from "./services/oidc";
 
 before(async () => {
   if (!process.env.CI) return;
@@ -232,6 +233,13 @@ describe("QueueCraft security and preference flows", () => {
       settings,
       migrated: false,
     });
+  });
+
+  test("serializes the form-encoded OIDC token request body", () => {
+    assert.equal(
+      serializeOidcRequestBody(new URLSearchParams({ code: "abc", grant_type: "authorization_code" })),
+      "code=abc&grant_type=authorization_code",
+    );
   });
 
   test("rejects a state-changing request without a CSRF token", async () => {

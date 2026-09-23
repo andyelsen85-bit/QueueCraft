@@ -93,6 +93,7 @@ import {
   updateRuntimeSettings,
   type RuntimeSettings,
 } from "../services/application-settings";
+import { clearOidcConfigurationCache } from "../services/oidc";
 import { searchLdapsUsers } from "../services/ldaps";
 import {
   enqueueRuleNotifications,
@@ -499,9 +500,16 @@ router.put("/admin/settings", async (req, res): Promise<void> => {
   const allowed = new Set<keyof RuntimeSettings>([
     "publicBaseUrl",
     "adfsEnabled",
+    "adfsDisplayName",
     "adfsIssuer",
+    "adfsDiscoveryUrl",
     "adfsClientId",
     "adfsClientSecret",
+    "adfsRedirectUri",
+    "adfsScopes",
+    "adfsUsernameClaim",
+    "adfsEmailClaim",
+    "adfsDisplayNameClaim",
     "adfsCaCertificate",
     "ldapsUrl",
     "ldapsBindDn",
@@ -563,6 +571,7 @@ router.put("/admin/settings", async (req, res): Promise<void> => {
     );
     return result;
   });
+  clearOidcConfigurationCache();
   res.setHeader("Cache-Control", "no-store");
   res.json(maskedStatus(saved));
 });
