@@ -5,10 +5,15 @@ import { Home, FolderKanban, ListTodo, ShieldAlert, Users, CalendarDays, Setting
 import { useGetSession } from "@workspace/api-client-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { PasswordDialog } from "@/components/password-dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation()
   const { data: session } = useGetSession()
+  const [profileOpen, setProfileOpen] = React.useState(false)
+  const [passwordOpen, setPasswordOpen] = React.useState(false)
+  const isLocal = session?.authProvider === "local"
 
   const navItems = [
     { label: "Dashboard", href: "/", icon: Home },
@@ -67,14 +72,23 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col flex-1 min-w-0">
-                <span className="text-sm font-medium truncate">{session.user.name}</span>
+                <button className="text-left text-sm font-medium truncate hover:underline" onClick={() => isLocal ? setPasswordOpen(true) : setProfileOpen(true)}>{session.user.name}</button>
                 <span className="text-xs text-sidebar-foreground/60 truncate">{session.user.title || 'Member'}</span>
               </div>
             </div>
+            <Button variant="ghost" size="sm" className="mt-2 w-full justify-start text-sidebar-foreground/70" onClick={() => setProfileOpen(true)}>Profile</Button>
             <Button variant="ghost" size="sm" className="mt-3 w-full justify-start text-sidebar-foreground/70" onClick={async () => { const csrf = await fetch("/api/auth/csrf").then((r) => r.json()); await fetch("/api/auth/logout", { method: "POST", headers: { "x-csrf-token": csrf.csrfToken } }); window.location.href = "/login" }}>Log out</Button>
           </div>
         )}
       </div>
+      {session?.user && <Dialog open={profileOpen} onOpenChange={setProfileOpen}><DialogContent>
+        <DialogHeader><DialogTitle>{session.user.name}</DialogTitle><DialogDescription>Profile details</DialogDescription></DialogHeader>
+        <div className="space-y-1 text-sm"><p><strong>Email:</strong> {session.user.email}</p><p><strong>Title:</strong> {session.user.title || "Member"}</p>
+          {!isLocal && <p className="pt-3 text-muted-foreground">Your account is managed by the directory. Contact your administrator to change your password.</p>}
+        </div>
+        {isLocal && <Button onClick={() => { setProfileOpen(false); setPasswordOpen(true) }}>Change password</Button>}
+      </DialogContent></Dialog>}
+      <PasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} />
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">

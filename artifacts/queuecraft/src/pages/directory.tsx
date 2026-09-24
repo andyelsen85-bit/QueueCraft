@@ -57,7 +57,11 @@ type MemberDraft = {
   email: string;
   title: string;
   externalSubject: string;
+  accountType: "local" | "external";
+  password: string;
   isCio: boolean;
+  headDepartmentIds: string[];
+  deputyDepartmentIds: string[];
   dailyBusinessPercent: number;
 };
 
@@ -104,7 +108,11 @@ const emptyMember: MemberDraft = {
   email: "",
   title: "",
   externalSubject: "",
+  accountType: "external",
+  password: "",
   isCio: false,
+  headDepartmentIds: [],
+  deputyDepartmentIds: [],
   dailyBusinessPercent: 0,
 };
 const emptyDepartment: DepartmentDraft = {
@@ -392,7 +400,9 @@ export function Directory() {
   const { data: members, isLoading: lm, isError: me } = useListMembers();
   const { data: session } = useGetSession();
   const canManageCio =
-    session?.capabilities?.includes("directory.manage_cio") ?? false;
+    session?.capabilities?.includes("directory.manage") ?? false;
+  const canResetLocalPassword =
+    session?.capabilities?.includes("local_password.reset") ?? false;
   const createDepartment = useCreateDepartment();
   const updateDepartment = useUpdateDepartment();
   const createRole = useCreateRole();
@@ -423,6 +433,8 @@ export function Directory() {
   const [adMessage, setAdMessage] = React.useState("");
   const [adError, setAdError] = React.useState("");
   const [memberActionError, setMemberActionError] = React.useState("");
+  const [memberActionMessage, setMemberActionMessage] = React.useState("");
+  const [resetPassword, setResetPassword] = React.useState("");
 
   const invalidateDirectory = () => {
     queryClient.invalidateQueries({ queryKey: getListDepartmentsQueryKey() });
@@ -431,6 +443,13 @@ export function Directory() {
   };
 
   const openMember = (member?: NonNullable<typeof members>[number]) => {
+    const current = member as
+      | (NonNullable<typeof members>[number] & {
+          authProvider?: string | null;
+          isCio?: boolean;
+          externalSubject?: string | null;
+        })
+      | undefined;
     setMemberDraft(
       member
         ? {
@@ -438,15 +457,23 @@ export function Directory() {
             email: member.email,
             title: member.title ?? "",
             externalSubject:
-              (member as typeof member & { externalSubject?: string | null })
-                .externalSubject ?? "",
-            isCio: Boolean(
-              (member as typeof member & { isCio?: boolean }).isCio,
-            ),
+              current?.externalSubject ?? "",
+            accountType: current?.authProvider === "local" ? "local" : "external",
+            password: "",
+            isCio: Boolean(current?.isCio),
+            headDepartmentIds: (departments ?? [])
+              .filter((department) => department.serviceHead.id === member.id)
+              .map((department) => department.id),
+            deputyDepartmentIds: (departments ?? [])
+              .filter((department) => department.serviceHeadDeputy?.id === member.id)
+              .map((department) => department.id),
             dailyBusinessPercent: member.dailyBusinessPercent ?? 0,
           }
         : emptyMember,
     );
+    setMemberActionError("");
+    setMemberActionMessage("");
+    setResetPassword("");
     setMemberDialog({ open: true, id: member?.id });
   };
 
@@ -485,21 +512,71 @@ export function Directory() {
 
   const submitMember = async (event: React.FormEvent) => {
     event.preventDefault();
+    setMemberActionError("");
+    setMemberActionMessage("");
+    if (!memberDialog.id && memberDraft.accountType === "local" && memberDraft.password.length < 12) {
+      setMemberActionError("Local account passwords must be at least 12 characters.");
+      return;
+    }
     const data = {
       name: memberDraft.name.trim(),
       email: memberDraft.email.trim(),
       title: memberDraft.title.trim() || null,
-      externalSubject: memberDraft.externalSubject.trim() || null,
+      ...(!memberDialog.id
+        ? { externalSubject: memberDraft.accountType === "external" ? memberDraft.externalSubject.trim() || null : null }
+        : memberDraft.accountType === "external" && memberDraft.externalSubject.trim()
+          ? { externalSubject: memberDraft.externalSubject.trim() }
+          : {}),
+      ...(memberDialog.id || memberDraft.accountType !== "local"
+        ? {}
+        : { password: memberDraft.password }),
       ...(canManageCio ? { isCio: memberDraft.isCio } : {}),
+      headDepartmentIds: memberDraft.headDepartmentIds,
+      deputyDepartmentIds: memberDraft.deputyDepartmentIds,
       dailyBusinessPercent: memberDraft.dailyBusinessPercent,
     };
     try {
       if (memberDialog.id)
         await updateMember.mutateAsync({ memberId: memberDialog.id, data });
-      else await createMember.mutateAsync({ data });
+      else
+        await createMember.mutateAsync({ data });
       setMemberDialog({ open: false });
+      setMemberActionMessage("Member and permissions saved.");
       invalidateDirectory();
-    } catch {}
+    } catch (saveError) {
+      setMemberActionError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Member could not be saved.",
+      );
+    }
+  };
+
+  const resetMemberPassword = async (member: NonNullable<typeof members>[number]) => {
+    if (resetPassword.length < 12) {
+      setMemberActionError("Reset passwords must be at least 12 characters.");
+      return;
+    }
+    setMemberActionError("");
+    try {
+      const current = member as typeof member & { authProvider?: string | null };
+      if (current.authProvider !== "local") {
+        throw new Error("Only local accounts have QueueCraft passwords.");
+      }
+      const csrf = await fetch("/api/auth/csrf", { credentials: "include" }).then((r) => r.json());
+      const response = await fetch(`/api/directory/members/${member.id}/password`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "x-csrf-token": csrf.csrfToken },
+        body: JSON.stringify({ password: resetPassword }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error ?? "Password could not be reset.");
+      setResetPassword("");
+      setMemberActionMessage("Local account password reset.");
+    } catch (error) {
+      setMemberActionError(error instanceof Error ? error.message : "Password could not be reset.");
+    }
   };
 
   const deleteMember = async (member: NonNullable<typeof members>[number]) => {
@@ -894,6 +971,11 @@ export function Directory() {
               {memberActionError}
             </div>
           )}
+          {memberActionMessage && (
+            <div className="mb-3 rounded-sm border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+              {memberActionMessage}
+            </div>
+          )}
           <Card>
             <div className="divide-y divide-border">
               {sortedMembers.map((member) => (
@@ -983,6 +1065,39 @@ export function Directory() {
                 }
               />
             </Field>
+            {!memberDialog.id && (
+              <Field label="Account type">
+                <Select
+                  value={memberDraft.accountType}
+                  onValueChange={(value: "local" | "external") =>
+                    setMemberDraft({ ...memberDraft, accountType: value, password: "" })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="external">External / Directory account</SelectItem>
+                    <SelectItem value="local">Local account</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
+            {!memberDialog.id && memberDraft.accountType === "local" && (
+              <Field label="Initial password">
+                <Input
+                  required
+                  minLength={12}
+                  type="password"
+                  autoComplete="new-password"
+                  value={memberDraft.password}
+                  onChange={(e) => setMemberDraft({ ...memberDraft, password: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use at least 12 characters. This password is only sent when creating a local account.
+                </p>
+              </Field>
+            )}
             <Field label="Title">
               <Input
                 value={memberDraft.title}
@@ -991,7 +1106,7 @@ export function Directory() {
                 }
               />
             </Field>
-            <Field label="AD/identity subject (optional)">
+            {memberDraft.accountType === "external" && <Field label="AD/identity subject (optional)">
               <Input
                 value={memberDraft.externalSubject}
                 onChange={(e) =>
@@ -1001,7 +1116,7 @@ export function Directory() {
                   })
                 }
               />
-            </Field>
+            </Field>}
             <Field label="Daily Business Percent (BAU)">
               <div className="flex items-center gap-4">
                 <Input
@@ -1031,6 +1146,90 @@ export function Directory() {
                 />
                 CIO break-glass authority
               </label>
+            )}
+            {canManageCio && (
+              <Field label="Department assignments">
+                <div className="space-y-3 rounded-sm border p-3">
+                  <p className="text-xs text-muted-foreground">
+                    A department cannot remove its only head without choosing a replacement; the backend will reject that change.
+                  </p>
+                  {sortedDepartments.map((department) => (
+                    <div key={department.id} className="grid gap-2 sm:grid-cols-2">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={memberDraft.headDepartmentIds.includes(department.id)}
+                          onChange={(e) =>
+                            setMemberDraft({
+                              ...memberDraft,
+                              headDepartmentIds: e.target.checked
+                                ? [...memberDraft.headDepartmentIds, department.id]
+                                : memberDraft.headDepartmentIds.filter((id) => id !== department.id),
+                              deputyDepartmentIds: e.target.checked
+                                ? memberDraft.deputyDepartmentIds.filter((id) => id !== department.id)
+                                : memberDraft.deputyDepartmentIds,
+                            })
+                          }
+                        />
+                        Head: {department.name}
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={memberDraft.deputyDepartmentIds.includes(department.id)}
+                          onChange={(e) =>
+                            setMemberDraft({
+                              ...memberDraft,
+                              deputyDepartmentIds: e.target.checked
+                                ? [...memberDraft.deputyDepartmentIds, department.id]
+                                : memberDraft.deputyDepartmentIds.filter((id) => id !== department.id),
+                              headDepartmentIds: e.target.checked
+                                ? memberDraft.headDepartmentIds.filter((id) => id !== department.id)
+                                : memberDraft.headDepartmentIds,
+                            })
+                          }
+                        />
+                        Deputy: {department.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </Field>
+            )}
+            {memberDialog.id &&
+              canResetLocalPassword &&
+              (members?.find((member) => member.id === memberDialog.id) as
+                | (NonNullable<typeof members>[number] & { authProvider?: string | null })
+                | undefined)?.authProvider === "local" && (
+                <div className="space-y-2 rounded-sm border border-dashed p-3">
+                  <Label>Reset local account password</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="password"
+                      minLength={12}
+                      autoComplete="new-password"
+                      placeholder="At least 12 characters"
+                      value={resetPassword}
+                      onChange={(e) => setResetPassword(e.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const member = members?.find((item) => item.id === memberDialog.id);
+                        if (member) void resetMemberPassword(member);
+                      }}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                </div>
+              )}
+            {memberActionError && (
+              <p className="text-sm text-destructive">{memberActionError}</p>
+            )}
+            {memberActionMessage && (
+              <p className="text-sm text-emerald-700">{memberActionMessage}</p>
             )}
             <MutationError
               error={
@@ -1082,6 +1281,9 @@ export function Directory() {
               members={sortedMembers}
               required
             />
+            <p className="text-xs text-muted-foreground">
+              The department editor cannot remove its only head without choosing a replacement; the backend will reject that change.
+            </p>
             <MemberSelect
               label="Deputy (optional)"
               value={departmentDraft.serviceHeadDeputyId}

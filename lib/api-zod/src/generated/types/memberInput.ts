@@ -26,6 +26,13 @@ export interface MemberInput {
   externalSubject?: string | null;
   isCio?: boolean;
   /**
+     * @minLength 12
+     * @maxLength 256
+     */
+  password?: string;
+  headDepartmentIds?: string[];
+  deputyDepartmentIds?: string[];
+  /**
      * @minimum 0
      * @maximum 100
      */

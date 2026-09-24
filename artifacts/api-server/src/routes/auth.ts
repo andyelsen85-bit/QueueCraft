@@ -1,14 +1,13 @@
 import { Router, type IRouter, type Request } from "express";
-import { eq, or } from "drizzle-orm";
-import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
-import { promisify } from "node:util";
+import { eq, or, sql } from "drizzle-orm";
 import { db, membersTable } from "@workspace/db";
-import { authLimiter, csrfProtection, ensureCsrfToken } from "../middleware/security";
+import { authLimiter, csrfProtection, ensureCsrfToken, requireAuthenticated } from "../middleware/security";
 import { config, ldapConfigured, oidcConfigured } from "../config";
 import { getRuntimeSettings, maskedStatus } from "../services/application-settings";
 import { createAuthorizationRequest, oidcDiagnosticCode, redeemAuthorizationCode } from "../services/oidc";
 import { updateRuntimeSettings } from "../services/application-settings";
 import { authenticateWithLdaps } from "../services/ldaps";
+import { hashLocalPassword, verifyLocalPassword } from "../services/local-password";
 
 const router: IRouter = Router();
 
@@ -44,17 +43,20 @@ async function resolveMember(input: {
     )
     .limit(1);
   if (!member || member.status !== "active") return null;
+  // An account provisioned for local authentication must never be claimed by
+  // an external identity merely because its email or subject matches.
+  if (member.authProvider === "local") return null;
   if (
     member.externalSubject !== input.subject ||
     member.authProvider !== input.provider ||
-    (input.provider === "ldaps" && input.isCio !== undefined && member.isCio !== input.isCio)
+    (input.provider === "ldaps" && input.isCio !== undefined && member.cioOverride === null && member.isCio !== input.isCio)
   ) {
     const [updated] = await db
       .update(membersTable)
       .set({
         externalSubject: input.subject,
         authProvider: input.provider,
-        isCio: input.provider === "ldaps" && input.isCio !== undefined ? input.isCio : member.isCio,
+        isCio: input.provider === "ldaps" && input.isCio !== undefined && member.cioOverride === null ? input.isCio : member.isCio,
       })
       .where(eq(membersTable.id, member.id))
       .returning();
@@ -146,14 +148,12 @@ router.get("/auth/bootstrap", async (_req, res) => {
   res.json({ required: !settings.adminPasswordHash });
 });
 
-const scrypt = promisify(scryptCallback);
 router.post("/auth/bootstrap", authLimiter, async (req, res) => {
   const settings = await getRuntimeSettings();
   if (settings.adminPasswordHash) { res.status(409).json({ error: "Administrator password is already configured" }); return; }
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   if (password.length < 12) { res.status(400).json({ error: "Administrator password must be at least 12 characters" }); return; }
-  const salt = randomBytes(16).toString("hex");
-  const derived = (await scrypt(password, salt, 64)) as Buffer;
+   const passwordHash = await hashLocalPassword(password);
   const adminId = "local-admin";
   const [existingAdmin] = await db.select().from(membersTable).where(eq(membersTable.id, adminId)).limit(1);
   if (!existingAdmin) {
@@ -166,9 +166,12 @@ router.post("/auth/bootstrap", authLimiter, async (req, res) => {
       authProvider: "local",
       status: "active",
       isCio: true,
+      passwordHash,
     });
+   } else {
+     await db.update(membersTable).set({ passwordHash, authProvider: "local", status: "active" }).where(eq(membersTable.id, adminId));
   }
-  await updateRuntimeSettings({ adminPasswordHash: `${salt}:${derived.toString("hex")}`, adminMemberId: adminId });
+   await updateRuntimeSettings({ adminPasswordHash: passwordHash, adminMemberId: adminId });
   res.status(201).json({ created: true });
 });
 
@@ -177,25 +180,61 @@ router.post("/auth/local", authLimiter, async (req, res, next) => {
     const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
     const password = typeof req.body?.password === "string" ? req.body.password : "";
     const settings = await getRuntimeSettings();
-    const [salt, expectedHex] = (settings.adminPasswordHash ?? ":").split(":");
-    const derived = (await scrypt(password, salt, 64)) as Buffer;
-    const expected = Buffer.from(expectedHex, "hex");
-    if (!expected.length || expected.length !== derived.length || !timingSafeEqual(expected, derived)) {
-      res.status(401).json({ error: "Invalid administrator credentials" }); return;
+    const adminId = settings.adminMemberId ?? "local-admin";
+    const normalizedUsername = username.toLowerCase();
+    const [member] = await db.select().from(membersTable).where(
+      normalizedUsername === "admin" ? eq(membersTable.id, adminId) : eq(membersTable.email, normalizedUsername),
+    ).limit(1);
+    if (!member || member.status !== "active" || member.authProvider !== "local") {
+      res.status(401).json({ error: "Invalid local credentials" }); return;
     }
-    if (username.toLowerCase() !== "admin") {
-      res.status(401).json({ error: "Invalid administrator credentials" }); return;
+    let valid = member.passwordHash ? await verifyLocalPassword(password, member.passwordHash) : false;
+    if (!member.passwordHash && !valid && member.id === adminId && settings.adminPasswordHash) {
+      valid = await verifyLocalPassword(password, settings.adminPasswordHash);
+      if (valid) await db.update(membersTable).set({ passwordHash: settings.adminPasswordHash }).where(eq(membersTable.id, member.id));
     }
-    const [member] = await db.select().from(membersTable).where(eq(membersTable.id, settings.adminMemberId ?? "local-admin")).limit(1);
-    if (!member) { res.status(500).json({ error: "Administrator member is not provisioned" }); return; }
+    if (!valid) { res.status(401).json({ error: "Invalid local credentials" }); return; }
     await regenerate(req);
     req.session.userId = member.id;
     req.session.authProvider = "local";
     res.json({ authenticated: true, csrfToken: ensureCsrfToken(req) });
   } catch (error) {
-    req.log.warn({ err: error, username: req.body?.username }, "Local administrator authentication failed");
+    req.log.warn({ err: error, username: req.body?.username }, "Local authentication failed");
     res.status(401).json({ error: "Authentication failed" });
   }
+});
+
+router.patch("/auth/password", authLimiter, csrfProtection, requireAuthenticated, async (req, res) => {
+  if (req.session.authProvider !== "local") {
+    res.status(403).json({ error: "Password is managed by your directory provider" });
+    return;
+  }
+  const oldPassword = typeof req.body?.oldPassword === "string" ? req.body.oldPassword : "";
+  const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+  if (newPassword.length < 12 || newPassword.length > 256) {
+    res.status(400).json({ error: "New password must be 12–256 characters" });
+    return;
+  }
+  const [member] = await db.select().from(membersTable).where(eq(membersTable.id, req.session.userId!)).limit(1);
+  if (!member || member.status !== "active") { res.status(401).json({ error: "Authentication required" }); return; }
+  let valid = member.passwordHash ? await verifyLocalPassword(oldPassword, member.passwordHash) : false;
+  if (!member.passwordHash && !valid && member.id === "local-admin") {
+    const settings = await getRuntimeSettings();
+    valid = Boolean(settings.adminPasswordHash && await verifyLocalPassword(oldPassword, settings.adminPasswordHash));
+  }
+  if (!valid) { res.status(400).json({ error: "Current password is incorrect" }); return; }
+  const passwordHash = await hashLocalPassword(newPassword);
+  await db.update(membersTable).set({ passwordHash }).where(eq(membersTable.id, member.id));
+  if (member.id === "local-admin") await updateRuntimeSettings({ adminPasswordHash: passwordHash, adminMemberId: member.id }, member.id);
+  await db.execute(sql`
+    DELETE FROM user_sessions
+    WHERE sess ->> 'userId' = ${member.id} AND sid <> ${req.sessionID}
+  `);
+  await regenerate(req);
+  req.session.userId = member.id;
+  req.session.authProvider = "local";
+  ensureCsrfToken(req);
+  res.json({ updated: true });
 });
 
 router.post("/auth/ldap", authLimiter, async (req, res, next) => {

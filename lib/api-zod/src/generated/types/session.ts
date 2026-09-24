@@ -10,6 +10,8 @@ import type { TopicFilters } from './topicFilters';
 
 export interface Session {
   user: Member;
+  /** @nullable */
+  authProvider?: string | null;
   capabilities?: string[];
   topicFilters?: TopicFilters;
 }

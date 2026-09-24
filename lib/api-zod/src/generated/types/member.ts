@@ -16,6 +16,8 @@ export interface Member {
   title?: string | null;
   status?: MemberStatus;
   isCio?: boolean;
+  /** @nullable */
+  authProvider?: string | null;
   /**
      * @minimum 0
      * @maximum 100

@@ -200,6 +200,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Topic"
+    delete:
+      operationId: deleteTopic
+      tags: [topics]
+      summary: Delete a topic and its dependent work records
+      parameters:
+        - $ref: "#/components/parameters/TopicId"
+      responses:
+        "204":
+          description: Topic deleted
+        "403":
+          description: Only the local admin or this department's Service Head or Deputy may delete
+        "404":
+          $ref: "#/components/responses/NotFound"
   /topics/{topicId}/finish-date:
     patch:
       operationId: updateTopicFinishDate
@@ -335,6 +348,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TopicCollaborator"
+  /topics/{topicId}/collaborators/{collaboratorId}:
+    delete:
+      operationId: deleteTopicCollaborator
+      tags: [topics]
+      summary: Remove a collaborator and their topic allocation and milestone links
+      parameters:
+        - $ref: "#/components/parameters/TopicId"
+        - name: collaboratorId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Collaborator removed
+        "403":
+          description: Topic management permission required
+        "404":
+          $ref: "#/components/responses/NotFound"
   /topics/{topicId}/milestones:
     post:
       operationId: addTopicMilestone
@@ -552,6 +583,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Member"
+  /directory/members/{memberId}/permissions:
+    put:
+      operationId: updateMemberPermissions
+      tags: [directory]
+      summary: Assign CIO and department leadership to a member
+      parameters:
+        - $ref: "#/components/parameters/MemberId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberPermissions"
+      responses:
+        "200":
+          description: Updated member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+  /directory/members/{memberId}/password:
+    put:
+      operationId: resetLocalMemberPassword
+      tags: [directory]
+      summary: Reset another local member's password
+      parameters:
+        - $ref: "#/components/parameters/MemberId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalPasswordReset"
+      responses:
+        "204":
+          description: Password reset
 components:
   parameters:
     TopicId:
@@ -658,6 +725,7 @@ components:
       properties:
         user:
           $ref: "#/components/schemas/Member"
+        authProvider: { type: ["string", "null"] }
         capabilities:
           type: array
           items:
@@ -709,6 +777,7 @@ components:
         title: { type: ["string", "null"] }
         status: { type: string, enum: [active, disabled] }
         isCio: { type: boolean }
+        authProvider: { type: ["string", "null"] }
         dailyBusinessPercent: { type: integer, minimum: 0, maximum: 100 }
     MemberInput:
       type: object
@@ -719,6 +788,13 @@ components:
         title: { type: ["string", "null"], maxLength: 160 }
         externalSubject: { type: ["string", "null"], maxLength: 255 }
         isCio: { type: boolean, default: false }
+        password: { type: string, minLength: 12, maxLength: 256 }
+        headDepartmentIds:
+          type: array
+          items: { type: string }
+        deputyDepartmentIds:
+          type: array
+          items: { type: string }
         dailyBusinessPercent:
           { type: integer, minimum: 0, maximum: 100, default: 0 }
     MemberUpdate:
@@ -730,7 +806,29 @@ components:
         externalSubject: { type: ["string", "null"], maxLength: 255 }
         status: { type: string, enum: [active, disabled] }
         isCio: { type: boolean }
+        headDepartmentIds:
+          type: array
+          items: { type: string }
+        deputyDepartmentIds:
+          type: array
+          items: { type: string }
         dailyBusinessPercent: { type: integer, minimum: 0, maximum: 100 }
+    MemberPermissions:
+      type: object
+      required: [isCio, headDepartmentIds, deputyDepartmentIds]
+      properties:
+        isCio: { type: boolean }
+        headDepartmentIds:
+          type: array
+          items: { type: string }
+        deputyDepartmentIds:
+          type: array
+          items: { type: string }
+    LocalPasswordReset:
+      type: object
+      required: [password]
+      properties:
+        password: { type: string, minLength: 12, maxLength: 256 }
     Department:
       type: object
       required: [id, name, serviceHead, serviceHeadDeputy]
@@ -994,7 +1092,7 @@ components:
       type: object
       required: [memberId]
       properties:
-        memberId: { type: string }
+        memberId: { type: ["string", "null"] }
     CollaboratorInput:
       type: object
       required: [memberId]

@@ -58,8 +58,10 @@ export const membersTable = pgTable(
     title: text("title"),
     externalSubject: text("external_subject").unique(),
     authProvider: text("auth_provider"),
+    passwordHash: text("password_hash"),
     status: memberStatusEnum("status").notNull().default("active"),
     isCio: boolean("is_cio").notNull().default(false),
+    cioOverride: boolean("cio_override"),
     dailyBusinessPercent: integer("daily_business_percent")
       .notNull()
       .default(0),

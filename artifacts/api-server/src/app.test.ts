@@ -2,20 +2,23 @@ import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import request from "supertest";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import * as queuecraftSchema from "@workspace/db/schema";
 import {
   activityTable,
   auditLogTable,
+  collaboratorMilestonesTable,
   db,
   departmentsTable,
   membersTable,
   milestonesTable,
+  notificationOutboxTable,
   pool,
   rolesTable,
   topicFinishDateRevisionsTable,
   topicAllocationsTable,
+  topicCollaboratorsTable,
   topicsTable,
 } from "@workspace/db";
 import app from "./app";
@@ -80,7 +83,7 @@ after(async () => {
 });
 
 describe("QueueCraft security and preference flows", () => {
-  test("capability rules limit Settings to local admin and Directory to service authorities", () => {
+  test("local admin and delegated authorities can manage permissions and Settings", () => {
     const snapshot = {
       memberById: new Map([
         ["local-admin", { isCio: true }],
@@ -91,16 +94,108 @@ describe("QueueCraft security and preference flows", () => {
       departments: [{ serviceHeadId: "head", serviceHeadDeputyId: "deputy" }],
       roles: [],
     } as unknown as Parameters<typeof getCapabilities>[1];
-    assert.deepEqual(
-      getCapabilities("local-admin", snapshot, "local").filter((capability) => capability.endsWith(".manage")),
-      ["settings.manage"],
-    );
-    assert.ok(!getCapabilities("local-admin", snapshot, "development").includes("settings.manage"));
-    assert.ok(!getCapabilities("cio", snapshot, "adfs").includes("directory.manage"));
-    for (const id of ["head", "deputy"]) {
+    const admin = getCapabilities("local-admin", snapshot, "local");
+    assert.ok(admin.includes("settings.manage"));
+    assert.ok(admin.includes("directory.manage"));
+    assert.ok(admin.includes("local_password.reset"));
+    assert.ok(admin.includes("topic.delete"));
+    assert.ok(!getCapabilities("local-admin", snapshot, "development").includes("local_password.reset"));
+    for (const id of ["head", "deputy", "cio"]) {
       const capabilities = getCapabilities(id, snapshot, "ldaps");
       assert.ok(capabilities.includes("directory.manage"));
-      assert.ok(!capabilities.includes("settings.manage"));
+      assert.ok(capabilities.includes("directory.manage_cio"));
+      assert.ok(capabilities.includes("settings.manage"));
+      assert.ok(capabilities.includes("topic.delete"));
+      assert.ok(!capabilities.includes("local_password.reset"));
+    }
+    const ordinary = getCapabilities("ordinary", snapshot, "ldaps");
+    assert.ok(!ordinary.includes("settings.manage"));
+    assert.ok(!ordinary.includes("directory.manage"));
+    assert.ok(!ordinary.includes("topic.delete"));
+  });
+  test("local member can change password and other sessions are revoked", async () => {
+    const manager = request.agent(app);
+    await manager.get("/api/session").expect(200);
+    const csrf = await manager.get("/api/auth/csrf").expect(200);
+    const email = `local-${randomUUID()}@example.invalid`;
+    const original = `Initial-${randomUUID()}`;
+    const replacement = `Changed-${randomUUID()}`;
+    const created = await manager.post("/api/directory/members")
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({ name: "Temporary local member", email, password: original })
+      .expect(201);
+    try {
+      assert.equal(created.body.authProvider, "local");
+      const local = request.agent(app);
+      const other = request.agent(app);
+      await local.post("/api/auth/local").send({ username: email, password: original }).expect(200);
+      await other.post("/api/auth/local").send({ username: email, password: original }).expect(200);
+      const localCsrf = await local.get("/api/auth/csrf").expect(200);
+      await local.patch("/api/auth/password")
+        .set("x-csrf-token", localCsrf.body.csrfToken)
+        .send({ oldPassword: "incorrect", newPassword: replacement }).expect(400);
+      await local.patch("/api/auth/password")
+        .set("x-csrf-token", localCsrf.body.csrfToken)
+        .send({ oldPassword: original, newPassword: replacement }).expect(200);
+      assert.equal((await local.get("/api/session").expect(200)).body.user.id, created.body.id);
+      const staleSession = await other.get("/api/session");
+      assert.notEqual(staleSession.body.user?.id, created.body.id);
+      await request(app).post("/api/auth/local")
+        .send({ username: email, password: original }).expect(401);
+      await request(app).post("/api/auth/local")
+        .send({ username: email, password: replacement }).expect(200);
+    } finally {
+      await db.execute(sql`DELETE FROM user_sessions WHERE sess ->> 'userId' = ${created.body.id}`);
+      await db.delete(membersTable).where(eq(membersTable.id, created.body.id));
+    }
+  });
+  test("member authority assignments save together and grant Settings without backup access", async () => {
+    const manager = request.agent(app);
+    await manager.get("/api/session").expect(200);
+    const csrf = await manager.get("/api/auth/csrf").expect(200);
+    const departmentId = `temp-${randomUUID()}`;
+    const email = `authority-${randomUUID()}@example.invalid`;
+    const password = `Initial-${randomUUID()}`;
+    let memberId: string | undefined;
+    try {
+      await db.insert(departmentsTable).values({
+        id: departmentId, name: `Temporary department ${departmentId}`, serviceHeadId: "member-andy",
+      });
+      const created = await manager.post("/api/directory/members")
+        .set("x-csrf-token", csrf.body.csrfToken)
+        .send({ name: "Temporary authority", email, password })
+        .expect(201);
+      memberId = created.body.id;
+      await manager.patch(`/api/directory/members/${memberId}`)
+        .set("x-csrf-token", csrf.body.csrfToken)
+        .send({
+          title: "Authority",
+          isCio: true,
+          headDepartmentIds: [departmentId],
+          deputyDepartmentIds: [],
+        })
+        .expect(200);
+      const [department] = await db.select().from(departmentsTable).where(eq(departmentsTable.id, departmentId));
+      assert.equal(department.serviceHeadId, memberId);
+      await manager.patch(`/api/directory/members/${memberId}`)
+        .set("x-csrf-token", csrf.body.csrfToken)
+        .send({ title: "Should not save", headDepartmentIds: ["not-a-department"], deputyDepartmentIds: [] })
+        .expect(400);
+      const [member] = await db.select().from(membersTable).where(eq(membersTable.id, created.body.id));
+      assert.equal(member.title, "Authority");
+      const delegated = request.agent(app);
+      await delegated.post("/api/auth/local").send({ username: email, password }).expect(200);
+      const session = await delegated.get("/api/session").expect(200);
+      for (const capability of ["directory.manage", "settings.manage", "directory.manage_cio"])
+        assert.ok(session.body.capabilities.includes(capability));
+      await delegated.get("/api/admin/settings").expect(200);
+      await delegated.get("/api/admin/backup").expect(403);
+    } finally {
+      await db.delete(departmentsTable).where(eq(departmentsTable.id, departmentId));
+      if (memberId) {
+        await db.execute(sql`DELETE FROM user_sessions WHERE sess ->> 'userId' = ${memberId}`);
+        await db.delete(membersTable).where(eq(membersTable.id, memberId));
+      }
     }
   });
   test("backup registry covers every QueueCraft schema table", () => {
@@ -294,15 +389,14 @@ describe("QueueCraft security and preference flows", () => {
       .expect(403);
   });
 
-  test("service authorities can manage Directory but not local-admin Settings", async () => {
+  test("service authorities can manage Directory and Settings", async () => {
     if (!process.env.CI) return;
     const agent = request.agent(app);
     const session = await agent.get("/api/session").expect(200);
     assert.ok(session.body.capabilities.includes("directory.manage"));
-    assert.ok(!session.body.capabilities.includes("settings.manage"));
-    await agent.get("/api/admin/settings").expect(403);
-    await agent.get("/api/admin/settings/https").expect(403);
-    await agent.get("/api/admin/backup").expect(403);
+    assert.ok(session.body.capabilities.includes("settings.manage"));
+    await agent.get("/api/admin/settings").expect(200);
+    await agent.get("/api/admin/settings/https").expect(200);
   });
 
   test("persists topic filters in the authenticated member record", async () => {
@@ -354,7 +448,7 @@ describe("QueueCraft security and preference flows", () => {
     await db.delete(membersTable).where(eq(membersTable.id, response.body.id));
   });
 
-  test("allows service authorities to edit directory data without changing CIO authority", async () => {
+  test("allows service authorities to delegate CIO authority", async () => {
     const agent = request.agent(app);
     await agent.get("/api/session").expect(200);
     const csrf = await agent.get("/api/auth/csrf").expect(200);
@@ -376,7 +470,7 @@ describe("QueueCraft security and preference flows", () => {
       .patch(`/api/directory/members/${created.body.id}`)
       .set("x-csrf-token", csrf.body.csrfToken)
       .send({ isCio: true })
-      .expect(403);
+      .expect(200);
     await agent
       .patch("/api/directory/departments/dept-platform")
       .set("x-csrf-token", csrf.body.csrfToken)
@@ -385,15 +479,214 @@ describe("QueueCraft security and preference flows", () => {
     await db.delete(membersTable).where(eq(membersTable.id, created.body.id));
   });
 
+  test("only department leadership can delete topics before and after validation", async () => {
+    const manager = request.agent(app);
+    const session = await manager.get("/api/session").expect(200);
+    const actorId = session.body.user.id as string;
+    const csrf = (await manager.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const departments = (await manager.get("/api/directory/departments").expect(200)).body;
+    const roles = (await manager.get("/api/directory/roles").expect(200)).body;
+    const department = departments.find(
+      (item: { id: string; serviceHead: { id: string } }) =>
+        item.serviceHead.id === actorId &&
+        roles.some((role: { departmentId: string }) => role.departmentId === item.id),
+    );
+    assert.ok(department, "The test actor must head a department with a role");
+    const role = roles.find((item: { departmentId: string }) => item.departmentId === department.id);
+    const topicIds: string[] = [];
+    const topicTitles = new Map<string, string>();
+    let ordinaryId: string | undefined;
+    try {
+      const email = `delete-topic-${randomUUID()}@example.invalid`;
+      const password = `Temporary-${randomUUID()}`;
+      const ordinaryMember = await manager.post("/api/directory/members")
+        .set("x-csrf-token", csrf)
+        .send({ name: "Ordinary temporary member", email, password })
+        .expect(201);
+      ordinaryId = ordinaryMember.body.id;
+      const ordinary = request.agent(app);
+      await ordinary.post("/api/auth/local").send({ username: email, password }).expect(200);
+      const ordinaryCsrf = (await ordinary.get("/api/auth/csrf").expect(200)).body.csrfToken;
+
+      for (const validated of [false, true]) {
+        const title = `Deletion test ${randomUUID()}`;
+        const created = await manager.post("/api/topics")
+          .set("x-csrf-token", csrf)
+          .send({
+            title,
+            description: "Temporary topic for testing authorized deletion.",
+            departmentId: department.id,
+            roleId: role.id,
+            priority: "P3",
+          })
+          .expect(201);
+        const topicId = created.body.id as string;
+        topicIds.push(topicId);
+        topicTitles.set(topicId, title);
+
+        if (!validated) {
+          const collaboratorId = randomUUID();
+          const milestoneId = randomUUID();
+          await db.insert(topicCollaboratorsTable).values({
+            id: collaboratorId, topicId, memberId: actorId,
+          });
+          await db.insert(milestonesTable).values({ id: milestoneId, topicId, title: "Temporary milestone" });
+          await db.insert(collaboratorMilestonesTable).values({ collaboratorId, milestoneId });
+          await db.insert(topicAllocationsTable).values({ topicId, memberId: actorId, allocationPercent: 25 });
+          await db.insert(topicFinishDateRevisionsTable).values({
+            id: randomUUID(), topicId, actorId, note: "Temporary scope change",
+          });
+          await db.insert(notificationOutboxTable).values({
+            id: randomUUID(), topicId, recipient: "nobody@example.invalid",
+            subject: "Temporary notification", body: "Do not send",
+          });
+        } else {
+          await manager.post(`/api/topics/${topicId}/validate`)
+            .set("x-csrf-token", csrf)
+            .send({ note: "Authorized validation" })
+            .expect(200);
+        }
+
+        await ordinary.delete(`/api/topics/${topicId}`)
+          .set("x-csrf-token", ordinaryCsrf).expect(403);
+        await manager.delete(`/api/topics/${topicId}`).expect(403);
+        await manager.delete(`/api/topics/${topicId}`)
+          .set("x-csrf-token", csrf).expect(204);
+        await manager.get(`/api/topics/${topicId}`).expect(404);
+        assert.equal((await db.select().from(activityTable).where(eq(activityTable.topicId, topicId))).length, 0);
+        assert.equal((await db.select().from(notificationOutboxTable).where(eq(notificationOutboxTable.topicId, topicId))).length, 0);
+        assert.equal((await db.select().from(milestonesTable).where(eq(milestonesTable.topicId, topicId))).length, 0);
+        assert.equal((await db.select().from(topicAllocationsTable).where(eq(topicAllocationsTable.topicId, topicId))).length, 0);
+        assert.ok((await db.select().from(auditLogTable).where(and(
+          eq(auditLogTable.resourceId, topicId),
+          eq(auditLogTable.action, "Topic deleted"),
+        ))).length > 0);
+      }
+    } finally {
+      for (const topicId of topicIds) {
+        await db.transaction(async (tx) => {
+          await tx.delete(collaboratorMilestonesTable).where(inArray(
+            collaboratorMilestonesTable.milestoneId,
+            tx.select({ id: milestonesTable.id }).from(milestonesTable).where(eq(milestonesTable.topicId, topicId)),
+          ));
+          await tx.delete(milestonesTable).where(eq(milestonesTable.topicId, topicId));
+          await tx.delete(topicCollaboratorsTable).where(eq(topicCollaboratorsTable.topicId, topicId));
+          await tx.delete(topicAllocationsTable).where(eq(topicAllocationsTable.topicId, topicId));
+          await tx.delete(topicFinishDateRevisionsTable).where(eq(topicFinishDateRevisionsTable.topicId, topicId));
+          await tx.delete(activityTable).where(eq(activityTable.topicId, topicId));
+          await tx.delete(notificationOutboxTable).where(eq(notificationOutboxTable.topicId, topicId));
+          await tx.delete(topicsTable).where(eq(topicsTable.id, topicId));
+          await tx.delete(activityTable).where(and(
+            eq(activityTable.action, "Topic deleted"),
+            eq(activityTable.detail, `${topicTitles.get(topicId)} (${topicId})`),
+          ));
+        });
+      }
+      if (ordinaryId) {
+        await db.execute(sql`DELETE FROM user_sessions WHERE sess ->> 'userId' = ${ordinaryId}`);
+        await db.delete(membersTable).where(eq(membersTable.id, ordinaryId));
+      }
+    }
+  });
+
+  test("can reassign and clear owners, allocations, and collaborators already set on a topic", async () => {
+    const manager = request.agent(app);
+    const session = await manager.get("/api/session").expect(200);
+    const actorId = session.body.user.id as string;
+    const csrf = (await manager.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const departments = (await manager.get("/api/directory/departments").expect(200)).body;
+    const roles = (await manager.get("/api/directory/roles").expect(200)).body;
+    const department = departments.find(
+      (item: { id: string; serviceHead: { id: string } }) =>
+        item.serviceHead.id === actorId &&
+        roles.some((role: { departmentId: string }) => role.departmentId === item.id),
+    );
+    assert.ok(department);
+    const role = roles.find((item: { departmentId: string }) => item.departmentId === department.id);
+    const members = (await manager.get("/api/directory/members").expect(200)).body;
+    const other = members.find((member: { id: string }) => member.id !== actorId && member.id !== "local-admin");
+    assert.ok(other);
+    let topicId: string | undefined;
+    try {
+      const created = await manager.post("/api/topics")
+        .set("x-csrf-token", csrf)
+        .send({
+          title: `Assignment changes ${randomUUID()}`,
+          description: "Temporary topic for editing existing assignments.",
+          departmentId: department.id,
+          roleId: role.id,
+          priority: "P3",
+          primaryAssigneeId: actorId,
+          estimatedStartDate: "2030-01-01",
+          estimatedFinishDate: "2030-01-31",
+        })
+        .expect(201);
+      const id = created.body.id as string;
+      topicId = id;
+      const url = `/api/topics/${id}`;
+      const assign = (memberId: string | null) =>
+        manager.post(`${url}/assign`).set("x-csrf-token", csrf).send({ memberId });
+      const allocate = (allocations: { memberId: string; allocationPercent: number }[]) =>
+        manager.put(`${url}/allocations`).set("x-csrf-token", csrf).send({ allocations });
+      const getAllocations = async () =>
+        (await manager.get(`${url}/allocations`).expect(200)).body as { member: { id: string }; allocationPercent: number }[];
+
+      const pendingChange = await assign(other.id).expect(200);
+      assert.equal(pendingChange.body.primaryAssignee.id, other.id);
+      assert.equal(pendingChange.body.status, "pending_validation");
+      assert.equal((await assign(null).expect(200)).body.primaryAssignee, null);
+      await assign(actorId).expect(409);
+      await manager.post(`${url}/validate`).set("x-csrf-token", csrf).send({}).expect(200);
+
+      assert.equal((await assign(actorId).expect(200)).body.status, "in_progress");
+      await allocate([{ memberId: actorId, allocationPercent: 30 }]).expect(200);
+      await allocate([{ memberId: actorId, allocationPercent: 45 }]).expect(200);
+      assert.equal((await getAllocations())[0].allocationPercent, 45);
+      await allocate([]).expect(200);
+      assert.deepEqual(await getAllocations(), []);
+      await allocate([{ memberId: actorId, allocationPercent: 20 }]).expect(200);
+      assert.equal((await assign(other.id).expect(200)).body.primaryAssignee.id, other.id);
+      assert.deepEqual(await getAllocations(), [], "the previous owner's allocation must be cleared");
+
+      const milestoneId = randomUUID();
+      await db.insert(milestonesTable).values({ id: milestoneId, topicId: id, title: "Temporary milestone" });
+      const collaborator = await manager.post(`${url}/collaborators`)
+        .set("x-csrf-token", csrf)
+        .send({ memberId: actorId, milestoneIds: [milestoneId] })
+        .expect(201);
+      await allocate([
+        { memberId: actorId, allocationPercent: 15 },
+        { memberId: other.id, allocationPercent: 40 },
+      ]).expect(200);
+      await manager.delete(`${url}/collaborators/${collaborator.body.id}`)
+        .set("x-csrf-token", csrf).expect(204);
+      assert.equal((await getAllocations()).length, 1);
+      assert.equal((await getAllocations())[0].member.id, other.id);
+      assert.equal((await db.select().from(collaboratorMilestonesTable)
+        .where(eq(collaboratorMilestonesTable.collaboratorId, collaborator.body.id))).length, 0);
+      assert.equal((await assign(null).expect(200)).body.status, "open");
+      assert.deepEqual(await getAllocations(), []);
+    } finally {
+      if (topicId) await manager.delete(`/api/topics/${topicId}`)
+        .set("x-csrf-token", csrf).expect(204);
+    }
+  });
+
   test("cannot bypass or replay pending topic validation", async () => {
     const agent = request.agent(app);
-    await agent.get("/api/session").expect(200);
+    const session = await agent.get("/api/session").expect(200);
     const csrf = await agent.get("/api/auth/csrf").expect(200);
     const roles = await agent.get("/api/directory/roles").expect(200);
-    const role = roles.body.find(
-      (item: { departmentId: string }) => item.departmentId === "dept-platform",
+    const departments = await agent.get("/api/directory/departments").expect(200);
+    const department = departments.body.find(
+      (item: { id: string; serviceHead: { id: string } }) =>
+        item.serviceHead.id === session.body.user.id &&
+        roles.body.some((role: { departmentId: string }) => role.departmentId === item.id),
     );
-    assert.ok(role);
+    assert.ok(department, "The fixture needs a department led by the test actor with a role");
+    const role = roles.body.find(
+      (item: { departmentId: string }) => item.departmentId === department.id,
+    );
 
     const created = await agent
       .post("/api/topics")
@@ -402,7 +695,7 @@ describe("QueueCraft security and preference flows", () => {
         title: `Validation policy ${randomUUID()}`,
         description:
           "Temporary topic used to verify the validation transition policy.",
-        departmentId: "dept-platform",
+        departmentId: department.id,
         roleId: role.id,
         priority: "P3",
       })

@@ -30,6 +30,8 @@ export interface Member {
   title?: string | null;
   status?: MemberStatus;
   isCio?: boolean;
+  /** @nullable */
+  authProvider?: string | null;
   /**
      * @minimum 0
      * @maximum 100
@@ -71,6 +73,8 @@ export interface TopicFilters {
 
 export interface Session {
   user: Member;
+  /** @nullable */
+  authProvider?: string | null;
   capabilities?: string[];
   topicFilters?: TopicFilters;
 }
@@ -113,6 +117,13 @@ export interface MemberInput {
   externalSubject?: string | null;
   isCio?: boolean;
   /**
+     * @minLength 12
+     * @maxLength 256
+     */
+  password?: string;
+  headDepartmentIds?: string[];
+  deputyDepartmentIds?: string[];
+  /**
      * @minimum 0
      * @maximum 100
      */
@@ -147,11 +158,27 @@ export interface MemberUpdate {
   externalSubject?: string | null;
   status?: MemberUpdateStatus;
   isCio?: boolean;
+  headDepartmentIds?: string[];
+  deputyDepartmentIds?: string[];
   /**
      * @minimum 0
      * @maximum 100
      */
   dailyBusinessPercent?: number;
+}
+
+export interface MemberPermissions {
+  isCio: boolean;
+  headDepartmentIds: string[];
+  deputyDepartmentIds: string[];
+}
+
+export interface LocalPasswordReset {
+  /**
+     * @minLength 12
+     * @maxLength 256
+     */
+  password: string;
 }
 
 export interface Department {
@@ -403,7 +430,8 @@ export interface BreakGlassValidationInput {
 }
 
 export interface AssignmentInput {
-  memberId: string;
+  /** @nullable */
+  memberId: string | null;
 }
 
 export interface CollaboratorInput {

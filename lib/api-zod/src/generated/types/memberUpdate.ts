@@ -27,6 +27,8 @@ export interface MemberUpdate {
   externalSubject?: string | null;
   status?: MemberUpdateStatus;
   isCio?: boolean;
+  headDepartmentIds?: string[];
+  deputyDepartmentIds?: string[];
   /**
      * @minimum 0
      * @maximum 100

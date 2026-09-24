@@ -1,12 +1,15 @@
 import * as React from "react";
 import {
   useGetTopic,
+  useGetSession,
+  useDeleteTopic,
   useUpdateTopic,
   useUpdateTopicFinishDate,
   useValidateTopic,
   useValidateTopicBreakGlass,
   useAssignTopic,
   useAddTopicCollaborator,
+  useDeleteTopicCollaborator,
   useAddTopicMilestone,
   useUpdateMilestone,
   useDeleteMilestone,
@@ -19,9 +22,11 @@ import {
   getGetTopicAllocationsQueryKey,
   getGetOccupancyOverviewQueryKey,
   getGetMyWorkQueryKey,
+  getGetDashboardSummaryQueryKey,
+  getGetDashboardActivityQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useParams } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -108,8 +113,10 @@ const dateInputValue = (value?: string | null) =>
 
 export function TopicDetail() {
   const { topicId } = useParams();
+  const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { data: topic, isLoading } = useGetTopic(topicId!);
+  const { data: session } = useGetSession();
   const { data: members } = useListMembers();
   const sortedMembers = React.useMemo(
     () =>
@@ -129,14 +136,20 @@ export function TopicDetail() {
   const validateTopic = useValidateTopic();
   const validateBreakGlass = useValidateTopicBreakGlass();
   const updateTopic = useUpdateTopic();
+  const deleteTopic = useDeleteTopic();
   const updateFinishDate = useUpdateTopicFinishDate();
   const addCollaborator = useAddTopicCollaborator();
+  const deleteCollaborator = useDeleteTopicCollaborator();
   const replaceAllocations = useReplaceTopicAllocations();
 
   const [milestoneOpen, setMilestoneOpen] = React.useState(false);
   const [validationOpen, setValidationOpen] = React.useState(false);
   const [breakGlassOpen, setBreakGlassOpen] = React.useState(false);
   const [editTopicOpen, setEditTopicOpen] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState("");
+  const [assignmentError, setAssignmentError] = React.useState("");
+  const [allocationError, setAllocationError] = React.useState("");
+  const [milestoneError, setMilestoneError] = React.useState("");
   const [rescopeOpen, setRescopeOpen] = React.useState(false);
   const [addCollabOpen, setAddCollabOpen] = React.useState(false);
 
@@ -165,6 +178,8 @@ export function TopicDetail() {
       queryKey: getGetOccupancyOverviewQueryKey(),
     });
     queryClient.invalidateQueries({ queryKey: getGetMyWorkQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetDashboardActivityQueryKey() });
   };
 
   // Edit Topic Form
@@ -263,6 +278,7 @@ export function TopicDetail() {
 
   // Collaborator
   const collabForm = useForm({
+    defaultValues: { memberId: "" },
     resolver: zodResolver(
       z.object({
         memberId: z.string().min(1),
@@ -350,6 +366,7 @@ export function TopicDetail() {
 
   const onUpdateMilestoneForm = (data: any) => {
     if (!editMilestone?.id) return;
+    setMilestoneError("");
     updateMilestone.mutate(
       {
         milestoneId: editMilestone.id,
@@ -366,6 +383,7 @@ export function TopicDetail() {
           setEditMilestone(null);
           invalidateData();
         },
+        onError: (error) => setMilestoneError(error instanceof Error ? error.message : "Could not update milestone."),
       },
     );
   };
@@ -383,11 +401,48 @@ export function TopicDetail() {
     }
   };
 
+  const onDeleteTopic = async () => {
+    if (!topic || !topicId || !window.confirm(
+      `Permanently delete "${topic.title}"? Its milestones, assignments, activity, and queued notifications will also be removed. This cannot be undone.`,
+    )) return;
+    setDeleteError("");
+    try {
+      await deleteTopic.mutateAsync({ topicId });
+      navigate("/topics");
+      queryClient.removeQueries({ queryKey: getGetTopicQueryKey(topicId) });
+      queryClient.removeQueries({ queryKey: getGetTopicAllocationsQueryKey(topicId) });
+      void queryClient.invalidateQueries({
+        predicate: ({ queryKey }) =>
+          queryKey[0] !== getGetTopicQueryKey(topicId)[0] &&
+          queryKey[0] !== getGetTopicAllocationsQueryKey(topicId)[0],
+      });
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "Topic could not be deleted.");
+    }
+  };
+
   // Standard interactions
   const onAssign = (memberId: string) => {
+    setAssignmentError("");
     assignTopic.mutate(
-      { topicId: topicId!, data: { memberId } },
-      { onSuccess: invalidateData },
+      { topicId: topicId!, data: { memberId: memberId === "none" ? null : memberId } },
+      {
+        onSuccess: invalidateData,
+        onError: (error) => setAssignmentError(error instanceof Error ? error.message : "Could not change assignment."),
+      },
+    );
+  };
+  const onRemoveCollaborator = (collaboratorId: string, name: string) => {
+    if (!window.confirm(
+      `Remove ${name} from this topic? Their topic allocation and milestone links will also be removed.`,
+    )) return;
+    setAssignmentError("");
+    deleteCollaborator.mutate(
+      { topicId: topicId!, collaboratorId },
+      {
+        onSuccess: invalidateData,
+        onError: (error) => setAssignmentError(error instanceof Error ? error.message : "Could not remove collaborator."),
+      },
     );
   };
   const onStatusChange = (status: any) => {
@@ -435,16 +490,29 @@ export function TopicDetail() {
   }, [allocations]);
 
   const onSaveAllocations = () => {
+    setAllocationError("");
+    const participantIds = new Set([
+      topic?.primaryAssignee?.id,
+      ...((topic?.collaborators ?? []).map((entry) => entry.member.id)),
+    ]);
     const data = Object.entries(allocState)
+      .filter(([memberId]) => participantIds.has(memberId))
       .filter(([, allocationPercent]) => allocationPercent > 0)
       .map(([memberId, allocationPercent]) => ({
         memberId,
         allocationPercent,
       }));
+    if (data.some(({ allocationPercent }) =>
+      !Number.isInteger(allocationPercent) || allocationPercent > 100
+    ) || Object.values(allocState).some((allocationPercent) => allocationPercent < 0)) {
+      setAllocationError("Allocations must be whole numbers between 0 and 100.");
+      return;
+    }
     replaceAllocations.mutate(
       { topicId: topicId!, data: { allocations: data } },
       {
         onSuccess: invalidateData,
+        onError: (error) => setAllocationError(error instanceof Error ? error.message : "Could not save allocations."),
       },
     );
   };
@@ -462,6 +530,15 @@ export function TopicDetail() {
   }
 
   const isPendingValidation = topic.status === "pending_validation";
+  const userId = session?.user?.id;
+  const canDeleteTopic = Boolean(
+    session?.capabilities?.includes("topic.delete") &&
+    userId &&
+    (
+      (userId === "local-admin" && session.authProvider === "local") ||
+      [topic.department.serviceHead.id, topic.department.serviceHeadDeputy?.id].includes(userId)
+    ),
+  );
 
   const availableCollabs = members?.filter(
     (m) =>
@@ -469,13 +546,14 @@ export function TopicDetail() {
       !(topic.collaborators || []).some((c) => c.member.id === m.id),
   );
 
-  const allocParticipants = [
+  const allocParticipants = Array.from(new Map([
     ...(topic.primaryAssignee ? [topic.primaryAssignee] : []),
     ...(topic.collaborators?.map((c) => c.member) || []),
-  ];
+  ].map((member) => [member.id, member] as const)).values());
 
   return (
     <div className="flex-1 space-y-6 p-8">
+      {deleteError && <p role="alert" className="text-sm text-destructive">{deleteError}</p>}
       {/* Header Area */}
       <div className="flex flex-col lg:flex-row gap-6 justify-between items-start">
         <div className="space-y-3 flex-1 min-w-0">
@@ -634,6 +712,19 @@ export function TopicDetail() {
                 </SelectContent>
               </Select>
             </div>
+          )}
+
+          {canDeleteTopic && (
+            <Button
+              type="button"
+              variant="destructive"
+              className="gap-2 w-full sm:w-auto"
+              disabled={deleteTopic.isPending}
+              onClick={() => void onDeleteTopic()}
+            >
+              <Trash2 className="h-4 w-4" />
+              {deleteTopic.isPending ? "Deleting…" : "Delete topic"}
+            </Button>
           )}
 
           <Dialog open={editTopicOpen} onOpenChange={setEditTopicOpen}>
@@ -937,7 +1028,10 @@ export function TopicDetail() {
                                   <FormItem>
                                     <FormLabel>Assignee (Optional)</FormLabel>
                                     <Select
-                                      onValueChange={field.onChange}
+                                      onValueChange={(value) => {
+                                        field.onChange(value);
+                                        if (value === "none") milestoneForm.setValue("workloadPercent", 0);
+                                      }}
                                       value={field.value || "none"}
                                     >
                                       <FormControl>
@@ -1173,7 +1267,10 @@ export function TopicDetail() {
                             <FormItem>
                               <FormLabel>Assignee (Optional)</FormLabel>
                               <Select
-                                onValueChange={field.onChange}
+                                onValueChange={(value) => {
+                                  field.onChange(value);
+                                  if (value === "none") editMilestoneForm.setValue("workloadPercent", 0);
+                                }}
                                 value={field.value || "none"}
                               >
                                 <FormControl>
@@ -1196,6 +1293,7 @@ export function TopicDetail() {
                           )}
                         />
                       </div>
+                      {milestoneError && <p role="alert" className="text-sm text-destructive">{milestoneError}</p>}
                       <div className="flex justify-end gap-2 pt-4">
                         <Button
                           type="button"
@@ -1252,12 +1350,17 @@ export function TopicDetail() {
                             <div className="text-xs text-muted-foreground font-mono">
                               BAU: {member.dailyBusinessPercent ?? 0}%
                             </div>
+                            {!allocations?.some((entry) => entry.member.id === member.id) && (
+                              <div className="text-xs text-muted-foreground">No allocation saved</div>
+                            )}
                           </div>
                           <div className="flex items-center gap-2">
                             <Input
                               type="number"
                               min="0"
                               max="100"
+                              step="1"
+                              aria-label={`${member.name} allocation percent`}
                               className="w-[80px]"
                               value={allocState[member.id] ?? 0}
                               onChange={(e) =>
@@ -1270,9 +1373,23 @@ export function TopicDetail() {
                             <span className="text-muted-foreground text-sm">
                               %
                             </span>
+                            {(allocState[member.id] ?? 0) > 0 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setAllocState((previous) => ({ ...previous, [member.id]: 0 }))}
+                              >
+                                Clear
+                              </Button>
+                            )}
                           </div>
                         </div>
                       ))}
+                      <p className="text-xs text-muted-foreground">
+                        Set an allocation to 0 and save to remove it. Members stay assigned until you change their assignment.
+                      </p>
+                      {allocationError && <p role="alert" className="text-sm text-destructive">{allocationError}</p>}
                       <div className="flex justify-end pt-2">
                         <Button
                           onClick={onSaveAllocations}
@@ -1348,39 +1465,38 @@ export function TopicDetail() {
                   Primary Accountability
                 </div>
                 {topic.primaryAssignee ? (
-                  <div className="flex items-center justify-between bg-muted/30 p-3 rounded-sm border">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                          {topic.primaryAssignee.initials}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold">
-                          {topic.primaryAssignee.name}
-                        </span>
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {topic.primaryAssignee.initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-semibold">{topic.primaryAssignee.name}</span>
                   </div>
                 ) : (
-                  <div className="bg-muted/30 p-3 rounded-sm border flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Unassigned
-                    </span>
-                    <Select onValueChange={onAssign}>
-                      <SelectTrigger className="w-[140px] h-8 bg-background">
-                        <SelectValue placeholder="Assign To..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sortedMembers.map((m) => (
-                          <SelectItem key={m.id} value={m.id}>
-                            {m.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <span className="text-sm text-muted-foreground">Unassigned</span>
                 )}
+                <Select
+                  value={topic.primaryAssignee?.id ?? "none"}
+                  onValueChange={onAssign}
+                  disabled={assignTopic.isPending || (isPendingValidation && !topic.primaryAssignee)}
+                >
+                  <SelectTrigger aria-label="Primary assignee" className="mt-3 w-full bg-background">
+                    <SelectValue placeholder="Choose a primary assignee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Unassigned</SelectItem>
+                    {sortedMembers.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {isPendingValidation && !topic.primaryAssignee && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Validate this topic before making its first assignment.
+                  </p>
+                )}
+                {assignmentError && <p role="alert" className="text-sm text-destructive mt-2">{assignmentError}</p>}
               </div>
 
               <div>
@@ -1470,6 +1586,17 @@ export function TopicDetail() {
                       <span className="text-sm font-medium">
                         {c.member.name}
                       </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="ml-auto text-destructive"
+                        aria-label={`Remove ${c.member.name} as collaborator`}
+                        disabled={deleteCollaborator.isPending}
+                        onClick={() => onRemoveCollaborator(c.id, c.member.name)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   ))}
                   {(!topic.collaborators ||

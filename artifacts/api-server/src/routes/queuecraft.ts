@@ -13,15 +13,18 @@ import {
   roleDepartmentsTable,
   rolesTable,
   notificationRulesTable,
+  notificationOutboxTable,
   topicCollaboratorsTable,
   topicFinishDateRevisionsTable,
   topicAllocationsTable,
   topicsTable,
 } from "@workspace/db";
+import { hashLocalPassword } from "../services/local-password";
 import {
   AddTopicCollaboratorBody,
   AddTopicCollaboratorParams,
   AddTopicCollaboratorResponse,
+  DeleteTopicCollaboratorParams,
   AddTopicMilestoneBody,
   AddTopicMilestoneParams,
   AddTopicMilestoneResponse,
@@ -37,6 +40,7 @@ import {
   GetSessionResponse,
   GetTopicParams,
   GetTopicResponse,
+  DeleteTopicParams,
   GetValidationQueueResponse,
   ListDepartmentsResponse,
   ListMembersResponse,
@@ -67,6 +71,8 @@ import {
   UpdateMemberBody,
   UpdateMemberParams,
   UpdateMemberResponse,
+  UpdateMemberPermissionsBody,
+  ResetLocalMemberPasswordBody,
   ValidateTopicBody,
   ValidateTopicBreakGlassBody,
   ValidateTopicBreakGlassParams,
@@ -85,7 +91,7 @@ import {
   GetOccupancyOverviewQueryParams,
   GetOccupancyOverviewResponse,
 } from "@workspace/api-zod";
-import { breakGlassLimiter } from "../middleware/security";
+import { authLimiter, breakGlassLimiter } from "../middleware/security";
 import { queueMail, sendTestMail } from "../services/mailer";
 import {
   getRuntimeSettings,
@@ -382,18 +388,19 @@ export function getCapabilities(
   const isRoleAuthority = snapshot.roles.some((role) =>
     [role.leadId, role.deputyId].includes(userId),
   );
+  const isLocalAdmin = userId === "local-admin" && authProvider === "local";
+  const canAssignAuthorities = isLocalAdmin || isServiceAuthority || Boolean(user?.isCio);
   const capabilities = ["topic.create", "topic.edit", "topic.assign"];
   if (isServiceAuthority)
     capabilities.push(
       "validation.approve",
-      "directory.manage",
+      "topic.delete",
     );
+  if (canAssignAuthorities)
+    capabilities.push("directory.manage", "directory.manage_cio", "settings.manage");
   if (isServiceAuthority || user?.isCio)
     capabilities.push("validation.break_glass");
-  if (isServiceAuthority && user?.isCio)
-    capabilities.push("directory.manage_cio");
-  if (userId === "local-admin" && authProvider === "local")
-    capabilities.push("settings.manage");
+  if (isLocalAdmin) capabilities.push("local_password.reset", "settings.recovery", "topic.delete");
   if (isRoleAuthority) capabilities.push("role.execute");
   return [...new Set(capabilities)];
 }
@@ -470,6 +477,7 @@ router.get("/session", async (req, res): Promise<void> => {
   res.json(
     GetSessionResponse.parse({
       user,
+      authProvider: req.session.authProvider ?? null,
       capabilities: getCapabilities(user.id, snapshot, req.session.authProvider),
       topicFilters: {
         departmentId: user.topicFilterDepartmentId,
@@ -649,7 +657,7 @@ router.delete("/admin/sessions/:memberId", async (req, res): Promise<void> => {
 
 router.get("/admin/backup", async (req, res): Promise<void> => {
   const snapshot = await loadSnapshot();
-  if (!requireCapability(req, res, snapshot, "settings.manage")) return;
+  if (!requireCapability(req, res, snapshot, "settings.recovery")) return;
   await db.insert(auditLogTable).values({
     id: randomUUID(),
     actorId: currentUserId(req),
@@ -672,7 +680,7 @@ router.get("/admin/backup", async (req, res): Promise<void> => {
 
 router.post("/admin/backup/restore", async (req, res): Promise<void> => {
   const snapshot = await loadSnapshot();
-  if (!requireCapability(req, res, snapshot, "settings.manage")) return;
+  if (!requireCapability(req, res, snapshot, "settings.recovery")) return;
   try {
     await restoreBackup(req.body, {
       id: randomUUID(),
@@ -842,13 +850,27 @@ router.post("/directory/members", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
+  if (body.data.password && body.data.externalSubject) {
+    res.status(400).json({ error: "Local accounts cannot have an external identity subject." });
+    return;
+  }
+  const headIds = new Set(body.data.headDepartmentIds ?? []);
+  const deputyIds = new Set(body.data.deputyDepartmentIds ?? []);
+  if (
+    [...headIds, ...deputyIds].some((id) => !snapshot.departmentById.has(id)) ||
+    [...headIds].some((id) => deputyIds.has(id))
+  ) {
+    res.status(400).json({ error: "Select valid departments; a member cannot be both Head and Deputy of one department." });
+    return;
+  }
+  const passwordHash = body.data.password ? await hashLocalPassword(body.data.password) : null;
   if (
     body.data.isCio &&
     !getCapabilities(currentUserId(req), snapshot, req.session.authProvider).includes(
       "directory.manage_cio",
     )
   ) {
-    res.status(403).json({ error: "Only the CIO may grant CIO authority" });
+    res.status(403).json({ error: "You do not have permission to grant CIO authority" });
     return;
   }
   const [created] = await db.transaction(async (tx) => {
@@ -861,9 +883,19 @@ router.post("/directory/members", async (req, res): Promise<void> => {
         email: body.data.email.toLowerCase(),
         title: body.data.title,
         externalSubject: body.data.externalSubject,
+        authProvider: body.data.password ? "local" : null,
+        passwordHash,
         isCio: body.data.isCio,
+        cioOverride: body.data.isCio ? true : null,
       })
       .returning();
+    for (const department of snapshot.departments) {
+      const changes: { serviceHeadId?: string; serviceHeadDeputyId?: string } = {};
+      if (headIds.has(department.id)) changes.serviceHeadId = rows[0].id;
+      if (deputyIds.has(department.id)) changes.serviceHeadDeputyId = rows[0].id;
+      if (Object.keys(changes).length)
+        await tx.update(departmentsTable).set(changes).where(eq(departmentsTable.id, department.id));
+    }
     await addActivity(
       req,
       null,
@@ -875,6 +907,90 @@ router.post("/directory/members", async (req, res): Promise<void> => {
     return rows;
   });
   res.status(201).json(CreateMemberResponse.parse(created));
+});
+
+router.put("/directory/members/:memberId/permissions", async (req, res): Promise<void> => {
+  const body = UpdateMemberPermissionsBody.safeParse(req.body);
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "directory.manage")) return;
+  const memberId = Array.isArray(req.params.memberId) ? req.params.memberId[0] : req.params.memberId;
+  const member = snapshot.memberById.get(memberId);
+  if (!member) {
+    res.status(404).json({ error: "Member not found" });
+    return;
+  }
+  if (member.id === "local-admin") {
+    res.status(403).json({ error: "The bootstrap administrator's authority cannot be changed." });
+    return;
+  }
+  if (!body.success) {
+    res.status(400).json({ error: "Invalid permission assignments" });
+    return;
+  }
+  const headIds = new Set(body.data.headDepartmentIds);
+  const deputyIds = new Set(body.data.deputyDepartmentIds);
+  if (
+    [...headIds, ...deputyIds].some((id) => !snapshot.departmentById.has(id)) ||
+    [...headIds].some((id) => deputyIds.has(id))
+  ) {
+    res.status(400).json({ error: "Select valid departments; a member cannot be both Head and Deputy of one department." });
+    return;
+  }
+  if (snapshot.departments.some((department) =>
+    department.serviceHeadId === memberId && !headIds.has(department.id)
+  )) {
+    res.status(400).json({ error: "Assign a replacement Service Head in the department editor before removing this Head." });
+    return;
+  }
+  await db.transaction(async (tx) => {
+    await tx.update(membersTable)
+      .set({
+        isCio: body.data.isCio,
+        cioOverride: member.isCio === body.data.isCio ? member.cioOverride : body.data.isCio,
+      })
+      .where(eq(membersTable.id, memberId));
+    for (const department of snapshot.departments) {
+      const changes: { serviceHeadId?: string; serviceHeadDeputyId?: string | null } = {};
+      if (headIds.has(department.id) && department.serviceHeadId !== memberId)
+        changes.serviceHeadId = memberId;
+      if (deputyIds.has(department.id) && department.serviceHeadDeputyId !== memberId)
+        changes.serviceHeadDeputyId = memberId;
+      if (!deputyIds.has(department.id) && department.serviceHeadDeputyId === memberId)
+        changes.serviceHeadDeputyId = null;
+      if (Object.keys(changes).length)
+        await tx.update(departmentsTable).set(changes).where(eq(departmentsTable.id, department.id));
+    }
+    await addActivity(req, null, "Member permissions updated", member.email, false, tx);
+  });
+  const refreshed = await loadSnapshot();
+  res.json(UpdateMemberResponse.parse(refreshed.memberById.get(memberId)));
+});
+
+router.put("/directory/members/:memberId/password", authLimiter, async (req, res): Promise<void> => {
+  const body = ResetLocalMemberPasswordBody.safeParse(req.body);
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "local_password.reset")) return;
+  const memberId = Array.isArray(req.params.memberId) ? req.params.memberId[0] : req.params.memberId;
+  const member = snapshot.memberById.get(memberId);
+  if (!member) {
+    res.status(404).json({ error: "Member not found" });
+    return;
+  }
+  if (member.authProvider !== "local" || member.id === currentUserId(req)) {
+    res.status(400).json({ error: "Reset another local member's password here; change your own password from your profile." });
+    return;
+  }
+  if (!body.success) {
+    res.status(400).json({ error: "Password must be 12–256 characters." });
+    return;
+  }
+  const passwordHash = await hashLocalPassword(body.data.password);
+  await db.transaction(async (tx) => {
+    await tx.update(membersTable).set({ passwordHash }).where(eq(membersTable.id, member.id));
+    await tx.execute(sql`DELETE FROM user_sessions WHERE sess ->> 'userId' = ${member.id}`);
+    await addActivity(req, null, "Local member password reset", member.email, false, tx);
+  });
+  res.status(204).end();
 });
 
 router.get("/directory/ldap-users", async (req, res): Promise<void> => {
@@ -916,6 +1032,7 @@ router.post("/directory/ldap-users/import", async (req, res): Promise<void> => {
       .where(eq(membersTable.email, user.email.toLowerCase()))
       .limit(1);
     if (existing[0]) {
+      if (existing[0].authProvider === "local") continue;
       if (existing[0].status === "disabled") {
         const [reactivated] = await db
           .update(membersTable)
@@ -965,6 +1082,27 @@ router.patch(
       res.status(404).json({ error: "Member not found" });
       return;
     }
+    if (existingMember.id === "local-admin" &&
+      (currentUserId(req) !== "local-admin" || body.data.status === "disabled" || body.data.isCio === false)) {
+      res.status(403).json({ error: "The bootstrap administrator cannot be disabled or demoted." });
+      return;
+    }
+    const { headDepartmentIds, deputyDepartmentIds, ...memberChanges } = body.data;
+    const hasLeadershipChanges = headDepartmentIds !== undefined || deputyDepartmentIds !== undefined;
+    const headIds = new Set(headDepartmentIds ?? []);
+    const deputyIds = new Set(deputyDepartmentIds ?? []);
+    if (hasLeadershipChanges && (
+      headDepartmentIds === undefined ||
+      deputyDepartmentIds === undefined ||
+      [...headIds, ...deputyIds].some((id) => !snapshot.departmentById.has(id)) ||
+      [...headIds].some((id) => deputyIds.has(id)) ||
+      snapshot.departments.some((department) =>
+        department.serviceHeadId === existingMember.id && !headIds.has(department.id)
+      )
+    )) {
+      res.status(400).json({ error: "Assign a replacement Head in the department editor before removing a current Head." });
+      return;
+    }
     if (
       body.data.isCio !== undefined &&
       body.data.isCio !== existingMember.isCio &&
@@ -972,20 +1110,37 @@ router.patch(
         "directory.manage_cio",
       )
     ) {
-      res.status(403).json({ error: "Only the CIO may change CIO authority" });
+      res.status(403).json({ error: "You do not have permission to change CIO authority" });
       return;
     }
     const [updated] = await db.transaction(async (tx) => {
       const rows = await tx
         .update(membersTable)
         .set({
-          ...body.data,
+          ...memberChanges,
+          ...(body.data.isCio !== undefined &&
+          body.data.isCio !== existingMember.isCio
+            ? { cioOverride: body.data.isCio }
+            : {}),
           email: body.data.email?.toLowerCase(),
           initials: body.data.name ? initials(body.data.name) : undefined,
         })
         .where(eq(membersTable.id, params.data.memberId))
         .returning();
       if (rows[0]) {
+        if (hasLeadershipChanges) {
+          for (const department of snapshot.departments) {
+            const changes: { serviceHeadId?: string; serviceHeadDeputyId?: string | null } = {};
+            if (headIds.has(department.id) && department.serviceHeadId !== existingMember.id)
+              changes.serviceHeadId = existingMember.id;
+            if (deputyIds.has(department.id) && department.serviceHeadDeputyId !== existingMember.id)
+              changes.serviceHeadDeputyId = existingMember.id;
+            if (!deputyIds.has(department.id) && department.serviceHeadDeputyId === existingMember.id)
+              changes.serviceHeadDeputyId = null;
+            if (Object.keys(changes).length)
+              await tx.update(departmentsTable).set(changes).where(eq(departmentsTable.id, department.id));
+          }
+        }
         await addActivity(
           req,
           null,
@@ -1011,7 +1166,7 @@ router.delete(
     const memberId = req.params.memberId;
     const snapshot = await loadSnapshot();
     if (!requireCapability(req, res, snapshot, "directory.manage")) return;
-    if (memberId === currentUserId(req)) {
+    if (memberId === currentUserId(req) || memberId === "local-admin") {
       res
         .status(409)
         .json({
@@ -1415,6 +1570,68 @@ router.get("/topics/:topicId", async (req, res): Promise<void> => {
   res.json(GetTopicResponse.parse(snapshot.buildTopicDetail(topic)));
 });
 
+router.delete("/topics/:topicId", async (req, res): Promise<void> => {
+  const params = DeleteTopicParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid topic" });
+    return;
+  }
+  const snapshot = await loadSnapshot();
+  const topic = snapshot.topics.find((item) => item.id === params.data.topicId);
+  if (!topic) {
+    res.status(404).json({ error: "Topic not found" });
+    return;
+  }
+  if (!requireCapability(req, res, snapshot, "topic.delete")) return;
+  const userId = currentUserId(req);
+  const department = snapshot.departmentById.get(topic.departmentId);
+  const isLocalAdmin = userId === "local-admin" && req.session.authProvider === "local";
+  if (!isLocalAdmin && ![department?.serviceHeadId, department?.serviceHeadDeputyId].includes(userId)) {
+    res.status(403).json({ error: "Only this department's Service Head or Deputy can delete this topic" });
+    return;
+  }
+  const deleted = await db.transaction(async (tx) => {
+    await tx.delete(collaboratorMilestonesTable).where(
+      inArray(
+        collaboratorMilestonesTable.milestoneId,
+        tx.select({ id: milestonesTable.id }).from(milestonesTable).where(eq(milestonesTable.topicId, topic.id)),
+      ),
+    );
+    await tx.delete(milestonesTable).where(eq(milestonesTable.topicId, topic.id));
+    await tx.delete(topicCollaboratorsTable).where(eq(topicCollaboratorsTable.topicId, topic.id));
+    await tx.delete(topicAllocationsTable).where(eq(topicAllocationsTable.topicId, topic.id));
+    await tx.delete(topicFinishDateRevisionsTable).where(eq(topicFinishDateRevisionsTable.topicId, topic.id));
+    await tx.delete(activityTable).where(eq(activityTable.topicId, topic.id));
+    await tx.delete(notificationOutboxTable).where(eq(notificationOutboxTable.topicId, topic.id));
+    const rows = await tx.delete(topicsTable).where(eq(topicsTable.id, topic.id)).returning({ id: topicsTable.id });
+    if (!rows.length) return false;
+    await tx.insert(activityTable).values({
+      id: randomUUID(),
+      topicId: null,
+      actorId: userId,
+      action: "Topic deleted",
+      detail: `${topic.title} (${topic.id})`,
+    });
+    await tx.insert(auditLogTable).values({
+      id: randomUUID(),
+      actorId: userId,
+      action: "Topic deleted",
+      resourceType: "topic",
+      resourceId: topic.id,
+      requestId: String(req.id),
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+      details: { title: topic.title, departmentId: topic.departmentId, status: topic.status },
+    });
+    return true;
+  });
+  if (!deleted) {
+    res.status(404).json({ error: "Topic not found" });
+    return;
+  }
+  res.status(204).end();
+});
+
 router.patch("/topics/:topicId", async (req, res): Promise<void> => {
   const params = UpdateTopicParams.safeParse(req.params);
   const body = UpdateTopicBody.safeParse(req.body);
@@ -1616,7 +1833,7 @@ router.put("/topics/:topicId/allocations", async (req, res): Promise<void> => {
     return;
   }
   if (!requireTopicManager(req, res, topic, before)) return;
-  if (!topic.estimatedStartDate || !topic.estimatedFinishDate) {
+  if (body.data.allocations.length && (!topic.estimatedStartDate || !topic.estimatedFinishDate)) {
     res
       .status(400)
       .json({
@@ -2007,13 +2224,13 @@ router.post("/topics/:topicId/assign", async (req, res): Promise<void> => {
     return;
   }
   if (!requireTopicManager(req, res, topic, before)) return;
-  if (topic.status === "pending_validation") {
+  if (topic.status === "pending_validation" && !topic.primaryAssigneeId && body.data.memberId) {
     res
       .status(409)
       .json({ error: "A topic must be validated before assignment" });
     return;
   }
-  if (!before.memberById.has(body.data.memberId)) {
+  if (body.data.memberId && !before.memberById.has(body.data.memberId)) {
     res.status(400).json({ error: "Assignee not found" });
     return;
   }
@@ -2022,22 +2239,35 @@ router.post("/topics/:topicId/assign", async (req, res): Promise<void> => {
       .update(topicsTable)
       .set({
         primaryAssigneeId: body.data.memberId,
-        status: "in_progress",
+        status: topic.status === "open" && body.data.memberId
+          ? "in_progress"
+          : topic.status === "in_progress" && !body.data.memberId
+            ? "open"
+            : topic.status,
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(topicsTable.id, params.data.topicId),
-          ne(topicsTable.status, "pending_validation"),
-        ),
-      )
+      .where(eq(topicsTable.id, params.data.topicId))
       .returning();
     if (rows[0]) {
+      if (
+        topic.primaryAssigneeId &&
+        topic.primaryAssigneeId !== body.data.memberId &&
+        !before.collaborators.some(
+          (entry) => entry.topicId === topic.id && entry.memberId === topic.primaryAssigneeId,
+        )
+      ) {
+        await tx.delete(topicAllocationsTable).where(and(
+          eq(topicAllocationsTable.topicId, topic.id),
+          eq(topicAllocationsTable.memberId, topic.primaryAssigneeId),
+        ));
+      }
       await addActivity(
         req,
         rows[0].id,
-        "Primary assignee changed",
-        "Accountable owner updated.",
+        body.data.memberId ? "Primary assignee changed" : "Primary assignee removed",
+        body.data.memberId
+          ? `Accountable owner: ${before.memberById.get(body.data.memberId)?.name}.`
+          : "Topic has no primary owner.",
         false,
         tx,
       );
@@ -2147,6 +2377,48 @@ router.post(
     res.status(201).json(AddTopicCollaboratorResponse.parse(built));
   },
 );
+
+router.delete("/topics/:topicId/collaborators/:collaboratorId", async (req, res): Promise<void> => {
+  const params = DeleteTopicCollaboratorParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid collaborator" });
+    return;
+  }
+  const snapshot = await loadSnapshot();
+  const topic = snapshot.topics.find((item) => item.id === params.data.topicId);
+  const collaborator = snapshot.collaborators.find(
+    (item) => item.topicId === params.data.topicId && item.id === params.data.collaboratorId,
+  );
+  if (!topic || !collaborator) {
+    res.status(404).json({ error: "Collaborator not found" });
+    return;
+  }
+  if (!requireTopicManager(req, res, topic, snapshot)) return;
+  await db.transaction(async (tx) => {
+    await tx.delete(collaboratorMilestonesTable)
+      .where(eq(collaboratorMilestonesTable.collaboratorId, collaborator.id));
+    await tx.delete(topicCollaboratorsTable)
+      .where(and(
+        eq(topicCollaboratorsTable.topicId, topic.id),
+        eq(topicCollaboratorsTable.id, collaborator.id),
+      ));
+    if (collaborator.memberId !== topic.primaryAssigneeId) {
+      await tx.delete(topicAllocationsTable).where(and(
+        eq(topicAllocationsTable.topicId, topic.id),
+        eq(topicAllocationsTable.memberId, collaborator.memberId),
+      ));
+    }
+    await addActivity(
+      req,
+      topic.id,
+      "Collaborator removed",
+      `${snapshot.memberById.get(collaborator.memberId)?.name ?? collaborator.memberId} removed from the topic.`,
+      false,
+      tx,
+    );
+  });
+  res.status(204).end();
+});
 
 router.post("/topics/:topicId/milestones", async (req, res): Promise<void> => {
   const params = AddTopicMilestoneParams.safeParse(req.params);

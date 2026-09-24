@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useGetSession } from "@workspace/api-client-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +18,8 @@ type HttpsStatus = { certificateInstalled: boolean; privateKeyInstalled: boolean
 const actions = ["topic.created", "topic.updated", "topic.finish_date_changed", "topic.allocations_replaced", "topic.assignee_changed", "topic.validation", "topic.collaborator_added", "topic.milestone_added", "topic.milestone_updated", "topic.milestone_deleted"]
 
 export function SettingsPage() {
+  const { data: session } = useGetSession()
+  const canRestore = session?.capabilities?.includes("settings.recovery") ?? false
   const [status, setStatus] = React.useState<Status | null>(null)
   const [draft, setDraft] = React.useState<Draft>({})
   const [saving, setSaving] = React.useState(false)
@@ -32,7 +35,7 @@ export function SettingsPage() {
   const [savingHttps, setSavingHttps] = React.useState(false)
   const load = React.useCallback(async () => {
     const response = await fetch("/api/admin/settings", { credentials: "include" })
-    if (!response.ok) { setMessage(response.status === 403 ? "Only the local administrator can manage Settings." : "Settings could not be loaded."); return }
+    if (!response.ok) { setMessage(response.status === 403 ? "Only the local administrator, CIO, Service Heads, or Deputies can manage Settings." : "Settings could not be loaded."); return }
     const next = await response.json() as Status
     setStatus(next)
     setDraft({
@@ -113,7 +116,7 @@ export function SettingsPage() {
   if (!status) return <div className="p-8 text-sm text-muted-foreground">{message || "Loading settings…"}</div>
   return <div className="flex-1 space-y-6 p-8">
     <div><p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Platform administration</p><h1 className="text-3xl font-bold tracking-tight">Settings</h1><p className="mt-1 text-muted-foreground">Configure QueueCraft’s runtime integrations directly in the application.</p></div>
-    <div className="flex border-b"><button type="button" onClick={() => setTab("connections")} className={`border-b-2 px-4 py-3 text-sm font-medium ${tab === "connections" ? "border-primary text-foreground" : "border-transparent text-muted-foreground"}`}>Connections</button><button type="button" onClick={() => setTab("notifications")} className={`border-b-2 px-4 py-3 text-sm font-medium ${tab === "notifications" ? "border-primary text-foreground" : "border-transparent text-muted-foreground"}`}>Notifications</button><button type="button" onClick={() => setTab("recovery")} className={`border-b-2 px-4 py-3 text-sm font-medium ${tab === "recovery" ? "border-primary text-foreground" : "border-transparent text-muted-foreground"}`}>Backup & restore</button></div>
+    <div className="flex border-b"><button type="button" onClick={() => setTab("connections")} className={`border-b-2 px-4 py-3 text-sm font-medium ${tab === "connections" ? "border-primary text-foreground" : "border-transparent text-muted-foreground"}`}>Connections</button><button type="button" onClick={() => setTab("notifications")} className={`border-b-2 px-4 py-3 text-sm font-medium ${tab === "notifications" ? "border-primary text-foreground" : "border-transparent text-muted-foreground"}`}>Notifications</button>{canRestore && <button type="button" onClick={() => setTab("recovery")} className={`border-b-2 px-4 py-3 text-sm font-medium ${tab === "recovery" ? "border-primary text-foreground" : "border-transparent text-muted-foreground"}`}>Backup & restore</button>}</div>
     {tab === "connections" && <>
     <Card className="border-primary/30 bg-primary/5"><CardHeader className="flex-row items-start gap-3 space-y-0"><LockKeyhole className="mt-0.5 h-5 w-5 text-primary" /><div><CardTitle className="text-base">Encrypted credentials</CardTitle><CardDescription className="mt-1">Passwords, client secrets, and LDAPS CA certificates are encrypted before storage and are never returned to this page. Leave a secret field blank to retain its current value.</CardDescription></div></CardHeader></Card>
     <div className="grid gap-4 lg:grid-cols-2">
@@ -136,7 +139,7 @@ export function SettingsPage() {
     </CardContent></Card>}
     </>}
     {tab === "notifications" && <Card><CardHeader><CardTitle>Topic email notifications</CardTitle><CardDescription>Enable email for topic changes. Recipients are selected from the changed topic: all members of its role, the role lead and deputy, and the corresponding department lead and deputy.</CardDescription></CardHeader><CardContent className="space-y-3">{rules.map((rule) => <div key={rule.id} className="grid gap-2 md:grid-cols-[1fr_auto_auto_auto] md:items-center"><select className="h-10 rounded-md border bg-background px-3 text-sm" value={rule.action} onChange={(event) => setRules((current) => current.map((item) => item.id === rule.id ? { ...item, action: event.target.value } : item))}>{actions.map((action) => <option key={action} value={action}>{action}</option>)}</select><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={rule.enabled} onChange={(event) => setRules((current) => current.map((item) => item.id === rule.id ? { ...item, enabled: event.target.checked } : item))} />Enabled</label><Button type="button" variant="outline" onClick={() => void saveRule(rule)}>Save</Button><Button type="button" variant="outline" onClick={() => void deleteRule(rule.id)}>Delete</Button></div>)}<Button type="button" variant="outline" disabled={rules.length >= actions.length} onClick={() => setRules((current) => [...current, { id: crypto.randomUUID(), action: actions.find((action) => !current.some((rule) => rule.action === action)) ?? actions[0], enabled: true }])}>Add notification rule</Button></CardContent></Card>}
-    {tab === "recovery" && <Card><CardHeader className="flex-row items-start gap-3 space-y-0"><DatabaseBackup className="mt-0.5 h-5 w-5 text-primary" /><div><CardTitle>Application backup</CardTitle><CardDescription>Export every QueueCraft application table or restore a validated QueueCraft JSON backup. Production database backups remain the primary disaster-recovery mechanism.</CardDescription></div></CardHeader><CardContent className="flex flex-wrap gap-3"><Button type="button" onClick={() => void exportBackup()}>Download backup</Button><Label className="inline-flex h-10 cursor-pointer items-center rounded-md border px-4 text-sm font-medium hover:bg-accent">Restore backup<Input className="sr-only" type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; if (file) void restoreBackup(file); event.target.value = "" }} /></Label></CardContent></Card>}
+    {tab === "recovery" && canRestore && <Card><CardHeader className="flex-row items-start gap-3 space-y-0"><DatabaseBackup className="mt-0.5 h-5 w-5 text-primary" /><div><CardTitle>Application backup</CardTitle><CardDescription>Export every QueueCraft application table or restore a validated QueueCraft JSON backup. Production database backups remain the primary disaster-recovery mechanism.</CardDescription></div></CardHeader><CardContent className="flex flex-wrap gap-3"><Button type="button" onClick={() => void exportBackup()}>Download backup</Button><Label className="inline-flex h-10 cursor-pointer items-center rounded-md border px-4 text-sm font-medium hover:bg-accent">Restore backup<Input className="sr-only" type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; if (file) void restoreBackup(file); event.target.value = "" }} /></Label></CardContent></Card>}
     {message && <p className="text-sm text-muted-foreground">{message}</p>}
   </div>
 }

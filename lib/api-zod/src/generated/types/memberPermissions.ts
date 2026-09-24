@@ -6,7 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface AssignmentInput {
-  /** @nullable */
-  memberId: string | null;
+export interface MemberPermissions {
+  isCio: boolean;
+  headDepartmentIds: string[];
+  deputyDepartmentIds: string[];
 }

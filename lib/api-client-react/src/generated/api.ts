@@ -33,8 +33,10 @@ import type {
   GetOccupancyOverviewParams,
   HealthStatus,
   ListTopicsParams,
+  LocalPasswordReset,
   Member,
   MemberInput,
+  MemberPermissions,
   MemberUpdate,
   Milestone,
   MilestoneInput,
@@ -1057,6 +1059,80 @@ export const useUpdateTopic = <TError = ErrorType<unknown>,
       return useMutation(getUpdateTopicMutationOptions(options));
     }
 
+export const getDeleteTopicUrl = (topicId: string,) => {
+
+
+
+
+  return `/api/topics/${topicId}`
+}
+
+/**
+ * @summary Delete a topic and its dependent work records
+ */
+export const deleteTopic = async (topicId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteTopicUrl(topicId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteTopicMutationKey = () => ['deleteTopic'] as const;
+
+export const getDeleteTopicMutationOptions = <TError = ErrorType<void | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTopic>>, TError,DeleteTopicMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTopic>>, TError,DeleteTopicMutationVariables, TContext> => {
+
+const mutationKey = getDeleteTopicMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTopic>>, DeleteTopicMutationVariables> = (props) => {
+          const {topicId} = props ?? {};
+
+          return  deleteTopic(topicId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteTopicMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTopic>>>
+
+    export type DeleteTopicMutationError = ErrorType<void | NotFoundResponse>
+    export type DeleteTopicMutationVariables = {topicId: string}
+
+    /**
+ * @summary Delete a topic and its dependent work records
+ */
+export const useDeleteTopic = <TError = ErrorType<void | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTopic>>, TError,DeleteTopicMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteTopic>>,
+        TError,
+        DeleteTopicMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteTopicMutationOptions(options));
+    }
+
 export const getUpdateTopicFinishDateUrl = (topicId: string,) => {
 
 
@@ -1666,6 +1742,82 @@ export const useAddTopicCollaborator = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getAddTopicCollaboratorMutationOptions(options));
+    }
+
+export const getDeleteTopicCollaboratorUrl = (topicId: string,
+    collaboratorId: string,) => {
+
+
+
+
+  return `/api/topics/${topicId}/collaborators/${collaboratorId}`
+}
+
+/**
+ * @summary Remove a collaborator and their topic allocation and milestone links
+ */
+export const deleteTopicCollaborator = async (topicId: string,
+    collaboratorId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteTopicCollaboratorUrl(topicId,collaboratorId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteTopicCollaboratorMutationKey = () => ['deleteTopicCollaborator'] as const;
+
+export const getDeleteTopicCollaboratorMutationOptions = <TError = ErrorType<void | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTopicCollaborator>>, TError,DeleteTopicCollaboratorMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTopicCollaborator>>, TError,DeleteTopicCollaboratorMutationVariables, TContext> => {
+
+const mutationKey = getDeleteTopicCollaboratorMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTopicCollaborator>>, DeleteTopicCollaboratorMutationVariables> = (props) => {
+          const {topicId,collaboratorId} = props ?? {};
+
+          return  deleteTopicCollaborator(topicId,collaboratorId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteTopicCollaboratorMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTopicCollaborator>>>
+
+    export type DeleteTopicCollaboratorMutationError = ErrorType<void | NotFoundResponse>
+    export type DeleteTopicCollaboratorMutationVariables = {topicId: string;collaboratorId: string}
+
+    /**
+ * @summary Remove a collaborator and their topic allocation and milestone links
+ */
+export const useDeleteTopicCollaborator = <TError = ErrorType<void | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTopicCollaborator>>, TError,DeleteTopicCollaboratorMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteTopicCollaborator>>,
+        TError,
+        DeleteTopicCollaboratorMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteTopicCollaboratorMutationOptions(options));
     }
 
 export const getAddTopicMilestoneUrl = (topicId: string,) => {
@@ -2764,5 +2916,183 @@ export const useUpdateMember = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateMemberMutationOptions(options));
+    }
+
+export const getUpdateMemberPermissionsUrl = (memberId: string,) => {
+
+
+
+
+  return `/api/directory/members/${memberId}/permissions`
+}
+
+/**
+ * @summary Assign CIO and department leadership to a member
+ */
+export const updateMemberPermissions = async (memberId: string,
+    memberPermissions: MemberPermissions, options?: Parameters<typeof customFetch>[1]): Promise<Member> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Member>(getUpdateMemberPermissionsUrl(memberId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(memberPermissions)
+  }
+);}
+
+
+
+
+
+export const getUpdateMemberPermissionsMutationKey = () => ['updateMemberPermissions'] as const;
+
+export const getUpdateMemberPermissionsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberPermissions>>, TError,UpdateMemberPermissionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMemberPermissions>>, TError,UpdateMemberPermissionsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateMemberPermissionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMemberPermissions>>, UpdateMemberPermissionsMutationVariables> = (props) => {
+          const {memberId,data} = props ?? {};
+
+          return  updateMemberPermissions(memberId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMemberPermissionsMutationResult = NonNullable<Awaited<ReturnType<typeof updateMemberPermissions>>>
+    export type UpdateMemberPermissionsMutationBody = BodyType<MemberPermissions>
+    export type UpdateMemberPermissionsMutationError = ErrorType<unknown>
+    export type UpdateMemberPermissionsMutationVariables = {memberId: string;data: BodyType<MemberPermissions>}
+
+    /**
+ * @summary Assign CIO and department leadership to a member
+ */
+export const useUpdateMemberPermissions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberPermissions>>, TError,UpdateMemberPermissionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMemberPermissions>>,
+        TError,
+        UpdateMemberPermissionsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateMemberPermissionsMutationOptions(options));
+    }
+
+export const getResetLocalMemberPasswordUrl = (memberId: string,) => {
+
+
+
+
+  return `/api/directory/members/${memberId}/password`
+}
+
+/**
+ * @summary Reset another local member's password
+ */
+export const resetLocalMemberPassword = async (memberId: string,
+    localPasswordReset: LocalPasswordReset, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getResetLocalMemberPasswordUrl(memberId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(localPasswordReset)
+  }
+);}
+
+
+
+
+
+export const getResetLocalMemberPasswordMutationKey = () => ['resetLocalMemberPassword'] as const;
+
+export const getResetLocalMemberPasswordMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetLocalMemberPassword>>, TError,ResetLocalMemberPasswordMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetLocalMemberPassword>>, TError,ResetLocalMemberPasswordMutationVariables, TContext> => {
+
+const mutationKey = getResetLocalMemberPasswordMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetLocalMemberPassword>>, ResetLocalMemberPasswordMutationVariables> = (props) => {
+          const {memberId,data} = props ?? {};
+
+          return  resetLocalMemberPassword(memberId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetLocalMemberPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof resetLocalMemberPassword>>>
+    export type ResetLocalMemberPasswordMutationBody = BodyType<LocalPasswordReset>
+    export type ResetLocalMemberPasswordMutationError = ErrorType<unknown>
+    export type ResetLocalMemberPasswordMutationVariables = {memberId: string;data: BodyType<LocalPasswordReset>}
+
+    /**
+ * @summary Reset another local member's password
+ */
+export const useResetLocalMemberPassword = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetLocalMemberPassword>>, TError,ResetLocalMemberPasswordMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resetLocalMemberPassword>>,
+        TError,
+        ResetLocalMemberPasswordMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResetLocalMemberPasswordMutationOptions(options));
     }
 
