@@ -109,20 +109,39 @@ openssl rand -hex 32  # production SESSION_SECRET
 openssl rand -hex 32  # production APP_ENCRYPTION_KEY
 ```
 
-Set the production context, then generate the PostgreSQL SealedSecret. Replace
-`<prod-password>` with the newly generated or existing database password:
+Set the production context and find the **Service** for the Sealed Secrets
+controller. The default `sealed-secrets-controller` name is not present in
+every cluster. In the listing, use the `NAMESPACE` and `NAME` columns of the
+matching Service (not the Deployment name). Ask the cluster administrator if
+the Service is not listed or you cannot list services; production may not have
+the Sealed Secrets controller installed. Do not use the test cluster's
+certificate:
 
 ```bash
 CONTEXT=your-prod-kube-context
+kubectl --context "$CONTEXT" get svc -A | grep -Ei 'sealed|seal'
 
+CONTROLLER_NAMESPACE='namespace-from-listing'
+CONTROLLER_NAME='service-name-from-listing'
+kubeseal --context "$CONTEXT" \
+  --controller-namespace "$CONTROLLER_NAMESPACE" \
+  --controller-name "$CONTROLLER_NAME" --fetch-cert >/dev/null
+```
+
+Once certificate lookup succeeds, generate the PostgreSQL SealedSecret.
+Replace `<prod-password>` with the newly generated or existing database
+password; leaving the angle-bracket placeholder unchanged would seal the
+literal placeholder instead:
+
+```bash
 kubectl --context "$CONTEXT" -n queuecraft create secret generic pg-env \
   --from-literal=POSTGRES_DB=queuecraft \
   --from-literal=POSTGRES_USER=queuecraft \
   --from-literal=POSTGRES_PASSWORD='<prod-password>' \
   --dry-run=client -o yaml |
 kubeseal --context "$CONTEXT" \
-  --controller-namespace kube-system \
-  --controller-name sealed-secrets-controller \
+  --controller-namespace "$CONTROLLER_NAMESPACE" \
+  --controller-name "$CONTROLLER_NAME" \
   --format yaml > /tmp/queuecraft-prod-pg-env-sealed.yml
 ```
 
@@ -136,13 +155,11 @@ kubectl --context "$CONTEXT" -n queuecraft create secret generic api-env-secret 
   --from-literal=APP_ENCRYPTION_KEY='<prod-app-encryption-key>' \
   --dry-run=client -o yaml |
 kubeseal --context "$CONTEXT" \
-  --controller-namespace kube-system \
-  --controller-name sealed-secrets-controller \
+  --controller-namespace "$CONTROLLER_NAMESPACE" \
+  --controller-name "$CONTROLLER_NAME" \
   --format yaml > /tmp/queuecraft-prod-api-env-sealed.yml
 ```
 
-If your controller has a different name or namespace, change the
-`--controller-name` and `--controller-namespace` flags in **both** commands.
 Copy the three `spec.encryptedData` values from the first generated file into
 `overlays/prod/pg-env.yml`. Copy the three from the second into the
 **SealedSecret section** of `overlays/prod/api-env.yml` (keep its ConfigMap
