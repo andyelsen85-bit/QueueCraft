@@ -94,6 +94,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { occupancyStyle } from "@/lib/occupancy";
 
 import {
   DropdownMenu,
@@ -110,6 +111,16 @@ export function TopicDetail() {
   const queryClient = useQueryClient();
   const { data: topic, isLoading } = useGetTopic(topicId!);
   const { data: members } = useListMembers();
+  const sortedMembers = React.useMemo(
+    () =>
+      [...(members ?? [])].sort((left, right) =>
+        left.name.localeCompare(right.name, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      ),
+    [members],
+  );
 
   const assignTopic = useAssignTopic();
   const addMilestone = useAddTopicMilestone();
@@ -938,7 +949,7 @@ export function TopicDetail() {
                                         <SelectItem value="none">
                                           Unassigned
                                         </SelectItem>
-                                        {members?.map((m) => (
+                                        {sortedMembers.map((m) => (
                                           <SelectItem key={m.id} value={m.id}>
                                             {m.name}
                                           </SelectItem>
@@ -1004,7 +1015,10 @@ export function TopicDetail() {
                                 </span>
                               )}
                               {(m.workloadPercent ?? 0) > 0 && (
-                                <span className="font-semibold">
+                                <span
+                                  className="rounded-sm border px-1 font-semibold"
+                                  style={occupancyStyle(m.workloadPercent ?? 0)}
+                                >
                                   {m.workloadPercent}% occupancy
                                 </span>
                               )}
@@ -1171,7 +1185,7 @@ export function TopicDetail() {
                                   <SelectItem value="none">
                                     Unassigned
                                   </SelectItem>
-                                  {members?.map((m) => (
+                                  {sortedMembers.map((m) => (
                                     <SelectItem key={m.id} value={m.id}>
                                       {m.name}
                                     </SelectItem>
@@ -1358,7 +1372,7 @@ export function TopicDetail() {
                         <SelectValue placeholder="Assign To..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {members?.map((m) => (
+                        {sortedMembers.map((m) => (
                           <SelectItem key={m.id} value={m.id}>
                             {m.name}
                           </SelectItem>

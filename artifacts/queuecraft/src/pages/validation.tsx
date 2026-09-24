@@ -31,8 +31,15 @@ export function Validation() {
         </div>
       ) : queue && queue.length > 0 ? (
         <div className="space-y-4">
-          {queue.map(t => (
-            <Card key={t.id} className="border-l-4 border-l-yellow-500">
+          {[...queue]
+            .sort((left, right) =>
+              left.title.localeCompare(right.title, undefined, {
+                numeric: true,
+                sensitivity: "base",
+              }),
+            )
+            .map(t => (
+              <Card key={t.id} className="border-l-4 border-l-yellow-500">
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row gap-6">
                   <div className="flex-1 space-y-3">
@@ -74,7 +81,7 @@ export function Validation() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            ))}
         </div>
       ) : (
         <div className="py-24 text-center border-2 border-dashed border-muted rounded-sm">

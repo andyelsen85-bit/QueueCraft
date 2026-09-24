@@ -370,9 +370,10 @@ async function addActivity(
   });
 }
 
-function getCapabilities(
+export function getCapabilities(
   userId: string,
   snapshot: Awaited<ReturnType<typeof loadSnapshot>>,
+  authProvider?: string,
 ) {
   const user = snapshot.memberById.get(userId);
   const isServiceAuthority = snapshot.departments.some((department) =>
@@ -386,16 +387,13 @@ function getCapabilities(
     capabilities.push(
       "validation.approve",
       "directory.manage",
-      "settings.manage",
     );
   if (isServiceAuthority || user?.isCio)
     capabilities.push("validation.break_glass");
-  if (user?.isCio)
-    capabilities.push(
-      "directory.manage",
-      "directory.manage_cio",
-      "settings.manage",
-    );
+  if (isServiceAuthority && user?.isCio)
+    capabilities.push("directory.manage_cio");
+  if (userId === "local-admin" && authProvider === "local")
+    capabilities.push("settings.manage");
   if (isRoleAuthority) capabilities.push("role.execute");
   return [...new Set(capabilities)];
 }
@@ -406,7 +404,7 @@ function requireCapability(
   snapshot: Awaited<ReturnType<typeof loadSnapshot>>,
   capability: string,
 ) {
-  if (!getCapabilities(currentUserId(req), snapshot).includes(capability)) {
+  if (!getCapabilities(currentUserId(req), snapshot, req.session.authProvider).includes(capability)) {
     res.status(403).json({ error: `Missing capability: ${capability}` });
     return false;
   }
@@ -472,7 +470,7 @@ router.get("/session", async (req, res): Promise<void> => {
   res.json(
     GetSessionResponse.parse({
       user,
-      capabilities: getCapabilities(user.id, snapshot),
+      capabilities: getCapabilities(user.id, snapshot, req.session.authProvider),
       topicFilters: {
         departmentId: user.topicFilterDepartmentId,
         roleId: user.topicFilterRoleId,
@@ -492,14 +490,14 @@ router.get("/admin/settings", async (req, res): Promise<void> => {
 
 router.get("/admin/settings/https", async (req, res): Promise<void> => {
   const snapshot = await loadSnapshot();
-  if (!requireCapability(req, res, snapshot, "directory.manage_cio")) return;
+  if (!requireCapability(req, res, snapshot, "settings.manage")) return;
   res.setHeader("Cache-Control", "no-store");
   res.json(httpsCertificateStatus(await getRuntimeSettings()));
 });
 
 router.put("/admin/settings/https", async (req, res): Promise<void> => {
   const snapshot = await loadSnapshot();
-  if (!requireCapability(req, res, snapshot, "directory.manage_cio")) return;
+  if (!requireCapability(req, res, snapshot, "settings.manage")) return;
   const body = req.body;
   if (!body || typeof body !== "object" || Array.isArray(body) ||
       (body.clearChain !== undefined && typeof body.clearChain !== "boolean") ||
@@ -846,7 +844,7 @@ router.post("/directory/members", async (req, res): Promise<void> => {
   }
   if (
     body.data.isCio &&
-    !getCapabilities(currentUserId(req), snapshot).includes(
+    !getCapabilities(currentUserId(req), snapshot, req.session.authProvider).includes(
       "directory.manage_cio",
     )
   ) {
@@ -970,7 +968,7 @@ router.patch(
     if (
       body.data.isCio !== undefined &&
       body.data.isCio !== existingMember.isCio &&
-      !getCapabilities(currentUserId(req), snapshot).includes(
+      !getCapabilities(currentUserId(req), snapshot, req.session.authProvider).includes(
         "directory.manage_cio",
       )
     ) {

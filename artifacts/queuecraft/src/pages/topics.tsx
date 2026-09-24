@@ -41,7 +41,13 @@ import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Search, Plus, SlidersHorizontal } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Search,
+  Plus,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListTopicsQueryKey } from "@workspace/api-client-react";
 
@@ -70,12 +76,35 @@ const createSchema = z
 
 type CreateFormValues = z.infer<typeof createSchema>;
 
+type TopicSort =
+  | "title"
+  | "priority"
+  | "status"
+  | "department"
+  | "role"
+  | "createdAt"
+  | "targetDate"
+  | "estimatedFinishDate";
+
+const priorityOrder: Record<string, number> = { P1: 1, P2: 2, P3: 3, P4: 4 };
+const statusOrder: Record<string, number> = {
+  pending_validation: 1,
+  open: 2,
+  in_progress: 3,
+  completed: 4,
+  closed: 5,
+  returned: 6,
+  rejected: 7,
+};
+
 export function Topics() {
   const [search, setSearch] = React.useState("");
   const [status, setStatus] = React.useState<string>("");
   const [priority, setPriority] = React.useState<string>("");
   const [departmentId, setDepartmentId] = React.useState<string>("");
   const [roleId, setRoleId] = React.useState<string>("");
+  const [sortBy, setSortBy] = React.useState<TopicSort>("title");
+  const [sortDirection, setSortDirection] = React.useState<"asc" | "desc">("asc");
   const [filtersReady, setFiltersReady] = React.useState(false);
   const [openCreate, setOpenCreate] = React.useState(false);
   const [, setLocation] = useLocation();
@@ -126,18 +155,106 @@ export function Topics() {
     departmentId: departmentId || undefined,
     roleId: roleId || undefined,
   });
+  const sortedTopics = React.useMemo(() => {
+    if (!topics) return topics;
+
+    const compareText = (left: string, right: string) =>
+      left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" });
+    const compareNullableDate = (
+      left: string | null | undefined,
+      right: string | null | undefined,
+    ) => {
+      if (!left && !right) return 0;
+      if (!left) return 1;
+      if (!right) return -1;
+      return left.localeCompare(right);
+    };
+
+    return [...topics].sort((left, right) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case "priority":
+          comparison =
+            (priorityOrder[left.priority] ?? 99) -
+            (priorityOrder[right.priority] ?? 99);
+          break;
+        case "status":
+          comparison =
+            (statusOrder[left.status] ?? 99) -
+            (statusOrder[right.status] ?? 99);
+          break;
+        case "department":
+          comparison = compareText(left.department.name, right.department.name);
+          break;
+        case "role":
+          comparison = compareText(left.role.name, right.role.name);
+          break;
+        case "createdAt":
+          comparison = left.createdAt.localeCompare(right.createdAt);
+          break;
+        case "targetDate":
+          comparison = compareNullableDate(left.targetDate, right.targetDate);
+          break;
+        case "estimatedFinishDate":
+          comparison = compareNullableDate(
+            left.estimatedFinishDate,
+            right.estimatedFinishDate,
+          );
+          break;
+        case "title":
+        default:
+          comparison = compareText(left.title, right.title);
+          break;
+      }
+
+      if (comparison === 0) {
+        comparison =
+          compareText(left.title, right.title) || compareText(left.id, right.id);
+      }
+      const isMissingDate =
+        (sortBy === "targetDate" &&
+          (!left.targetDate || !right.targetDate)) ||
+        (sortBy === "estimatedFinishDate" &&
+          (!left.estimatedFinishDate || !right.estimatedFinishDate));
+      return isMissingDate
+        ? comparison
+        : sortDirection === "asc"
+          ? comparison
+          : -comparison;
+    });
+  }, [topics, sortBy, sortDirection]);
 
   const { data: departments } = useListDepartments();
   const { data: roles } = useListRoles();
+  const sortedDepartments = React.useMemo(
+    () =>
+      [...(departments ?? [])].sort((left, right) =>
+        left.name.localeCompare(right.name, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      ),
+    [departments],
+  );
+  const sortedRoles = React.useMemo(
+    () =>
+      [...(roles ?? [])].sort((left, right) =>
+        left.name.localeCompare(right.name, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      ),
+    [roles],
+  );
   const filteredRoles = React.useMemo(
     () =>
-      (roles ?? []).filter(
+      sortedRoles.filter(
         (role) =>
           !departmentId ||
           role.departmentId === departmentId ||
           role.departmentIds?.includes(departmentId),
       ),
-    [roles, departmentId],
+    [sortedRoles, departmentId],
   );
 
   const createTopic = useCreateTopic();
@@ -161,13 +278,13 @@ export function Topics() {
   const watchRole = form.watch("roleId");
   const createFilteredRoles = React.useMemo(
     () =>
-      (roles ?? []).filter(
+      sortedRoles.filter(
         (role) =>
           !watchDept ||
           role.departmentId === watchDept ||
           role.departmentIds?.includes(watchDept),
       ),
-    [roles, watchDept],
+    [sortedRoles, watchDept],
   );
   React.useEffect(() => {
     if (
@@ -264,7 +381,7 @@ export function Topics() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {departments?.map((d) => (
+                            {sortedDepartments.map((d) => (
                               <SelectItem key={d.id} value={d.id}>
                                 {d.name}
                               </SelectItem>
@@ -472,7 +589,7 @@ export function Topics() {
               const next = normalizeFilter(value);
               setDepartmentId(next);
               setRoleId("");
-              saveFilters({ departmentId: next });
+              saveFilters({ departmentId: next, roleId: "" });
             }}
           >
             <SelectTrigger className="w-[190px] bg-background">
@@ -480,7 +597,7 @@ export function Topics() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">All Departments</SelectItem>
-              {departments?.map((department) => (
+              {sortedDepartments.map((department) => (
                 <SelectItem key={department.id} value={department.id}>
                   {department.name}
                 </SelectItem>
@@ -492,7 +609,7 @@ export function Topics() {
             onValueChange={(value) => {
               const next = normalizeFilter(value);
               setRoleId(next);
-              if (!next) setRoleId("");
+              saveFilters({ roleId: next });
             }}
             disabled={!departmentId}
           >
@@ -562,15 +679,60 @@ export function Topics() {
               : "Your department, role, status, and priority filters are saved automatically."}
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="text-sm text-muted-foreground">
+          {sortedTopics?.length ?? 0}{" "}
+          {sortedTopics?.length === 1 ? "topic" : "topics"}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            Sort by
+            <select
+              aria-label="Sort topics"
+              className="h-9 rounded-md border bg-background px-2 text-sm text-foreground"
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value as TopicSort)}
+            >
+              <option value="title">Name</option>
+              <option value="priority">Priority</option>
+              <option value="status">Status</option>
+              <option value="department">Department</option>
+              <option value="role">Role</option>
+              <option value="createdAt">Created date</option>
+              <option value="targetDate">Committed finish</option>
+              <option value="estimatedFinishDate">Estimated finish</option>
+            </select>
+          </label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setSortDirection((current) =>
+                current === "asc" ? "desc" : "asc",
+              )
+            }
+            aria-label={`Sort ${sortDirection === "asc" ? "descending" : "ascending"}`}
+          >
+            {sortDirection === "asc" ? (
+              <ArrowUp className="mr-2 h-4 w-4" />
+            ) : (
+              <ArrowDown className="mr-2 h-4 w-4" />
+            )}
+            {sortDirection === "asc" ? "Ascending" : "Descending"}
+          </Button>
+        </div>
+      </div>
+
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-20 w-full" />
           ))}
         </div>
-      ) : topics && topics.length > 0 ? (
+      ) : sortedTopics && sortedTopics.length > 0 ? (
         <div className="space-y-2">
-          {topics.map((t) => (
+          {sortedTopics.map((t) => (
             <Link key={t.id} href={`/topics/${t.id}`} className="block group">
               <Card className="transition-all hover:border-primary/50 hover:shadow-md">
                 <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4">

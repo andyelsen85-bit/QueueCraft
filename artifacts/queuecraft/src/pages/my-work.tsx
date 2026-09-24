@@ -27,6 +27,12 @@ export function MyWork() {
   const created = openTopics(myWork.created)
   const collaborations = openTopics(myWork.collaborations)
   const milestones = myWork.milestones.filter((milestone) => milestone.status !== "completed")
+  const compareName = (left: { title: string }, right: { title: string }) =>
+    left.title.localeCompare(right.title, undefined, { numeric: true, sensitivity: "base" })
+  const sortedAssigned = [...assigned].sort(compareName)
+  const sortedCreated = [...created].sort(compareName)
+  const sortedCollaborations = [...collaborations].sort(compareName)
+  const sortedMilestones = [...milestones].sort(compareName)
 
   const TopicList = ({ topics, emptyMessage }: { topics: typeof myWork.created, emptyMessage: string }) => {
     if (topics.length === 0) {
@@ -105,7 +111,7 @@ export function MyWork() {
 
         <div className="mt-6">
           <TabsContent value="assigned">
-            <TopicList topics={assigned} emptyMessage="No open topics currently assigned as primary responsibility." />
+            <TopicList topics={sortedAssigned} emptyMessage="No open topics currently assigned as primary responsibility." />
           </TabsContent>
 
           <TabsContent value="milestones">
@@ -115,7 +121,7 @@ export function MyWork() {
               </div>
             ) : (
               <div className="space-y-2">
-                {milestones.map(m => (
+                {sortedMilestones.map(m => (
                   <Card key={m.id}>
                     <CardContent className="p-4 flex items-center gap-4">
                       <div className="flex-1 min-w-0">
@@ -137,11 +143,11 @@ export function MyWork() {
           </TabsContent>
 
           <TabsContent value="created">
-            <TopicList topics={created} emptyMessage="You haven't created any open topics." />
+            <TopicList topics={sortedCreated} emptyMessage="You haven't created any open topics." />
           </TabsContent>
 
           <TabsContent value="collaborating">
-            <TopicList topics={collaborations} emptyMessage="You are not a collaborator on any open topics." />
+            <TopicList topics={sortedCollaborations} emptyMessage="You are not a collaborator on any open topics." />
           </TabsContent>
         </div>
       </TabsRoot>

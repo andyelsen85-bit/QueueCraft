@@ -40,6 +40,7 @@ import {
   Calendar as CalendarIcon,
   Briefcase,
 } from "lucide-react";
+import { availableStyle, occupancyStyle } from "@/lib/occupancy";
 
 type OccupancySort = "name" | "available" | "load";
 
@@ -57,6 +58,26 @@ export function Occupancy() {
   );
   const { data: departments } = useListDepartments();
   const { data: roles } = useListRoles();
+  const sortedDepartments = React.useMemo(
+    () =>
+      [...(departments ?? [])].sort((left, right) =>
+        left.name.localeCompare(right.name, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      ),
+    [departments],
+  );
+  const sortedRoles = React.useMemo(
+    () =>
+      [...(roles ?? [])].sort((left, right) =>
+        left.name.localeCompare(right.name, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      ),
+    [roles],
+  );
 
   const weekStartStr = format(currentWeek, "yyyy-MM-dd");
   const startDate = view === "week" ? currentWeek : startOfMonth(currentWeek);
@@ -176,7 +197,7 @@ export function Occupancy() {
             }}
           >
             <option value="">All departments</option>
-            {(departments ?? []).map((department) => (
+            {sortedDepartments.map((department) => (
               <option key={department.id} value={department.id}>
                 {department.name}
               </option>
@@ -189,7 +210,7 @@ export function Occupancy() {
             onChange={(event) => setRoleId(event.target.value)}
           >
             <option value="">All roles</option>
-            {(roles ?? [])
+            {sortedRoles
               .filter(
                 (role) =>
                   !departmentId ||
@@ -280,6 +301,25 @@ export function Occupancy() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">Occupancy scale</span>
+        <span
+          className="h-2 w-32 rounded-full border"
+          style={{
+            background:
+              "linear-gradient(to right, rgb(220, 252, 231), rgb(255, 237, 213), rgb(254, 226, 226))",
+          }}
+          aria-hidden="true"
+        />
+        <span>Low</span>
+        <span>Midpoint</span>
+        <span>High</span>
+        <span className="sr-only">
+          Green indicates low occupancy, orange indicates midpoint occupancy,
+          and red indicates high occupancy.
+        </span>
+      </div>
+
       {isLoading ? (
         <div className="space-y-4">
           <Skeleton className="h-[200px] w-full" />
@@ -294,6 +334,15 @@ export function Occupancy() {
           {overviews.map((overview) => {
             const isOver = overview.overAllocated;
             const isExpanded = expandedMembers.has(overview.member.id);
+            const allocations = [
+              ...(overview.topics ?? []),
+              ...(overview.milestones ?? []),
+            ].sort((left, right) =>
+              left.title.localeCompare(right.title, undefined, {
+                numeric: true,
+                sensitivity: "base",
+              }),
+            );
 
             return (
               <Card
@@ -318,7 +367,10 @@ export function Occupancy() {
                           {overview.member.title || "Member"}
                         </span>
                         {isOver && (
-                          <span className="inline-flex shrink-0 items-center rounded-sm bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
+                          <span
+                            className="inline-flex shrink-0 items-center rounded-sm border px-2 py-0.5 text-xs font-semibold"
+                            style={occupancyStyle(overview.totalOccupancyPercent)}
+                          >
                             <AlertTriangle className="h-3 w-3 mr-1" />{" "}
                             Overallocated ({overview.totalOccupancyPercent}%)
                           </span>
@@ -329,7 +381,10 @@ export function Occupancy() {
 
                   <div className="ml-3 flex shrink-0 items-center gap-4">
                     <div className="min-w-[74px] text-right">
-                      <div className="text-xl font-bold tracking-tight text-primary">
+                      <div
+                        className="rounded-sm border px-1 text-xl font-bold tracking-tight"
+                        style={availableStyle(overview.availablePercent)}
+                      >
                         {overview.availablePercent}%
                       </div>
                       <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -337,7 +392,10 @@ export function Occupancy() {
                       </div>
                     </div>
                     <div className="hidden h-9 w-px bg-border sm:block"></div>
-                    <div className="hidden min-w-[70px] text-right sm:block">
+                      <div
+                        className="hidden min-w-[70px] rounded-sm border px-1 text-right sm:block"
+                        style={occupancyStyle(overview.totalOccupancyPercent)}
+                      >
                       <div className="text-lg font-semibold tracking-tight">
                         {overview.totalOccupancyPercent}%
                       </div>
@@ -373,7 +431,10 @@ export function Occupancy() {
                         <span className="text-sm font-medium">
                           Standard Operations
                         </span>
-                        <span className="text-sm font-mono font-bold">
+                        <span
+                          className="rounded-sm border px-1 text-sm font-mono font-bold"
+                          style={occupancyStyle(overview.dailyBusinessPercent)}
+                        >
                           {overview.dailyBusinessPercent}%
                         </span>
                       </div>
@@ -384,19 +445,13 @@ export function Occupancy() {
                       <div className="text-sm font-semibold text-muted-foreground mb-3">
                         Topic and Milestone Allocations
                       </div>
-                      {[
-                        ...(overview.topics ?? []),
-                        ...(overview.milestones ?? []),
-                      ].length === 0 ? (
+                      {allocations.length === 0 ? (
                         <div className="text-sm text-muted-foreground p-3 border border-dashed rounded-sm text-center bg-muted/10">
                           No topics allocated for this {view}.
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {[
-                            ...(overview.topics ?? []),
-                            ...(overview.milestones ?? []),
-                          ].map(
+                          {allocations.map(
                             (topic: {
                               topicId: string;
                               milestoneId?: string | null;
@@ -418,23 +473,29 @@ export function Occupancy() {
                                     : "Topic · "}
                                   {topic.title}
                                 </span>
-                                <span className="text-sm font-mono font-bold whitespace-nowrap">
+                                 <span
+                                   className="rounded-sm border px-1 text-sm font-mono font-bold whitespace-nowrap"
+                                   style={occupancyStyle(topic.allocationPercent)}
+                                 >
                                   {topic.allocationPercent}%
                                 </span>
                               </div>
                             ),
                           )}
-                          {[
-                            ...(overview.topics ?? []),
-                            ...(overview.milestones ?? []),
-                          ].length > 0 && (
+                          {allocations.length > 0 && (
                             <div className="flex justify-end pt-2 px-1">
                               <div className="text-xs font-mono text-muted-foreground">
                                 {view === "month"
                                   ? "Average allocated work"
                                   : "Allocated Work"}
                                 :{" "}
-                                <span className="font-bold text-foreground">
+                                 <span
+                                   className="rounded-sm border px-1 font-bold"
+                                   style={occupancyStyle(
+                                     overview.topicAllocationPercent +
+                                       (overview.milestoneAllocationPercent ?? 0),
+                                   )}
+                                 >
                                   {overview.topicAllocationPercent +
                                     (overview.milestoneAllocationPercent ?? 0)}
                                   %
@@ -450,15 +511,20 @@ export function Occupancy() {
                   {/* Progress Bar visualization */}
                   <div className="h-2 w-full bg-muted flex">
                     <div
-                      className="bg-slate-400 h-full transition-all"
-                      style={{
-                        width: `${Math.min(100, overview.dailyBusinessPercent)}%`,
-                      }}
+                       className="h-full transition-all"
+                       style={{
+                         ...occupancyStyle(overview.dailyBusinessPercent),
+                         width: `${Math.min(100, overview.dailyBusinessPercent)}%`,
+                       }}
                       title={`BAU: ${overview.dailyBusinessPercent}%`}
                     />
                     <div
-                      className={`h-full transition-all ${isOver ? "bg-destructive" : "bg-primary"}`}
+                      className="h-full transition-all"
                       style={{
+                        ...occupancyStyle(
+                          overview.topicAllocationPercent +
+                            (overview.milestoneAllocationPercent ?? 0),
+                        ),
                         width: `${Math.max(0, Math.min(100 - overview.dailyBusinessPercent, overview.topicAllocationPercent + (overview.milestoneAllocationPercent ?? 0)))}%`,
                       }}
                       title={`Topics and milestones: ${overview.topicAllocationPercent + (overview.milestoneAllocationPercent ?? 0)}%`}

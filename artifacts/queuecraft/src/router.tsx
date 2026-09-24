@@ -16,7 +16,7 @@ import { LoginPage } from "./pages/login"
 
 export function AppRouter() {
   const [location] = useLocation()
-  const { isLoading, error } = useGetSession()
+  const { data: session, isLoading, error } = useGetSession()
 
   if (location === "/login") return <LoginPage />
 
@@ -50,12 +50,16 @@ export function AppRouter() {
         <Route path="/topics" component={Topics} />
         <Route path="/topics/:topicId" component={TopicDetail} />
         <Route path="/validation" component={Validation} />
-        <Route path="/directory" component={Directory} />
+        <Route path="/directory">{session?.capabilities?.includes("directory.manage") ? <Directory /> : <AccessDenied />}</Route>
         <Route path="/occupancy" component={Occupancy} />
         <Route path="/calendar" component={Calendar} />
-        <Route path="/settings" component={SettingsPage} />
+        <Route path="/settings">{session?.capabilities?.includes("settings.manage") ? <SettingsPage /> : <AccessDenied />}</Route>
         <Route component={NotFound} />
       </Switch>
     </AppLayout>
   )
+}
+
+function AccessDenied() {
+  return <div className="p-8"><h1 className="text-2xl font-semibold">Access denied</h1><p className="mt-2 text-muted-foreground">You do not have permission to open this page.</p></div>
 }

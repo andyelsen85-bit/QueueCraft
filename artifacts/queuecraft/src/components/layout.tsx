@@ -17,8 +17,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { label: "Occupancy", href: "/occupancy", icon: CalendarDays },
     { label: "Calendar", href: "/calendar", icon: CalendarDays },
     { label: "Validation", href: "/validation", icon: ShieldAlert },
-    { label: "Directory", href: "/directory", icon: Users },
-    { label: "Settings", href: "/settings", icon: Settings },
+    ...(session?.capabilities?.includes("directory.manage") ? [{ label: "Directory", href: "/directory", icon: Users }] : []),
+    ...(session?.capabilities?.includes("settings.manage") ? [{ label: "Settings", href: "/settings", icon: Settings }] : []),
   ]
 
   return (

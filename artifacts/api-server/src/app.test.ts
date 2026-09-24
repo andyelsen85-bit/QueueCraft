@@ -19,6 +19,7 @@ import {
   topicsTable,
 } from "@workspace/db";
 import app from "./app";
+import { getCapabilities } from "./routes/queuecraft";
 import {
   BACKUP_FINGERPRINT,
   BACKUP_FORMAT,
@@ -79,6 +80,29 @@ after(async () => {
 });
 
 describe("QueueCraft security and preference flows", () => {
+  test("capability rules limit Settings to local admin and Directory to service authorities", () => {
+    const snapshot = {
+      memberById: new Map([
+        ["local-admin", { isCio: true }],
+        ["head", { isCio: false }],
+        ["deputy", { isCio: false }],
+        ["cio", { isCio: true }],
+      ]),
+      departments: [{ serviceHeadId: "head", serviceHeadDeputyId: "deputy" }],
+      roles: [],
+    } as unknown as Parameters<typeof getCapabilities>[1];
+    assert.deepEqual(
+      getCapabilities("local-admin", snapshot, "local").filter((capability) => capability.endsWith(".manage")),
+      ["settings.manage"],
+    );
+    assert.ok(!getCapabilities("local-admin", snapshot, "development").includes("settings.manage"));
+    assert.ok(!getCapabilities("cio", snapshot, "adfs").includes("directory.manage"));
+    for (const id of ["head", "deputy"]) {
+      const capabilities = getCapabilities(id, snapshot, "ldaps");
+      assert.ok(capabilities.includes("directory.manage"));
+      assert.ok(!capabilities.includes("settings.manage"));
+    }
+  });
   test("backup registry covers every QueueCraft schema table", () => {
     const schemaTables = Object.values(queuecraftSchema).flatMap((value) => {
       try {
@@ -268,6 +292,17 @@ describe("QueueCraft security and preference flows", () => {
       .patch("/api/preferences/topic-filters")
       .send({ departmentId: null, status: null, priority: null })
       .expect(403);
+  });
+
+  test("service authorities can manage Directory but not local-admin Settings", async () => {
+    if (!process.env.CI) return;
+    const agent = request.agent(app);
+    const session = await agent.get("/api/session").expect(200);
+    assert.ok(session.body.capabilities.includes("directory.manage"));
+    assert.ok(!session.body.capabilities.includes("settings.manage"));
+    await agent.get("/api/admin/settings").expect(403);
+    await agent.get("/api/admin/settings/https").expect(403);
+    await agent.get("/api/admin/backup").expect(403);
   });
 
   test("persists topic filters in the authenticated member record", async () => {

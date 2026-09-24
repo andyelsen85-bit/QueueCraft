@@ -82,6 +82,23 @@ type AdUser = {
   name: string;
 };
 
+const nameCollator = new Intl.Collator(undefined, {
+  sensitivity: "base",
+  numeric: true,
+});
+
+function sortByName<T extends { name: string }>(items: readonly T[] | undefined) {
+  return items
+    ? items
+        .map((item, index) => ({ item, index }))
+        .sort(
+          (a, b) =>
+            nameCollator.compare(a.item.name, b.item.name) || a.index - b.index,
+        )
+        .map(({ item }) => item)
+    : [];
+}
+
 const emptyMember: MemberDraft = {
   name: "",
   email: "",
@@ -633,7 +650,13 @@ export function Directory() {
 
   const loading = ld || lr || lm;
   const error = de || re || me;
-  const memberOptions = members ?? [];
+  const sortedDepartments = React.useMemo(
+    () => sortByName(departments),
+    [departments],
+  );
+  const sortedRoles = React.useMemo(() => sortByName(roles), [roles]);
+  const sortedMembers = React.useMemo(() => sortByName(members), [members]);
+  const sortedAdUsers = React.useMemo(() => sortByName(adUsers), [adUsers]);
 
   if (loading) {
     return (
@@ -717,7 +740,7 @@ export function Directory() {
           {adUsers.length > 0 && (
             <div className="space-y-3">
               <div className="max-h-64 overflow-y-auto rounded-sm border divide-y">
-                {adUsers.map((user) => (
+                {sortedAdUsers.map((user) => (
                   <label
                     key={user.subject}
                     className="flex cursor-pointer items-center gap-3 p-3 hover:bg-muted/50"
@@ -791,7 +814,7 @@ export function Directory() {
 
         <TabsContent value="departments" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {departments?.map((department) => (
+            {sortedDepartments.map((department) => (
               <Card key={department.id} className="h-full">
                 <CardHeader className="flex-row items-start justify-between space-y-0">
                   <CardTitle className="text-lg">{department.name}</CardTitle>
@@ -824,7 +847,7 @@ export function Directory() {
 
         <TabsContent value="roles" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {roles?.map((role) => (
+            {sortedRoles.map((role) => (
               <Card key={role.id}>
                 <CardHeader className="flex-row items-start justify-between space-y-0">
                   <div>
@@ -873,7 +896,7 @@ export function Directory() {
           )}
           <Card>
             <div className="divide-y divide-border">
-              {members?.map((member) => (
+              {sortedMembers.map((member) => (
                 <div
                   key={member.id}
                   className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors"
@@ -924,8 +947,8 @@ export function Directory() {
         </TabsContent>
         <TabsContent value="matrix" className="space-y-4">
           <DirectoryMatrix
-            members={(memberOptions ?? []) as MatrixMember[]}
-            roles={(roles ?? []) as MatrixRole[]}
+            members={sortedMembers as MatrixMember[]}
+            roles={sortedRoles as MatrixRole[]}
           />
         </TabsContent>
       </TabsRoot>
@@ -1056,7 +1079,7 @@ export function Directory() {
               onChange={(value) =>
                 setDepartmentDraft({ ...departmentDraft, serviceHeadId: value })
               }
-              members={memberOptions}
+              members={sortedMembers}
               required
             />
             <MemberSelect
@@ -1068,7 +1091,7 @@ export function Directory() {
                   serviceHeadDeputyId: value,
                 })
               }
-              members={memberOptions}
+              members={sortedMembers}
             />
             <MutationError
               error={
@@ -1129,7 +1152,7 @@ export function Directory() {
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
-                  {departments?.map((d) => (
+                  {sortedDepartments.map((d) => (
                     <SelectItem key={d.id} value={d.id}>
                       {d.name}
                     </SelectItem>
@@ -1139,7 +1162,7 @@ export function Directory() {
             </Field>
             <Field label="Also linked to departments">
               <div className="max-h-32 space-y-2 overflow-y-auto rounded-sm border p-2">
-                {departments?.map((department) => (
+                {sortedDepartments.map((department) => (
                   <label
                     key={department.id}
                     className="flex items-center gap-2 text-sm"
@@ -1175,7 +1198,7 @@ export function Directory() {
               onChange={(value) =>
                 setRoleDraft({ ...roleDraft, leadId: value })
               }
-              members={memberOptions}
+              members={sortedMembers}
               required
             />
             <MemberSelect
@@ -1184,11 +1207,11 @@ export function Directory() {
               onChange={(value) =>
                 setRoleDraft({ ...roleDraft, deputyId: value })
               }
-              members={memberOptions}
+              members={sortedMembers}
             />
             <Field label="Role members (optional)">
               <div className="max-h-36 overflow-y-auto rounded-sm border p-2 space-y-2">
-                {memberOptions.map((member) => (
+                {sortedMembers.map((member) => (
                   <label
                     key={member.id}
                     className="flex items-center gap-2 text-sm"

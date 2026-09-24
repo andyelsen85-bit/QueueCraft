@@ -32,7 +32,7 @@ export function SettingsPage() {
   const [savingHttps, setSavingHttps] = React.useState(false)
   const load = React.useCallback(async () => {
     const response = await fetch("/api/admin/settings", { credentials: "include" })
-    if (!response.ok) { setMessage(response.status === 403 ? "Only CIO administrators can manage runtime settings." : "Settings could not be loaded."); return }
+    if (!response.ok) { setMessage(response.status === 403 ? "Only the local administrator can manage Settings." : "Settings could not be loaded."); return }
     const next = await response.json() as Status
     setStatus(next)
     setDraft({
