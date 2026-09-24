@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { DatabaseBackup, LockKeyhole, Mail, Network, ShieldCheck, Server } from "lucide-react"
+import { DatabaseBackup, LockKeyhole, Mail, Network, ShieldCheck, Server, Upload } from "lucide-react"
 
 type Status = {
   publicBaseUrl: string | null
@@ -13,6 +13,7 @@ type Status = {
 }
 type Draft = Record<string, string | number | boolean>
 type Rule = { id: string; action: string; enabled: boolean }
+type HttpsStatus = { certificateInstalled: boolean; privateKeyInstalled: boolean; chainInstalled: boolean; subject: string | null; expiresAt: string | null; fingerprint: string | null; runtimeConfigured: boolean; installed?: boolean }
 const actions = ["topic.created", "topic.updated", "topic.finish_date_changed", "topic.allocations_replaced", "topic.assignee_changed", "topic.validation", "topic.collaborator_added", "topic.milestone_added", "topic.milestone_updated", "topic.milestone_deleted"]
 
 export function SettingsPage() {
@@ -23,6 +24,12 @@ export function SettingsPage() {
   const [tab, setTab] = React.useState<"connections" | "notifications" | "recovery">("connections")
   const [rules, setRules] = React.useState<Rule[]>([])
   const [testRecipient, setTestRecipient] = React.useState("")
+  const [httpsStatus, setHttpsStatus] = React.useState<HttpsStatus | null>(null)
+  const [certificatePem, setCertificatePem] = React.useState("")
+  const [privateKeyPem, setPrivateKeyPem] = React.useState("")
+  const [chainPem, setChainPem] = React.useState("")
+  const [clearChain, setClearChain] = React.useState(false)
+  const [savingHttps, setSavingHttps] = React.useState(false)
   const load = React.useCallback(async () => {
     const response = await fetch("/api/admin/settings", { credentials: "include" })
     if (!response.ok) { setMessage(response.status === 403 ? "Only CIO administrators can manage runtime settings." : "Settings could not be loaded."); return }
@@ -35,6 +42,8 @@ export function SettingsPage() {
     })
     const ruleResponse = await fetch("/api/admin/notification-rules", { credentials: "include" })
     if (ruleResponse.ok) setRules(await ruleResponse.json())
+    const httpsResponse = await fetch("/api/admin/settings/https", { credentials: "include" })
+    if (httpsResponse.ok) setHttpsStatus(await httpsResponse.json())
   }, [])
   React.useEffect(() => { void load() }, [load])
   const set = (key: string, value: string | number | boolean) => setDraft((current) => ({ ...current, [key]: value }))
@@ -65,6 +74,18 @@ export function SettingsPage() {
     const response = await fetch("/api/admin/settings/test-email", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", "x-csrf-token": csrf.csrfToken }, body: JSON.stringify({ recipient: testRecipient }) })
     const body = await response.json()
     setMessage(response.ok ? `Test email sent to ${testRecipient}.` : body.error ?? "Test email could not be sent.")
+  }
+  const saveHttps = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setSavingHttps(true); setMessage("")
+    try {
+      const csrf = await fetch("/api/auth/csrf", { credentials: "include" }).then((response) => response.json())
+      const response = await fetch("/api/admin/settings/https", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", "x-csrf-token": csrf.csrfToken }, body: JSON.stringify({ certificatePem, privateKeyPem, chainPem, clearChain }) })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error ?? "HTTPS certificate could not be saved.")
+      setHttpsStatus(result); setCertificatePem(""); setPrivateKeyPem(""); setChainPem(""); setClearChain(false)
+      setMessage(result.installed ? "HTTPS certificate saved and installed. Nginx will reload the validated pair." : "HTTPS certificate saved. It will be installed when the configured web server starts; this preview uses Replit's HTTPS proxy.")
+    } catch (error) { setMessage(error instanceof Error ? error.message : "HTTPS certificate could not be saved.") } finally { setSavingHttps(false) }
   }
   const exportBackup = async () => {
     setMessage("")
@@ -102,6 +123,17 @@ export function SettingsPage() {
       <Section icon={Server} title="Application"><Text label="Public base URL" value={draft.publicBaseUrl} onChange={(v) => set("publicBaseUrl", v)} /><p className="text-sm text-muted-foreground">Session signing is protected by the deployment bootstrap secret and cannot be changed while users are signed in.</p></Section>
     </div>
     <Button type="button" onClick={() => void save()} disabled={saving}>{saving ? "Saving…" : "Save settings"}</Button>
+    {httpsStatus && <Card><CardHeader><CardTitle className="flex items-center gap-2 text-lg"><LockKeyhole className="h-5 w-5 text-primary" />Organization PKI / HTTPS</CardTitle><CardDescription>Upload the site certificate and matching private key used by the deployed Nginx web server. This is separate from the AD FS and LDAPS CA certificates above. The key is encrypted in the database, then written with restricted permissions to the shared certificate volume for Nginx.</CardDescription></CardHeader><CardContent className="space-y-4">
+      {httpsStatus && <div className="rounded-sm border bg-muted/20 p-3 text-sm"><div className="font-medium">{httpsStatus.certificateInstalled && httpsStatus.privateKeyInstalled ? "Certificate saved" : "No certificate uploaded"}</div>{httpsStatus.subject && <div className="mt-1 break-all text-muted-foreground">{httpsStatus.subject}</div>}{httpsStatus.expiresAt && <div className="mt-1 text-muted-foreground">Expires {new Date(httpsStatus.expiresAt).toLocaleDateString("en-GB")}</div>}{httpsStatus.fingerprint && <div className="mt-1 break-all font-mono text-xs text-muted-foreground">SHA-256 {httpsStatus.fingerprint}</div>}</div>}
+      <form className="space-y-3" onSubmit={(event) => void saveHttps(event)}>
+        <HttpsPemField label="Certificate PEM" value={certificatePem} onChange={setCertificatePem} accept=".pem,.crt,.cer" required={!httpsStatus?.certificateInstalled} />
+        <HttpsPemField label="Private key PEM" value={privateKeyPem} onChange={setPrivateKeyPem} accept=".pem,.key" required={!httpsStatus?.privateKeyInstalled} />
+        <HttpsPemField label="Certificate chain PEM (optional)" value={chainPem} onChange={setChainPem} accept=".pem,.crt,.cer" />
+        {httpsStatus.chainInstalled && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={clearChain} onChange={(event) => setClearChain(event.target.checked)} />Remove the existing certificate chain</label>}
+        <p className="text-xs text-muted-foreground">Leave a field empty to keep the installed value. A new certificate must match the new or existing private key. Use a certificate valid for the site’s hostname; an incorrect hostname could make the site inaccessible over HTTPS. The development preview is TLS-terminated by Replit, so its certificate will not change.</p>
+        <Button type="submit" disabled={savingHttps}><Upload className="mr-2 h-4 w-4" />{savingHttps ? "Installing…" : "Save HTTPS certificate"}</Button>
+      </form>
+    </CardContent></Card>}
     </>}
     {tab === "notifications" && <Card><CardHeader><CardTitle>Topic email notifications</CardTitle><CardDescription>Enable email for topic changes. Recipients are selected from the changed topic: all members of its role, the role lead and deputy, and the corresponding department lead and deputy.</CardDescription></CardHeader><CardContent className="space-y-3">{rules.map((rule) => <div key={rule.id} className="grid gap-2 md:grid-cols-[1fr_auto_auto_auto] md:items-center"><select className="h-10 rounded-md border bg-background px-3 text-sm" value={rule.action} onChange={(event) => setRules((current) => current.map((item) => item.id === rule.id ? { ...item, action: event.target.value } : item))}>{actions.map((action) => <option key={action} value={action}>{action}</option>)}</select><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={rule.enabled} onChange={(event) => setRules((current) => current.map((item) => item.id === rule.id ? { ...item, enabled: event.target.checked } : item))} />Enabled</label><Button type="button" variant="outline" onClick={() => void saveRule(rule)}>Save</Button><Button type="button" variant="outline" onClick={() => void deleteRule(rule.id)}>Delete</Button></div>)}<Button type="button" variant="outline" disabled={rules.length >= actions.length} onClick={() => setRules((current) => [...current, { id: crypto.randomUUID(), action: actions.find((action) => !current.some((rule) => rule.action === action)) ?? actions[0], enabled: true }])}>Add notification rule</Button></CardContent></Card>}
     {tab === "recovery" && <Card><CardHeader className="flex-row items-start gap-3 space-y-0"><DatabaseBackup className="mt-0.5 h-5 w-5 text-primary" /><div><CardTitle>Application backup</CardTitle><CardDescription>Export every QueueCraft application table or restore a validated QueueCraft JSON backup. Production database backups remain the primary disaster-recovery mechanism.</CardDescription></div></CardHeader><CardContent className="flex flex-wrap gap-3"><Button type="button" onClick={() => void exportBackup()}>Download backup</Button><Label className="inline-flex h-10 cursor-pointer items-center rounded-md border px-4 text-sm font-medium hover:bg-accent">Restore backup<Input className="sr-only" type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; if (file) void restoreBackup(file); event.target.value = "" }} /></Label></CardContent></Card>}
@@ -112,3 +144,4 @@ function Section({ icon: Icon, title, children }: { icon: React.ElementType; tit
 function Text({ label, value, onChange, type = "text" }: { label: string; value: string | number | boolean | undefined; onChange: (value: string) => void; type?: string }) { return <div className="space-y-1"><Label>{label}</Label><Input type={type} value={typeof value === "boolean" ? "" : value ?? ""} onChange={(event) => onChange(event.target.value)} /></div> }
 function Secret({ label, configured, onChange }: { label: string; configured: boolean; onChange: (value: string) => void }) { return <div className="space-y-1"><Label>{label} {configured && <span className="text-xs text-green-600">(configured)</span>}</Label><Input type="password" autoComplete="new-password" placeholder={configured ? "Leave blank to keep existing value" : "Enter value"} onChange={(event) => onChange(event.target.value)} /></div> }
 function Certificate({ configured, onChange }: { configured: boolean; onChange: (value: string) => void }) { return <div className="space-y-1"><Label>CA certificate {configured && <span className="text-xs text-green-600">(configured)</span>}</Label><Input type="file" accept=".pem,.crt,.cer,application/x-pem-file,application/pkix-cert" onChange={(event) => { const file = event.target.files?.[0]; if (file) void file.text().then(onChange) }} /><p className="text-xs text-muted-foreground">Import a PEM, CRT, or CER certificate. Leave empty to keep the current certificate.</p></div> }
+function HttpsPemField({ label, value, onChange, accept, required = false }: { label: string; value: string; onChange: (value: string) => void; accept: string; required?: boolean }) { return <div className="space-y-1"><Label>{label}</Label><textarea className="flex min-h-20 w-full rounded-sm border bg-background p-2 font-mono text-xs" value={value} onChange={(event) => onChange(event.target.value)} required={required} placeholder={required ? "-----BEGIN CERTIFICATE-----" : "Leave blank to keep current value"} spellCheck={false} /><Input type="file" accept={accept} aria-label={`Upload ${label}`} onChange={(event) => { const file = event.target.files?.[0]; if (file) void file.text().then(onChange); event.target.value = "" }} /></div> }

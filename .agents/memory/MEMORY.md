@@ -1,1 +1,2 @@
 - [Drizzle migrations on an existing database](drizzle-existing-db.md) — preserve deterministic custom migrations and keep snapshot metadata aligned; do not replay an empty journal blindly.
+- [Shared TLS volume ownership](shared-tls-volume.md) — conditionally set the Nginx group on certificate files; local non-root runs cannot chown to a group they do not belong to.

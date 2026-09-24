@@ -12,7 +12,7 @@ ENV BASE_PATH=/
 RUN pnpm --filter @workspace/queuecraft run build
 
 FROM nginx:1.27-alpine AS runtime
-RUN apk add --no-cache openssl \
+RUN apk add --no-cache openssl inotify-tools \
   && mkdir -p /etc/nginx/certs /var/cache/nginx/proxy_temp /var/cache/nginx/client_temp \
     /var/cache/nginx/fastcgi_temp /var/cache/nginx/uwsgi_temp /var/cache/nginx/scgi_temp \
   && touch /etc/nginx/tls-listen.conf \

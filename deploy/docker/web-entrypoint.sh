@@ -12,13 +12,34 @@ if [ "${DISABLE_TLS:-false}" = "true" ]; then
   : > /etc/nginx/tls-listen.conf
 else
   mkdir -p "$TLS_DIR"
-  if [ ! -s "$TLS_DIR/tls.crt" ] || [ ! -s "$TLS_DIR/tls.key" ]; then
+  valid_pair() {
+    [ -s "$TLS_DIR/tls.crt" ] && [ -s "$TLS_DIR/tls.key" ] &&
+      openssl x509 -in "$TLS_DIR/tls.crt" -noout >/dev/null 2>&1 &&
+      openssl pkey -in "$TLS_DIR/tls.key" -noout >/dev/null 2>&1 &&
+      [ "$(openssl x509 -in "$TLS_DIR/tls.crt" -pubkey -noout | openssl pkey -pubin -outform DER 2>/dev/null | openssl dgst -sha256)" = \
+        "$(openssl pkey -in "$TLS_DIR/tls.key" -pubout -outform DER 2>/dev/null | openssl dgst -sha256)" ]
+  }
+  if ! valid_pair; then
+    attempts=0
+    while [ "$attempts" -lt 15 ] && ! valid_pair; do
+      attempts=$((attempts + 1))
+      sleep 1
+    done
+  fi
+  if ! valid_pair; then
+    umask 077
     openssl req -x509 -nodes -newkey rsa:2048 \
       -days "$TLS_SELFSIGNED_DAYS" \
       -subj "/CN=$TLS_HOSTNAME" \
       -addext "subjectAltName=DNS:$TLS_HOSTNAME" \
-      -keyout "$TLS_DIR/tls.key" \
-      -out "$TLS_DIR/tls.crt"
+      -keyout "$TLS_DIR/tls.key.tmp" \
+      -out "$TLS_DIR/tls.crt.tmp" >/dev/null 2>&1
+    if valid_pair; then
+      rm -f "$TLS_DIR/tls.key.tmp" "$TLS_DIR/tls.crt.tmp"
+    else
+      mv -f "$TLS_DIR/tls.key.tmp" "$TLS_DIR/tls.key"
+      mv -f "$TLS_DIR/tls.crt.tmp" "$TLS_DIR/tls.crt"
+    fi
   fi
   cat > /etc/nginx/tls-listen.conf <<'EOF'
 listen 443 ssl;
@@ -26,6 +47,20 @@ ssl_certificate /etc/nginx/certs/tls.crt;
 ssl_certificate_key /etc/nginx/certs/tls.key;
 ssl_protocols TLSv1.2 TLSv1.3;
 EOF
+  watch_certificates() {
+    while file=$(inotifywait -q -e close_write,move,create,delete --format '%f' "$TLS_DIR"); do
+      case "$file" in
+        tls.crt|tls.key) ;;
+        *) continue ;;
+      esac
+      sleep 1
+      if valid_pair && nginx -t >/dev/null 2>&1 && nginx -s reload >/dev/null 2>&1; then
+        openssl dgst -sha256 -r "$TLS_DIR/tls.crt" | awk '{print $1}' > "$TLS_DIR/.tls-applied.sha256.tmp"
+        mv -f "$TLS_DIR/.tls-applied.sha256.tmp" "$TLS_DIR/.tls-applied.sha256"
+      fi
+    done
+  }
+  watch_certificates &
 fi
 
 exec "$@"

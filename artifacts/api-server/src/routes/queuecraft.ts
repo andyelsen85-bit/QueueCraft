@@ -94,6 +94,7 @@ import {
   type RuntimeSettings,
 } from "../services/application-settings";
 import { clearOidcConfigurationCache } from "../services/oidc";
+import { httpsCertificateStatus, installHttpsCertificate, validateHttpsCertificate } from "../services/https-certificate";
 import { searchLdapsUsers } from "../services/ldaps";
 import {
   enqueueRuleNotifications,
@@ -487,6 +488,52 @@ router.get("/admin/settings", async (req, res): Promise<void> => {
   if (!requireCapability(req, res, snapshot, "settings.manage")) return;
   res.setHeader("Cache-Control", "no-store");
   res.json(maskedStatus(await getRuntimeSettings()));
+});
+
+router.get("/admin/settings/https", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "directory.manage_cio")) return;
+  res.setHeader("Cache-Control", "no-store");
+  res.json(httpsCertificateStatus(await getRuntimeSettings()));
+});
+
+router.put("/admin/settings/https", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "directory.manage_cio")) return;
+  const body = req.body;
+  if (!body || typeof body !== "object" || Array.isArray(body) ||
+      (body.clearChain !== undefined && typeof body.clearChain !== "boolean") ||
+      ["certificatePem", "privateKeyPem", "chainPem"].some(
+        (field) => body[field] !== undefined && typeof body[field] !== "string",
+      )) {
+    res.status(400).json({ error: "Certificate, key, and chain must be PEM text." });
+    return;
+  }
+  const current = await getRuntimeSettings();
+  let pair: ReturnType<typeof validateHttpsCertificate>;
+  try {
+    pair = validateHttpsCertificate(body, current);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : "Invalid HTTPS certificate." });
+    return;
+  }
+  const saved = await db.transaction(async (tx) => {
+    const updated = await updateRuntimeSettings({
+      httpsCertificatePem: pair.certificatePem,
+      httpsPrivateKeyPem: pair.privateKeyPem,
+      httpsChainPem: pair.chainPem,
+    }, currentUserId(req), tx);
+    await addActivity(req, null, "HTTPS certificate updated", "HTTPS certificate configuration saved", false, tx);
+    return updated;
+  });
+  try {
+    const installed = await installHttpsCertificate(saved, true);
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ ...httpsCertificateStatus(saved), installed });
+  } catch (error) {
+    req.log.error({ err: error }, "HTTPS certificate installation failed");
+    res.status(500).json({ error: "Certificate saved but could not be installed on the HTTPS listener. Check the shared certificate volume and server logs." });
+  }
 });
 
 router.put("/admin/settings", async (req, res): Promise<void> => {

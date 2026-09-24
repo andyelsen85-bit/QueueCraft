@@ -47,7 +47,10 @@ import {
   UsersRound,
   ShieldCheck,
   Network,
+  Grid2X2,
+  Download,
 } from "lucide-react";
+import { jsPDF } from "jspdf";
 
 type MemberDraft = {
   name: string;
@@ -106,6 +109,259 @@ function mutationError(error: unknown) {
   return error instanceof Error
     ? error.message
     : "The change could not be saved.";
+}
+
+type MatrixMember = { id: string; name: string; title?: string | null };
+type MatrixRole = {
+  id: string;
+  name: string;
+  lead: { id: string };
+  deputy?: { id: string } | null;
+  memberIds?: string[] | null;
+};
+type DirectoryMatrixProps = {
+  members: MatrixMember[];
+  roles: MatrixRole[];
+};
+
+function MatrixCell({
+  member,
+  role,
+}: {
+  member: MatrixMember;
+  role: MatrixRole;
+}) {
+  const isLead = role.lead.id === member.id;
+  const isDeputy = role.deputy?.id === member.id;
+  const isMember = (role.memberIds ?? []).includes(member.id);
+  if (!isLead && !isDeputy && !isMember) {
+    return <span className="text-muted-foreground/30">—</span>;
+  }
+  return (
+    <span
+      className={
+        isLead
+          ? "font-bold text-destructive"
+          : "font-semibold text-foreground"
+      }
+      title={isLead ? "Role lead" : isDeputy ? "Role deputy/member" : "Role member"}
+    >
+      {isLead ? "X!" : "X"}
+    </span>
+  );
+}
+
+function exportMatrixPdf(
+  members: DirectoryMatrixProps["members"],
+  roles: DirectoryMatrixProps["roles"],
+) {
+  const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 32;
+  const memberColumnWidth = 126;
+  const roleColumnWidth = 58;
+  const rowHeight = 21;
+  const headerHeight = 44;
+  const availableWidth = pageWidth - margin * 2 - memberColumnWidth;
+  const rolesPerPage = Math.max(1, Math.floor(availableWidth / roleColumnWidth));
+  const rowsPerPage = Math.max(
+    1,
+    Math.floor((pageHeight - 83 - headerHeight - 50) / rowHeight),
+  );
+  const rolePages = Math.max(1, Math.ceil(roles.length / rolesPerPage));
+  const rowPages = Math.max(1, Math.ceil(members.length / rowsPerPage));
+  const totalPages = rolePages * rowPages;
+  const generatedDate = new Date();
+  const generated = [
+    String(generatedDate.getDate()).padStart(2, "0"),
+    String(generatedDate.getMonth() + 1).padStart(2, "0"),
+    generatedDate.getFullYear(),
+  ].join("/");
+  let pageNumber = 0;
+
+  for (let rowPage = 0; rowPage < rowPages; rowPage += 1) {
+    const pageMembers = members.slice(
+      rowPage * rowsPerPage,
+      (rowPage + 1) * rowsPerPage,
+    );
+    for (let rolePage = 0; rolePage < rolePages; rolePage += 1) {
+      if (pageNumber > 0) pdf.addPage();
+      pageNumber += 1;
+      const pageRoles = roles.slice(
+        rolePage * rolesPerPage,
+        (rolePage + 1) * rolesPerPage,
+      );
+      pdf.setFillColor(15, 23, 42);
+      pdf.rect(0, 0, pageWidth, 66, "F");
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(18);
+      pdf.text("QueueCraft", margin, 27);
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "normal");
+      pdf.text("Directory member-by-role matrix", margin, 46);
+      pdf.setFontSize(9);
+      pdf.text(generated, pageWidth - margin, 27, { align: "right" });
+      pdf.text(`Page ${pageNumber} of ${totalPages}`, pageWidth - margin, 46, {
+        align: "right",
+      });
+
+      const tableTop = 83;
+      const tableWidth = memberColumnWidth + pageRoles.length * roleColumnWidth;
+      pdf.setFillColor(241, 245, 249);
+      pdf.rect(margin, tableTop, tableWidth, headerHeight, "F");
+      pdf.setDrawColor(203, 213, 225);
+      pdf.setLineWidth(0.6);
+      pdf.rect(margin, tableTop, tableWidth, headerHeight + pageMembers.length * rowHeight);
+      pdf.setTextColor(30, 41, 59);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("MEMBER", margin + 8, tableTop + 23);
+      pageRoles.forEach((role, index) => {
+        const x = margin + memberColumnWidth + index * roleColumnWidth;
+        pdf.line(x, tableTop, x, tableTop + headerHeight + pageMembers.length * rowHeight);
+        const lines = pdf.splitTextToSize(role.name, roleColumnWidth - 8).slice(0, 3);
+        pdf.setFontSize(lines.length > 2 ? 6.5 : 7.5);
+        pdf.text(lines, x + roleColumnWidth / 2, tableTop + 12, {
+          align: "center",
+        });
+      });
+      pdf.line(
+        margin + memberColumnWidth,
+        tableTop,
+        margin + memberColumnWidth,
+        tableTop + headerHeight + pageMembers.length * rowHeight,
+      );
+      pageMembers.forEach((member, memberIndex) => {
+        const y = tableTop + headerHeight + memberIndex * rowHeight;
+        if (memberIndex % 2 === 0) {
+          pdf.setFillColor(248, 250, 252);
+          pdf.rect(margin, y, tableWidth, rowHeight, "F");
+        }
+        pdf.setDrawColor(226, 232, 240);
+        pdf.line(margin, y, margin + tableWidth, y);
+        pdf.setTextColor(51, 65, 85);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(8);
+        pdf.text(pdf.splitTextToSize(member.name, memberColumnWidth - 14)[0], margin + 8, y + 14);
+        pageRoles.forEach((role, roleIndex) => {
+          const x = margin + memberColumnWidth + roleIndex * roleColumnWidth;
+          const isLead = role.lead.id === member.id;
+          const isDeputy = role.deputy?.id === member.id;
+          const isMember = (role.memberIds ?? []).includes(member.id);
+          if (!isLead && !isDeputy && !isMember) return;
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(9);
+          pdf.setTextColor(isLead ? 185 : 15, isLead ? 28 : 23, isLead ? 28 : 42);
+          pdf.text(isLead ? "X!" : "X", x + roleColumnWidth / 2, y + 14, {
+            align: "center",
+          });
+        });
+      });
+      const legendY = Math.min(
+        pageHeight - 25,
+        tableTop + headerHeight + pageMembers.length * rowHeight + 18,
+      );
+      pdf.setFontSize(8);
+      pdf.setTextColor(71, 85, 105);
+      pdf.setFont("helvetica", "normal");
+      pdf.text("Legend:", margin, legendY);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text("X = member", margin + 38, legendY);
+      pdf.setTextColor(185, 28, 28);
+      pdf.text("X! = role lead", margin + 104, legendY);
+      if (rolePages > 1 || rowPages > 1) {
+        pdf.setTextColor(100, 116, 139);
+        pdf.text(
+          `Showing roles ${rolePage * rolesPerPage + 1}–${Math.min(
+            roles.length,
+            (rolePage + 1) * rolesPerPage,
+          )} and members ${rowPage * rowsPerPage + 1}–${Math.min(
+            members.length,
+            (rowPage + 1) * rowsPerPage,
+          )}`,
+          pageWidth - margin,
+          legendY,
+          { align: "right" },
+        );
+      }
+    }
+  }
+  pdf.save(`queuecraft-directory-matrix-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+function DirectoryMatrix({ members, roles }: DirectoryMatrixProps) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <CardTitle className="text-lg">Member-by-role matrix</CardTitle>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Review role membership and leads at a glance.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => exportMatrixPdf(members, roles)}
+          disabled={!members.length || !roles.length}
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Download landscape PDF
+        </Button>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
+          <span><strong className="text-foreground">X</strong> Member</span>
+          <span><strong className="text-destructive">X!</strong> Role lead</span>
+        </div>
+        <div className="overflow-auto rounded-md border">
+          <table className="w-full min-w-max border-collapse text-sm">
+            <thead>
+              <tr className="bg-muted/60">
+                <th className="sticky left-0 z-10 min-w-48 border-b border-r bg-muted/90 px-4 py-3 text-left font-semibold">
+                  Member
+                </th>
+                {roles.map((role) => (
+                  <th
+                    key={role.id}
+                    className="min-w-24 max-w-32 border-b px-3 py-3 text-center font-semibold"
+                    title={role.name}
+                  >
+                    <span className="line-clamp-2">{role.name}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((member, index) => (
+                <tr key={member.id} className={index % 2 ? "bg-muted/20" : ""}>
+                  <th className="sticky left-0 z-10 border-r px-4 py-3 text-left font-medium bg-background">
+                    <span>{member.name}</span>
+                    {member.title && (
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        {member.title}
+                      </span>
+                    )}
+                  </th>
+                  {roles.map((role) => (
+                    <td key={role.id} className="border-t px-3 py-3 text-center">
+                      <MatrixCell member={member} role={role} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {!members.length || !roles.length ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            Add members and roles to populate the matrix.
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
 }
 
 export function Directory() {
@@ -524,6 +780,13 @@ export function Directory() {
             <UsersRound className="mr-2 h-4 w-4" />
             Members
           </TabsTrigger>
+           <TabsTrigger
+             value="matrix"
+             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
+           >
+             <Grid2X2 className="mr-2 h-4 w-4" />
+             Matrix
+           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="departments" className="space-y-4">
@@ -658,6 +921,12 @@ export function Directory() {
               ))}
             </div>
           </Card>
+        </TabsContent>
+        <TabsContent value="matrix" className="space-y-4">
+          <DirectoryMatrix
+            members={(memberOptions ?? []) as MatrixMember[]}
+            roles={(roles ?? []) as MatrixRole[]}
+          />
         </TabsContent>
       </TabsRoot>
 

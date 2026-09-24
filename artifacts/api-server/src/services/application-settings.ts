@@ -8,6 +8,7 @@ export type RuntimeSettings = {
   publicBaseUrl?: string; adfsEnabled?: boolean; adfsDisplayName?: string; adfsIssuer?: string; adfsDiscoveryUrl?: string; adfsClientId?: string; adfsClientSecret?: string; adfsRedirectUri?: string; adfsScopes?: string; adfsUsernameClaim?: string; adfsEmailClaim?: string; adfsDisplayNameClaim?: string; adfsCaCertificate?: string;
   ldapsUrl?: string; ldapsBindDn?: string; ldapsBindPassword?: string; ldapsBaseDn?: string; ldapsUserFilter?: string; ldapsCaCertificate?: string; ldapsCioGroupDn?: string;
   smtpHost?: string; smtpPort?: number; smtpSecure?: boolean; smtpUser?: string; smtpPassword?: string; smtpFrom?: string; smtpFromName?: string;
+  httpsCertificatePem?: string; httpsPrivateKeyPem?: string; httpsChainPem?: string;
   adminPasswordHash?: string;
   adminMemberId?: string;
 };
@@ -54,7 +55,7 @@ export async function getRuntimeSettings(executor: SettingsExecutor = db): Promi
 }
 export async function updateRuntimeSettings(update: Partial<RuntimeSettings>, memberId?: string, executor: SettingsExecutor = db) {
   const current = await getRuntimeSettings(executor);
-  const value = { ...current, ...Object.fromEntries(Object.entries(update).filter(([, value]) => value !== undefined && value !== "")) };
+  const value = { ...current, ...Object.fromEntries(Object.entries(update).filter(([key, value]) => value !== undefined && (value !== "" || key === "httpsChainPem"))) };
   const encryptedValue = encryptRuntimeSettings(value);
   await executor.insert(applicationSettingsTable).values({ id: "runtime", encryptedValue, updatedAt: new Date(), updatedById: memberId ?? null }).onConflictDoUpdate({ target: applicationSettingsTable.id, set: { encryptedValue, updatedAt: new Date(), updatedById: memberId ?? null } });
   return value;

@@ -46,6 +46,11 @@ spec:
                 name: api-env
             - secretRef:
                 name: api-env-secret
+          env:
+            - name: TLS_CERT_DIR
+              value: /etc/nginx/certs
+            - name: TLS_CERT_GID
+              value: "101"
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false
@@ -53,6 +58,8 @@ spec:
               drop:
                 - ALL
           volumeMounts:
+            - name: certs
+              mountPath: /etc/nginx/certs
             - name: secrets
               mountPath: /var/secrets
           readinessProbe:
