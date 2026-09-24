@@ -146,7 +146,10 @@ kubeseal --context "$CONTEXT" \
 ```
 
 Generate the API SealedSecret with the **same** database password and the two
-*different* values generated above:
+*different* values generated above. **Replace every angle-bracket example
+before running the command.** In particular, the literal
+`<prod-app-encryption-key>` is 25 characters and will cause the API to fail
+at startup if sealed instead of a real 64-character hex key:
 
 ```bash
 kubectl --context "$CONTEXT" -n queuecraft create secret generic api-env-secret \
@@ -164,7 +167,10 @@ Copy the three `spec.encryptedData` values from the first generated file into
 `overlays/prod/pg-env.yml`. Copy the three from the second into the
 **SealedSecret section** of `overlays/prod/api-env.yml` (keep its ConfigMap
 section). Do not copy plaintext or replace `api-env.yml` with only the
-generated SealedSecret.
+generated SealedSecret. Running `kubeseal` only writes a local output file;
+the cluster's Secret will not change until the updated SealedSecret is
+applied and reconciled. Existing pods also keep their old environment values
+until they are recreated.
 
 ```bash
 grep -n REPLACE_WITH_KUBESEAL_OUTPUT deploy/kubernetes/kustomize/overlays/prod/{pg-env,api-env}.yml
