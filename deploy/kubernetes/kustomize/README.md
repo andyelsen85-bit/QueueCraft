@@ -237,6 +237,10 @@ both the API and web containers must mount `longhorn-queuecraft-certs-pvc` at
 `/etc/nginx/certs`, and the API needs `TLS_CERT_DIR=/etc/nginx/certs` and
 `TLS_CERT_GID=101`. Publishing or mirroring a new container image does not add
 missing Kubernetes environment variables or volume mounts.
+If deploying from `deliverables/queuecraft-kubernetes-deployment.zip`, transfer
+the refreshed package to your administration machine before the next rollout;
+an older copy lacks the API certificate mount. CI checks that the ZIP's base
+deployment stays in sync with the source manifest.
 
 After this one-time setup, renew the certificate in **Settings → Organization
 PKI / HTTPS**. A successful upload replaces the certificate on the shared
