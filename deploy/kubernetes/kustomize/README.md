@@ -89,35 +89,101 @@ settings remain encrypted in the export. During an upgrade from an older
 QueueCraft release, retain the old `SESSION_SECRET` until the application has
 read and migrated the legacy ciphertext.
 
-Replace every `REPLACE_WITH_KUBESEAL_OUTPUT` value with output encrypted for
-your cluster and the `queuecraft` namespace. For example, prepare a temporary
-Secret and seal it:
+### Replace every SealedSecret placeholder
+
+Run the following **Bash** commands from the repository root on a machine with
+`kubeseal`, `kubectl`, and access to the target cluster. Set `OVERLAY` and
+`CONTEXT` for **test**, run the whole block, then change them to the **prod**
+overlay and production context and run it again. If your Sealed Secrets
+controller is not named `sealed-secrets` in `kube-system`, adjust the two
+controller variables. The controller's public certificate is fetched from the
+selected cluster; no plaintext secret is written to a file or passed as a
+command-line argument. Prompts read directly from the terminal without echo.
+
+For a **new** environment, generate three independent values and save them in
+your approved secret store before sealing (do not regenerate values for an
+existing deployment):
 
 ```bash
-kubectl -n queuecraft create secret generic api-env-secret \
-  --from-literal=DATABASE_URL='postgresql://queuecraft:<url-encoded-password>@pg:5432/queuecraft' \
-  --from-literal=SESSION_SECRET='<at-least-32-random-characters>' \
-  --from-literal=APP_ENCRYPTION_KEY='<64-random-hex-characters>' \
-  --dry-run=client -o yaml |
-kubeseal --format yaml > api-env-sealed.yml
+openssl rand -hex 24  # POSTGRES_PASSWORD (URL-safe)
+openssl rand -hex 32  # SESSION_SECRET
+openssl rand -hex 32  # APP_ENCRYPTION_KEY
+kubectl config get-contexts
 ```
 
-Do the same for `pg-env` in each environment. Both `DATABASE_URL` values must
-point to the in-cluster `pg:5432` Service and use the matching `POSTGRES_DB`,
-`POSTGRES_USER`, and `POSTGRES_PASSWORD` from that environment's `pg-env`
-SealedSecret. Seal each environment's secrets for its own cluster and namespace;
-never reuse test credentials in production.
+```bash
+(
+  set -euo pipefail
+  OVERLAY=prod                       # change to test for the test cluster
+  CONTEXT=your-prod-kube-context     # use the matching cluster context
+  CONTROLLER_NAMESPACE=kube-system
+  CONTROLLER_NAME=sealed-secrets-controller
+  NAMESPACE=queuecraft
+  DIR="deploy/kubernetes/kustomize/overlays/$OVERLAY"
+  CERT="$(mktemp)"
+  trap 'rm -f "$CERT"' EXIT
+
+  kubeseal --context "$CONTEXT" \
+    --controller-namespace "$CONTROLLER_NAMESPACE" \
+    --controller-name "$CONTROLLER_NAME" --fetch-cert > "$CERT"
+
+  seal_field() {
+    local file="$1" secret="$2" key="$3" value sealed tmp
+    grep -Fq "    $key: REPLACE_WITH_KUBESEAL_OUTPUT" "$file" || {
+      printf 'Missing placeholder: %s in %s\n' "$key" "$file" >&2
+      return 1
+    }
+    IFS= read -r -s -p "$OVERLAY $key: " value </dev/tty
+    printf '\n' >/dev/tty
+    test -n "$value" || { printf 'Empty value: %s\n' "$key" >&2; return 1; }
+    sealed="$(printf '%s' "$value" | kubeseal --raw --cert "$CERT" \
+      --scope strict --namespace "$NAMESPACE" --name "$secret")"
+    unset value
+    test -n "$sealed" || { printf 'Sealing failed: %s\n' "$key" >&2; return 1; }
+    tmp="$(mktemp "$file.XXXXXX")"
+    sed "s|^    $key: REPLACE_WITH_KUBESEAL_OUTPUT$|    $key: $sealed|" "$file" > "$tmp"
+    mv "$tmp" "$file"
+  }
+
+  seal_field "$DIR/pg-env.yml" pg-env POSTGRES_DB
+  seal_field "$DIR/pg-env.yml" pg-env POSTGRES_USER
+  seal_field "$DIR/pg-env.yml" pg-env POSTGRES_PASSWORD
+  seal_field "$DIR/api-env.yml" api-env-secret DATABASE_URL
+  seal_field "$DIR/api-env.yml" api-env-secret SESSION_SECRET
+  seal_field "$DIR/api-env.yml" api-env-secret APP_ENCRYPTION_KEY
+
+  if grep -q REPLACE_WITH_KUBESEAL_OUTPUT "$DIR/api-env.yml" "$DIR/pg-env.yml"; then
+    printf 'Unsealed values remain in %s\n' "$DIR" >&2
+    exit 1
+  fi
+  kubectl kustomize "$DIR" >/dev/null
+  printf 'Sealed all six values in %s\n' "$DIR"
+)
+```
+
+`DATABASE_URL` must point to the in-cluster `pg:5432` Service, for example
+`postgresql://queuecraft:<password>@pg:5432/queuecraft` when using the
+URL-safe hexadecimal password generated above (URL-encode other passwords). Its
+database name, user, and password must match that environment's `POSTGRES_DB`,
+`POSTGRES_USER`, and `POSTGRES_PASSWORD`. Use different passwords, session
+secrets, and encryption keys for test and production. Store the plaintext
+values securely outside Git; retain the existing `APP_ENCRYPTION_KEY` (and
+legacy `SESSION_SECRET` during migration) when updating an established
+environment. Each ciphertext is bound to its Secret name, namespace, and
+cluster key; do not copy sealed values between environments.
 
 The production overlay now provisions a new database volume rather than
 connecting to the previously documented external PostgreSQL service. It does
 not migrate existing external database contents; export and restore that data
 before changing a running production deployment's `DATABASE_URL`.
 
-The base `regcred.yml` intentionally contains
-`REPLACE_WITH_DOCKER_CONFIG_JSON`; the uploaded archive included a live registry
-credential, which must not be copied. Replace this value with your own Docker
-configuration before deployment. AD FS, LDAPS, SMTP, and CA certificates are
-configured after first login in QueueCraft Settings.
+The base `regcred.yml` contains a **separate plain Kubernetes Secret**, not a
+SealedSecret. Its `REPLACE_WITH_DOCKER_CONFIG_JSON` is not covered by the six
+commands above. The uploaded archive included a live registry credential,
+which must not be copied. Supply your registry credential through your secure
+deployment process rather than committing a plaintext Docker configuration.
+AD FS, LDAPS, SMTP, and CA certificates are configured after first login in
+QueueCraft Settings.
 
 ## Render and deploy
 
