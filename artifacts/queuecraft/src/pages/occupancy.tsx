@@ -43,7 +43,6 @@ import {
 import { availableStyle, occupancyStyle } from "@/lib/occupancy";
 
 type OccupancySort = "name" | "available" | "load";
-
 export function Occupancy() {
   const [currentWeek, setCurrentWeek] = React.useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 }),
@@ -427,17 +426,29 @@ export function Occupancy() {
                       <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-muted-foreground">
                         <Briefcase className="h-4 w-4" /> Daily Business (BAU)
                       </div>
-                      <div className="flex items-center justify-between p-3 rounded-sm border bg-background">
-                        <span className="text-sm font-medium">
-                          Standard Operations
-                        </span>
-                        <span
-                          className="rounded-sm border px-1 text-sm font-mono font-bold"
-                          style={occupancyStyle(overview.dailyBusinessPercent)}
-                        >
-                          {overview.dailyBusinessPercent}%
-                        </span>
-                      </div>
+                      {overview.dailyBusinessTasks.length === 0 ? (
+                        <div className="rounded-sm border border-dashed p-3 text-center text-sm text-muted-foreground">
+                          No BAU tasks configured.
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {overview.dailyBusinessTasks.map((task, index) => (
+                            <div key={`${task.name}-${index}`} className="flex items-center justify-between rounded-sm border bg-background p-3">
+                              <span className="truncate pr-3 text-sm font-medium">{task.name}</span>
+                              <span
+                                className="rounded-sm border px-1 text-sm font-mono font-bold"
+                                style={occupancyStyle(task.percent)}
+                              >
+                                {task.percent}%
+                              </span>
+                            </div>
+                          ))}
+                          <div className="flex items-center justify-between px-1 pt-1 text-xs font-mono text-muted-foreground">
+                            <span>BAU subtotal</span>
+                            <span>{overview.dailyBusinessPercent}%</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Topics Section */}

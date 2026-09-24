@@ -768,7 +768,7 @@ components:
       enum: [standard, break_glass]
     Member:
       type: object
-      required: [id, name, initials, email]
+      required: [id, name, initials, email, dailyBusinessTasks]
       properties:
         id: { type: string }
         name: { type: string }
@@ -779,6 +779,11 @@ components:
         isCio: { type: boolean }
         authProvider: { type: ["string", "null"] }
         dailyBusinessPercent: { type: integer, minimum: 0, maximum: 100 }
+        dailyBusinessTasks:
+          description: "Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total."
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyBusinessTask"
     MemberInput:
       type: object
       required: [name, email]
@@ -797,6 +802,11 @@ components:
           items: { type: string }
         dailyBusinessPercent:
           { type: integer, minimum: 0, maximum: 100, default: 0 }
+        dailyBusinessTasks:
+          description: "Optional named BAU tasks. An empty array clears all tasks; when dailyBusinessPercent is also supplied, its value must equal the task total."
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyBusinessTask"
     MemberUpdate:
       type: object
       properties:
@@ -813,6 +823,17 @@ components:
           type: array
           items: { type: string }
         dailyBusinessPercent: { type: integer, minimum: 0, maximum: 100 }
+        dailyBusinessTasks:
+          description: "Optional named BAU tasks. An empty array clears all tasks; when dailyBusinessPercent is also supplied, its value must equal the task total."
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyBusinessTask"
+    DailyBusinessTask:
+      type: object
+      required: [name, percent]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        percent: { type: integer, minimum: 0, maximum: 100 }
     MemberPermissions:
       type: object
       required: [isCio, headDepartmentIds, deputyDepartmentIds]
@@ -1189,6 +1210,7 @@ components:
           startDate,
           endDate,
           dailyBusinessPercent,
+          dailyBusinessTasks,
           topics,
           milestones,
           topicAllocationPercent,
@@ -1202,6 +1224,10 @@ components:
         startDate: { type: string, format: date }
         endDate: { type: string, format: date }
         dailyBusinessPercent: { type: integer }
+        dailyBusinessTasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyBusinessTask"
         topics:
           type: array
           items: { $ref: "#/components/schemas/OccupancyTopic" }

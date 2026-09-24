@@ -5,6 +5,7 @@
  * QueueCraft operations and topic-routing API
  * OpenAPI spec version: 0.1.0
  */
+import type { DailyBusinessTask } from './dailyBusinessTask';
 import type { MemberStatus } from './memberStatus';
 
 export interface Member {
@@ -23,4 +24,6 @@ export interface Member {
      * @maximum 100
      */
   dailyBusinessPercent?: number;
+  /** Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total. */
+  dailyBusinessTasks: DailyBusinessTask[];
 }

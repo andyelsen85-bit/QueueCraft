@@ -1350,6 +1350,13 @@ export function TopicDetail() {
                             <div className="text-xs text-muted-foreground font-mono">
                               BAU: {member.dailyBusinessPercent ?? 0}%
                             </div>
+                            {member.dailyBusinessTasks.length > 0 && (
+                              <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                                {member.dailyBusinessTasks.map((task, index) => (
+                                  <span key={`${task.name}-${index}`}>{task.name}: {task.percent}%</span>
+                                ))}
+                              </div>
+                            )}
                             {!allocations?.some((entry) => entry.member.id === member.id) && (
                               <div className="text-xs text-muted-foreground">No allocation saved</div>
                             )}

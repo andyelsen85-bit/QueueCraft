@@ -2,3 +2,4 @@
 - [Shared TLS volume ownership](shared-tls-volume.md) — conditionally set the Nginx group on certificate files; local non-root runs cannot chown to a group they do not belong to.
 - [Manual authority versus directory sync](manual-authority-sync.md) — manual CIO grants must survive directory sign-in and group sync without forcing overrides on unrelated edits.
 - [Isolated CI database checks](isolated-ci-database.md) — reproduce database-mutating CI tests on a disposable local PostgreSQL instance, never the app's development database.
+- [BAU legacy values on publish](bau-publish-backfill.md) — schema-only publish may skip data backfill; treat old scalar BAU as a named task until edited.

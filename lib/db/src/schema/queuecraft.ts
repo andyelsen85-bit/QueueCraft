@@ -65,6 +65,10 @@ export const membersTable = pgTable(
     dailyBusinessPercent: integer("daily_business_percent")
       .notNull()
       .default(0),
+    dailyBusinessTasks: jsonb("daily_business_tasks")
+      .$type<Array<{ name: string; percent: number }>>()
+      .notNull()
+      .default([]),
     topicFilterDepartmentId: text("topic_filter_department_id"),
     topicFilterRoleId: text("topic_filter_role_id"),
     topicFilterStatus: topicStatusEnum("topic_filter_status"),
@@ -77,6 +81,10 @@ export const membersTable = pgTable(
     check(
       "members_daily_business_percent_range",
       sql`${table.dailyBusinessPercent} between 0 and 100`,
+    ),
+    check(
+      "members_daily_business_tasks_json",
+      sql`jsonb_typeof(${table.dailyBusinessTasks}) = 'array'`,
     ),
   ],
 );

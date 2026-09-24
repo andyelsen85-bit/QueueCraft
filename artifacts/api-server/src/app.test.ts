@@ -448,6 +448,151 @@ describe("QueueCraft security and preference flows", () => {
     await db.delete(membersTable).where(eq(membersTable.id, response.body.id));
   });
 
+  test("supports named BAU tasks, legacy scalar writes, and occupancy responses", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = await agent.get("/api/auth/csrf").expect(200);
+    const created = await agent
+      .post("/api/directory/members")
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({
+        name: "BAU Tasks Member",
+        email: `bau-${randomUUID()}@example.invalid`,
+        dailyBusinessTasks: [
+          { name: "  Customer support  ", percent: 20 },
+          { name: "Reporting", percent: 15 },
+        ],
+      })
+      .expect(201);
+    const memberId = created.body.id as string;
+    try {
+      assert.deepEqual(created.body.dailyBusinessTasks, [
+        { name: "Customer support", percent: 20 },
+        { name: "Reporting", percent: 15 },
+      ]);
+      assert.equal(created.body.dailyBusinessPercent, 35);
+
+      const unrelated = await agent
+        .patch(`/api/directory/members/${memberId}`)
+        .set("x-csrf-token", csrf.body.csrfToken)
+        .send({ title: "Unrelated update" })
+        .expect(200);
+      assert.equal(unrelated.body.title, "Unrelated update");
+      assert.deepEqual(unrelated.body.dailyBusinessTasks, created.body.dailyBusinessTasks);
+      assert.equal(unrelated.body.dailyBusinessPercent, 35);
+
+      const scalarOnly = await agent
+        .patch(`/api/directory/members/${memberId}`)
+        .set("x-csrf-token", csrf.body.csrfToken)
+        .send({ dailyBusinessPercent: 12 })
+        .expect(200);
+      assert.deepEqual(scalarOnly.body.dailyBusinessTasks, [
+        { name: "Standard Operations", percent: 12 },
+      ]);
+      assert.equal(scalarOnly.body.dailyBusinessPercent, 12);
+
+      const cleared = await agent
+        .patch(`/api/directory/members/${memberId}`)
+        .set("x-csrf-token", csrf.body.csrfToken)
+        .send({ dailyBusinessTasks: [] })
+        .expect(200);
+      assert.deepEqual(cleared.body.dailyBusinessTasks, []);
+      assert.equal(cleared.body.dailyBusinessPercent, 0);
+
+      await agent
+        .patch(`/api/directory/members/${memberId}`)
+        .set("x-csrf-token", csrf.body.csrfToken)
+        .send({
+          dailyBusinessTasks: [
+            { name: "Delivery", percent: 30 },
+            { name: " delivery ", percent: 10 },
+          ],
+        })
+        .expect(400);
+      await agent
+        .patch(`/api/directory/members/${memberId}`)
+        .set("x-csrf-token", csrf.body.csrfToken)
+        .send({
+          dailyBusinessTasks: [
+            { name: "Delivery", percent: 60 },
+            { name: "Support", percent: 41 },
+          ],
+        })
+        .expect(400);
+
+      const restored = await agent
+        .patch(`/api/directory/members/${memberId}`)
+        .set("x-csrf-token", csrf.body.csrfToken)
+        .send({ dailyBusinessTasks: [{ name: "Delivery", percent: 25 }] })
+        .expect(200);
+      const occupancy = await agent
+        .get("/api/occupancy/overview?startDate=2041-01-01&endDate=2041-01-07")
+        .expect(200);
+      const row = occupancy.body.find(
+        (item: { member: { id: string } }) => item.member.id === memberId,
+      );
+      assert.ok(row);
+      assert.deepEqual(row.dailyBusinessTasks, restored.body.dailyBusinessTasks);
+      assert.deepEqual(row.member.dailyBusinessTasks, restored.body.dailyBusinessTasks);
+      assert.equal(row.dailyBusinessPercent, 25);
+    } finally {
+      await db.delete(membersTable).where(eq(membersTable.id, memberId));
+    }
+  });
+
+  test("reads legacy scalar BAU rows with synthetic Standard Operations tasks", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = await agent.get("/api/auth/csrf").expect(200);
+    const memberId = `legacy-bau-${randomUUID()}`;
+    const email = `${memberId}@example.invalid`;
+    await db.insert(membersTable).values({
+      id: memberId,
+      name: "Legacy BAU Member",
+      initials: "LB",
+      email,
+      dailyBusinessPercent: 27,
+      dailyBusinessTasks: [],
+    });
+    try {
+      const directory = await agent.get("/api/directory/members").expect(200);
+      const listed = directory.body.find((member: { id: string }) => member.id === memberId);
+      assert.deepEqual(listed.dailyBusinessTasks, [
+        { name: "Standard Operations", percent: 27 },
+      ]);
+
+      const patched = await agent
+        .patch(`/api/directory/members/${memberId}`)
+        .set("x-csrf-token", csrf.body.csrfToken)
+        .send({ title: "Legacy preserved" })
+        .expect(200);
+      assert.deepEqual(patched.body.dailyBusinessTasks, [
+        { name: "Standard Operations", percent: 27 },
+      ]);
+      const stored = await db
+        .select()
+        .from(membersTable)
+        .where(eq(membersTable.id, memberId));
+      assert.deepEqual(stored[0].dailyBusinessTasks, [
+        { name: "Standard Operations", percent: 27 },
+      ]);
+
+      const occupancy = await agent
+        .get("/api/occupancy/overview?startDate=2041-01-01&endDate=2041-01-07")
+        .expect(200);
+      const row = occupancy.body.find(
+        (item: { member: { id: string } }) => item.member.id === memberId,
+      );
+      assert.ok(row);
+      assert.deepEqual(row.dailyBusinessTasks, [
+        { name: "Standard Operations", percent: 27 },
+      ]);
+      assert.deepEqual(row.member.dailyBusinessTasks, row.dailyBusinessTasks);
+    } finally {
+      await db.delete(membersTable).where(eq(membersTable.id, memberId));
+    }
+  });
+
   test("allows service authorities to delegate CIO authority", async () => {
     const agent = request.agent(app);
     await agent.get("/api/session").expect(200);

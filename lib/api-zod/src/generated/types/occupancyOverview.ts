@@ -5,6 +5,7 @@
  * QueueCraft operations and topic-routing API
  * OpenAPI spec version: 0.1.0
  */
+import type { DailyBusinessTask } from './dailyBusinessTask';
 import type { Member } from './member';
 import type { OccupancyTopic } from './occupancyTopic';
 
@@ -13,6 +14,7 @@ export interface OccupancyOverview {
   startDate: Date;
   endDate: Date;
   dailyBusinessPercent: number;
+  dailyBusinessTasks: DailyBusinessTask[];
   topics: OccupancyTopic[];
   milestones: OccupancyTopic[];
   topicAllocationPercent: number;

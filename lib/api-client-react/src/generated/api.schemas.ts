@@ -21,6 +21,19 @@ export const MemberStatus = {
   disabled: 'disabled',
 } as const;
 
+export interface DailyBusinessTask {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  percent: number;
+}
+
 export interface Member {
   id: string;
   name: string;
@@ -37,6 +50,8 @@ export interface Member {
      * @maximum 100
      */
   dailyBusinessPercent?: number;
+  /** Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total. */
+  dailyBusinessTasks: DailyBusinessTask[];
 }
 
 export type TopicStatus = typeof TopicStatus[keyof typeof TopicStatus];
@@ -128,6 +143,8 @@ export interface MemberInput {
      * @maximum 100
      */
   dailyBusinessPercent?: number;
+  /** Optional named BAU tasks. An empty array clears all tasks; when dailyBusinessPercent is also supplied, its value must equal the task total. */
+  dailyBusinessTasks?: DailyBusinessTask[];
 }
 
 export type MemberUpdateStatus = typeof MemberUpdateStatus[keyof typeof MemberUpdateStatus];
@@ -165,6 +182,8 @@ export interface MemberUpdate {
      * @maximum 100
      */
   dailyBusinessPercent?: number;
+  /** Optional named BAU tasks. An empty array clears all tasks; when dailyBusinessPercent is also supplied, its value must equal the task total. */
+  dailyBusinessTasks?: DailyBusinessTask[];
 }
 
 export interface MemberPermissions {
@@ -536,6 +555,7 @@ export interface OccupancyOverview {
   startDate: string;
   endDate: string;
   dailyBusinessPercent: number;
+  dailyBusinessTasks: DailyBusinessTask[];
   topics: OccupancyTopic[];
   milestones: OccupancyTopic[];
   topicAllocationPercent: number;

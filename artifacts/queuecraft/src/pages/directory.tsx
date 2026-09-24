@@ -13,6 +13,7 @@ import {
   getListDepartmentsQueryKey,
   getListRolesQueryKey,
   getListMembersQueryKey,
+  getGetOccupancyOverviewQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -62,8 +63,9 @@ type MemberDraft = {
   isCio: boolean;
   headDepartmentIds: string[];
   deputyDepartmentIds: string[];
-  dailyBusinessPercent: number;
+  dailyBusinessTasks: DailyBusinessTask[];
 };
+type DailyBusinessTask = { name: string; percent: number };
 
 type DepartmentDraft = {
   name: string;
@@ -113,7 +115,7 @@ const emptyMember: MemberDraft = {
   isCio: false,
   headDepartmentIds: [],
   deputyDepartmentIds: [],
-  dailyBusinessPercent: 0,
+  dailyBusinessTasks: [],
 };
 const emptyDepartment: DepartmentDraft = {
   name: "",
@@ -467,7 +469,10 @@ export function Directory() {
             deputyDepartmentIds: (departments ?? [])
               .filter((department) => department.serviceHeadDeputy?.id === member.id)
               .map((department) => department.id),
-            dailyBusinessPercent: member.dailyBusinessPercent ?? 0,
+            dailyBusinessTasks: member.dailyBusinessTasks.map((task) => ({
+                name: task.name,
+                percent: task.percent,
+              })),
           }
         : emptyMember,
     );
@@ -518,6 +523,27 @@ export function Directory() {
       setMemberActionError("Local account passwords must be at least 12 characters.");
       return;
     }
+    const dailyBusinessTasks = memberDraft.dailyBusinessTasks.map((task) => ({
+      name: task.name.trim(),
+      percent: Number(task.percent),
+    }));
+    const taskNames = dailyBusinessTasks.map((task) => task.name.toLocaleLowerCase());
+    if (dailyBusinessTasks.some((task) => !task.name)) {
+      setMemberActionError("BAU task names cannot be empty.");
+      return;
+    }
+    if (new Set(taskNames).size !== taskNames.length) {
+      setMemberActionError("BAU task names must be unique.");
+      return;
+    }
+    if (dailyBusinessTasks.some((task) => !Number.isInteger(task.percent) || task.percent < 0 || task.percent > 100)) {
+      setMemberActionError("BAU task percentages must be whole numbers from 0 to 100.");
+      return;
+    }
+    if (dailyBusinessTasks.reduce((total, task) => total + task.percent, 0) > 100) {
+      setMemberActionError("BAU task percentages cannot total more than 100%.");
+      return;
+    }
     const data = {
       name: memberDraft.name.trim(),
       email: memberDraft.email.trim(),
@@ -533,7 +559,7 @@ export function Directory() {
       ...(canManageCio ? { isCio: memberDraft.isCio } : {}),
       headDepartmentIds: memberDraft.headDepartmentIds,
       deputyDepartmentIds: memberDraft.deputyDepartmentIds,
-      dailyBusinessPercent: memberDraft.dailyBusinessPercent,
+      dailyBusinessTasks,
     };
     try {
       if (memberDialog.id)
@@ -543,6 +569,7 @@ export function Directory() {
       setMemberDialog({ open: false });
       setMemberActionMessage("Member and permissions saved.");
       invalidateDirectory();
+      queryClient.invalidateQueries({ queryKey: getGetOccupancyOverviewQueryKey() });
     } catch (saveError) {
       setMemberActionError(
         saveError instanceof Error
@@ -1003,7 +1030,12 @@ export function Directory() {
                     <span className="text-muted-foreground text-xs uppercase mr-1">
                       BAU:
                     </span>
-                    {member.dailyBusinessPercent ?? 0}%
+                    {(member.dailyBusinessPercent ?? 0)}%
+                    {member.dailyBusinessTasks.length > 0 && (
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        ({member.dailyBusinessTasks.map((task) => task.name).join(", ")})
+                      </span>
+                    )}
                   </div>
                   <Button
                     variant="ghost"
@@ -1117,22 +1149,78 @@ export function Directory() {
                 }
               />
             </Field>}
-            <Field label="Daily Business Percent (BAU)">
-              <div className="flex items-center gap-4">
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  required
-                  value={memberDraft.dailyBusinessPercent}
-                  onChange={(e) =>
-                    setMemberDraft({
-                      ...memberDraft,
-                      dailyBusinessPercent: Number(e.target.value),
-                    })
-                  }
-                />
-                <span className="text-muted-foreground">%</span>
+            <Field label="Daily Business Tasks (BAU)">
+              <div className="space-y-2">
+                {memberDraft.dailyBusinessTasks.length === 0 ? (
+                  <p className="rounded-sm border border-dashed p-3 text-sm text-muted-foreground">
+                    No BAU tasks added.
+                  </p>
+                ) : (
+                  memberDraft.dailyBusinessTasks.map((task, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Input
+                        data-testid={`input-bau-task-name-${index}`}
+                        aria-label={`BAU task ${index + 1} name`}
+                        placeholder="Task name"
+                        value={task.name}
+                        onChange={(e) => {
+                          const dailyBusinessTasks = [...memberDraft.dailyBusinessTasks];
+                          dailyBusinessTasks[index] = { ...task, name: e.target.value };
+                          setMemberDraft({ ...memberDraft, dailyBusinessTasks });
+                        }}
+                      />
+                      <Input
+                        data-testid={`input-bau-task-percent-${index}`}
+                        aria-label={`${task.name || `BAU task ${index + 1}`} percentage`}
+                        className="w-20"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={task.percent}
+                        onChange={(e) => {
+                          const dailyBusinessTasks = [...memberDraft.dailyBusinessTasks];
+                          dailyBusinessTasks[index] = { ...task, percent: Number(e.target.value) };
+                          setMemberDraft({ ...memberDraft, dailyBusinessTasks });
+                        }}
+                      />
+                      <span className="text-muted-foreground">%</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Remove BAU task ${task.name || index + 1}`}
+                        onClick={() =>
+                          setMemberDraft({
+                            ...memberDraft,
+                            dailyBusinessTasks: memberDraft.dailyBusinessTasks.filter((_, taskIndex) => taskIndex !== index),
+                          })
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+                <div className="flex items-center justify-between pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setMemberDraft({
+                        ...memberDraft,
+                        dailyBusinessTasks: [...memberDraft.dailyBusinessTasks, { name: "", percent: 0 }],
+                      })
+                    }
+                  >
+                    <Plus className="mr-1 h-4 w-4" /> Add task
+                  </Button>
+                  <span className={`text-sm font-medium ${memberDraft.dailyBusinessTasks.reduce((sum, task) => sum + (Number(task.percent) || 0), 0) > 100 ? "text-destructive" : "text-muted-foreground"}`}>
+                    Total: {memberDraft.dailyBusinessTasks.reduce((sum, task) => sum + (Number(task.percent) || 0), 0)}%
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">Names must be unique; percentages must total 100% or less.</p>
               </div>
             </Field>
             {canManageCio && (

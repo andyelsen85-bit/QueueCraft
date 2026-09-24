@@ -129,6 +129,50 @@ function initials(name: string) {
     .join("");
 }
 
+type DailyBusinessTask = { name: string; percent: number };
+
+function normalizeDailyBusinessTasks(tasks: DailyBusinessTask[]): DailyBusinessTask[] {
+  const normalized = tasks.map((task) => ({ name: task.name.trim(), percent: task.percent }));
+  if (normalized.some((task) => !task.name || task.name.length > 120)) {
+    throw new Error("Daily business task names must be non-empty and at most 120 characters");
+  }
+  const names = new Set<string>();
+  for (const task of normalized) {
+    const key = task.name.toLowerCase();
+    if (names.has(key)) throw new Error("Daily business task names must be unique");
+    names.add(key);
+  }
+  const total = normalized.reduce((sum, task) => sum + task.percent, 0);
+  if (total > 100) throw new Error("Daily business task percentages cannot exceed 100");
+  return normalized;
+}
+
+function resolveDailyBusinessTasks(
+  raw: unknown,
+  tasks: DailyBusinessTask[] | undefined,
+  scalar: number | undefined,
+  existing: DailyBusinessTask[] = [],
+): { tasks: DailyBusinessTask[]; percent: number } {
+  const hasTasks = typeof raw === "object" && raw !== null && Object.prototype.hasOwnProperty.call(raw, "dailyBusinessTasks");
+  const hasScalar = typeof raw === "object" && raw !== null && Object.prototype.hasOwnProperty.call(raw, "dailyBusinessPercent");
+  if (hasTasks) {
+    const normalized = normalizeDailyBusinessTasks(tasks ?? []);
+    const total = normalized.reduce((sum, task) => sum + task.percent, 0);
+    if (hasScalar && scalar !== undefined && scalar !== total) {
+      throw new Error("dailyBusinessTasks and dailyBusinessPercent must have the same total");
+    }
+    return { tasks: normalized, percent: total };
+  }
+  if (hasScalar) {
+    const percent = scalar ?? 0;
+    return {
+      tasks: percent > 0 ? [{ name: "Standard Operations", percent }] : [],
+      percent,
+    };
+  }
+  return { tasks: existing, percent: existing.reduce((sum, task) => sum + task.percent, 0) };
+}
+
 const dateOnly = (value: Date | string | null | undefined) => {
   if (!value) return null;
   if (typeof value === "string") return value.slice(0, 10);
@@ -137,7 +181,7 @@ const dateOnly = (value: Date | string | null | undefined) => {
 
 async function loadSnapshot() {
   const [
-    members,
+    rawMembers,
     departments,
     roles,
     roleDepartments,
@@ -167,6 +211,16 @@ async function loadSnapshot() {
       .orderBy(desc(topicFinishDateRevisionsTable.createdAt)),
   ]);
 
+  // Publish's schema sync applies defaults but does not execute data backfills.
+  // Treat an empty task array paired with legacy scalar BAU as the migrated
+  // Standard Operations task at read time, without mutating the database.
+  const members = rawMembers.map((member) => ({
+    ...member,
+    dailyBusinessTasks:
+      member.dailyBusinessTasks.length === 0 && member.dailyBusinessPercent > 0
+        ? [{ name: "Standard Operations", percent: member.dailyBusinessPercent }]
+        : member.dailyBusinessTasks,
+  }));
   const memberById = new Map(members.map((member) => [member.id, member]));
   const departmentById = new Map(
     departments.map((department) => [department.id, department]),
@@ -863,6 +917,13 @@ router.post("/directory/members", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Select valid departments; a member cannot be both Head and Deputy of one department." });
     return;
   }
+  let dailyBusiness: { tasks: DailyBusinessTask[]; percent: number };
+  try {
+    dailyBusiness = resolveDailyBusinessTasks(req.body, body.data.dailyBusinessTasks, body.data.dailyBusinessPercent);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : "Invalid daily business tasks" });
+    return;
+  }
   const passwordHash = body.data.password ? await hashLocalPassword(body.data.password) : null;
   if (
     body.data.isCio &&
@@ -887,6 +948,8 @@ router.post("/directory/members", async (req, res): Promise<void> => {
         passwordHash,
         isCio: body.data.isCio,
         cioOverride: body.data.isCio ? true : null,
+        dailyBusinessTasks: dailyBusiness.tasks,
+        dailyBusinessPercent: dailyBusiness.percent,
       })
       .returning();
     for (const department of snapshot.departments) {
@@ -1087,7 +1150,19 @@ router.patch(
       res.status(403).json({ error: "The bootstrap administrator cannot be disabled or demoted." });
       return;
     }
-    const { headDepartmentIds, deputyDepartmentIds, ...memberChanges } = body.data;
+    const { headDepartmentIds, deputyDepartmentIds, dailyBusinessTasks, dailyBusinessPercent, ...memberChanges } = body.data;
+    let dailyBusiness: { tasks: DailyBusinessTask[]; percent: number };
+    try {
+      dailyBusiness = resolveDailyBusinessTasks(
+        req.body,
+        dailyBusinessTasks,
+        dailyBusinessPercent,
+        existingMember.dailyBusinessTasks,
+      );
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid daily business tasks" });
+      return;
+    }
     const hasLeadershipChanges = headDepartmentIds !== undefined || deputyDepartmentIds !== undefined;
     const headIds = new Set(headDepartmentIds ?? []);
     const deputyIds = new Set(deputyDepartmentIds ?? []);
@@ -1124,6 +1199,8 @@ router.patch(
             : {}),
           email: body.data.email?.toLowerCase(),
           initials: body.data.name ? initials(body.data.name) : undefined,
+          dailyBusinessTasks: dailyBusiness.tasks,
+          dailyBusinessPercent: dailyBusiness.percent,
         })
         .where(eq(membersTable.id, params.data.memberId))
         .returning();
@@ -2001,6 +2078,7 @@ router.get("/occupancy/overview", async (req, res): Promise<void> => {
         startDate,
         endDate,
         dailyBusinessPercent: member.dailyBusinessPercent,
+        dailyBusinessTasks: member.dailyBusinessTasks,
         topics: uniqueTopicRows.map((row) => ({
           topicId: row.topicId,
           title:

@@ -10,6 +10,7 @@ export * from './activity';
 export * from './assignmentInput';
 export * from './breakGlassValidationInput';
 export * from './collaboratorInput';
+export * from './dailyBusinessTask';
 export * from './dashboardSummary';
 export * from './dashboardSummaryKpis';
 export * from './department';
