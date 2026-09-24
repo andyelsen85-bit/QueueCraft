@@ -229,3 +229,18 @@ The web container runs as UID/GID 101 and retains ports 80 and 443. Kubernetes
 adds only `NET_BIND_SERVICE` so the non-root Nginx process can bind those ports.
 The certificate PVC is mounted with pod `fsGroup: 101` so the entrypoint can
 reuse or generate certificates without root access.
+
+## HTTPS certificate renewals
+
+Apply the current deployment manifest when setting up or upgrading the cluster:
+both the API and web containers must mount `longhorn-queuecraft-certs-pvc` at
+`/etc/nginx/certs`, and the API needs `TLS_CERT_DIR=/etc/nginx/certs` and
+`TLS_CERT_GID=101`. Publishing or mirroring a new container image does not add
+missing Kubernetes environment variables or volume mounts.
+
+After this one-time setup, renew the certificate in **Settings → Organization
+PKI / HTTPS**. A successful upload replaces the certificate on the shared
+volume and waits for Nginx to confirm its reload; no `kubectl` command or pod
+restart is needed for subsequent renewals. If Settings says the certificate
+was saved but not applied, check that the running deployment still matches
+the shared-volume configuration above before trying another upload.

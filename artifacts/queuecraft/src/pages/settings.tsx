@@ -87,7 +87,11 @@ export function SettingsPage() {
       const result = await response.json()
       if (!response.ok) throw new Error(result.error ?? "HTTPS certificate could not be saved.")
       setHttpsStatus(result); setCertificatePem(""); setPrivateKeyPem(""); setChainPem(""); setClearChain(false)
-      setMessage(result.installed ? "HTTPS certificate saved and installed. Nginx will reload the validated pair." : "HTTPS certificate saved. It will be installed when the configured web server starts; this preview uses Replit's HTTPS proxy.")
+      setMessage(result.installed
+        ? "HTTPS certificate saved and applied. Nginx confirmed the reload."
+        : result.runtimeConfigured
+          ? "HTTPS certificate saved, but not applied to Nginx. Check the web server and shared certificate volume."
+          : "HTTPS certificate saved, but not applied: this API has no shared certificate directory (TLS_CERT_DIR). Nginx will keep serving its previous certificate. Replit previews use Replit-managed HTTPS.")
     } catch (error) { setMessage(error instanceof Error ? error.message : "HTTPS certificate could not be saved.") } finally { setSavingHttps(false) }
   }
   const exportBackup = async () => {
@@ -127,7 +131,7 @@ export function SettingsPage() {
     </div>
     <Button type="button" onClick={() => void save()} disabled={saving}>{saving ? "Saving…" : "Save settings"}</Button>
     {httpsStatus && <Card><CardHeader><CardTitle className="flex items-center gap-2 text-lg"><LockKeyhole className="h-5 w-5 text-primary" />Organization PKI / HTTPS</CardTitle><CardDescription>Upload the site certificate and matching private key used by the deployed Nginx web server. This is separate from the AD FS and LDAPS CA certificates above. The key is encrypted in the database, then written with restricted permissions to the shared certificate volume for Nginx.</CardDescription></CardHeader><CardContent className="space-y-4">
-      {httpsStatus && <div className="rounded-sm border bg-muted/20 p-3 text-sm"><div className="font-medium">{httpsStatus.certificateInstalled && httpsStatus.privateKeyInstalled ? "Certificate saved" : "No certificate uploaded"}</div>{httpsStatus.subject && <div className="mt-1 break-all text-muted-foreground">{httpsStatus.subject}</div>}{httpsStatus.expiresAt && <div className="mt-1 text-muted-foreground">Expires {new Date(httpsStatus.expiresAt).toLocaleDateString("en-GB")}</div>}{httpsStatus.fingerprint && <div className="mt-1 break-all font-mono text-xs text-muted-foreground">SHA-256 {httpsStatus.fingerprint}</div>}</div>}
+       {httpsStatus && <div className="rounded-sm border bg-muted/20 p-3 text-sm"><div className="font-medium">{httpsStatus.certificateInstalled && httpsStatus.privateKeyInstalled ? "Certificate saved" : "No certificate uploaded"}</div>{httpsStatus.subject && <div className="mt-1 break-all text-muted-foreground">{httpsStatus.subject}</div>}{httpsStatus.expiresAt && <div className="mt-1 text-muted-foreground">Expires {new Date(httpsStatus.expiresAt).toLocaleDateString("en-GB")}</div>}{httpsStatus.fingerprint && <div className="mt-1 break-all font-mono text-xs text-muted-foreground">SHA-256 {httpsStatus.fingerprint}</div>}{!httpsStatus.runtimeConfigured && <p className="mt-2 text-amber-700 dark:text-amber-400" role="alert">This API has no shared certificate directory (TLS_CERT_DIR). Saved certificates cannot reach Nginx until the deployment mounts the shared certificate volume. Replit previews use Replit-managed HTTPS.</p>}</div>}
       <form className="space-y-3" onSubmit={(event) => void saveHttps(event)}>
         <HttpsPemField label="Certificate PEM" value={certificatePem} onChange={setCertificatePem} accept=".pem,.crt,.cer" required={!httpsStatus?.certificateInstalled} />
         <HttpsPemField label="Private key PEM" value={privateKeyPem} onChange={setPrivateKeyPem} accept=".pem,.key" required={!httpsStatus?.privateKeyInstalled} />
