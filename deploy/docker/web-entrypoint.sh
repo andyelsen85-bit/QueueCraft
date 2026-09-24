@@ -47,20 +47,9 @@ ssl_certificate /etc/nginx/certs/tls.crt;
 ssl_certificate_key /etc/nginx/certs/tls.key;
 ssl_protocols TLSv1.2 TLSv1.3;
 EOF
-  watch_certificates() {
-    while file=$(inotifywait -q -e close_write,move,create,delete --format '%f' "$TLS_DIR"); do
-      case "$file" in
-        tls.crt|tls.key) ;;
-        *) continue ;;
-      esac
-      sleep 1
-      if valid_pair && nginx -t >/dev/null 2>&1 && nginx -s reload >/dev/null 2>&1; then
-        openssl dgst -sha256 -r "$TLS_DIR/tls.crt" | awk '{print $1}' > "$TLS_DIR/.tls-applied.sha256.tmp"
-        mv -f "$TLS_DIR/.tls-applied.sha256.tmp" "$TLS_DIR/.tls-applied.sha256"
-      fi
-    done
-  }
-  watch_certificates &
+  # Shared RWX volumes may not propagate inotify events between containers.
+  # Reconcile even when the API wrote the certificate before Nginx started.
+  /usr/local/bin/queuecraft-watch-certificates &
 fi
 
 exec "$@"
