@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pg-deployment
+  namespace: queuecraft
+  labels:
+    app: pg
+    team: infra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pg
+  template:
+    metadata:
+      labels:
+        app: pg
+        team: infra
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - image: srvnexusint.hopital.chdn.lan:8443/postgres:16.4-alpine
+          name: pg
+          ports:
+            - containerPort: 5432
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          envFrom:
+            - secretRef:
+                name: pg-env
+          volumeMounts:
+            - name: pg-data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: pg-data
+          persistentVolumeClaim:
+            claimName: longhorn-queuecraft-pg-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pg
+  namespace: queuecraft
+  labels:
+    team: infra
+spec:
+  selector:
+    app: pg
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432

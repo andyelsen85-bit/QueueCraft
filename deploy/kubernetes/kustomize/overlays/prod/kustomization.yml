@@ -4,6 +4,9 @@ namespace: queuecraft
 resources:
   - ../../base
   - api-env.yml
+  - pg-deployment.yml
+  - pg-env.yml
+  - pvc.yml
 images:
   - name: srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-api
     newTag: 'prod'

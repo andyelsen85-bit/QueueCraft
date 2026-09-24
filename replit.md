@@ -36,7 +36,7 @@ QueueCraft routes internal IT topics through Service Head validation to one acco
 - Every topic requires Service Head or Service Head Deputy validation; Role Leads and their optional deputies manage execution but never validate.
 - Validation break-glass is limited to CIO and service authorities and applies only to validation.
 - Additional collaborators receive topic-level access without becoming members of the owning role.
-- Production PostgreSQL is externally managed and supplied through the production SealedSecret. The test overlay includes an isolated PostgreSQL instance for validation.
+- Test and production overlays both deploy their own PostgreSQL service and Longhorn volume. Each environment needs its own SealedSecret values; do not point production at the test database.
 - AD FS/LDAPS and SMTP are production integration boundaries; the preview identity is intentionally non-production.
 
 ## Product

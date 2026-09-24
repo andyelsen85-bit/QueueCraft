@@ -81,8 +81,8 @@ The approved deployment package is the Change Manager Kustomize structure:
 ```text
 deploy/kubernetes/kustomize/
 ├── base/
-├── overlays/test/  # includes isolated PostgreSQL
-└── overlays/prod/  # uses externally managed CHdN PostgreSQL
+├── overlays/test/  # includes its own PostgreSQL
+└── overlays/prod/  # includes its own PostgreSQL, matching test
 ```
 
 Render or apply an overlay with:

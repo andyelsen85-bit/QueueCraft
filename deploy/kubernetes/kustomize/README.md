@@ -4,6 +4,8 @@ This directory mirrors the supplied Change Manager layout: a shared base and
 separate test and production overlays, all targeting the `queuecraft` namespace.
 There is no Ingress. The `web` Service exposes HTTP on port 80 and HTTPS on port
 443.
+Use the overlays in separate cluster contexts; they define the same namespace
+and resource names and must not both be applied to one namespace.
 
 ## Application images
 
@@ -37,7 +39,7 @@ docker.io/library/nginx:1.27-alpine
 docker.io/library/postgres:16.4-alpine
 ```
 
-The test PostgreSQL overlay currently expects the mirror at:
+Both PostgreSQL overlays currently expect the mirror at:
 
 ```text
 srvnexusint.hopital.chdn.lan:8443/postgres:16.4-alpine
@@ -74,6 +76,7 @@ as the supplied example:
 overlays/test/api-env.yml  DATABASE_URL, SESSION_SECRET, APP_ENCRYPTION_KEY
 overlays/test/pg-env.yml   POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
 overlays/prod/api-env.yml  DATABASE_URL, SESSION_SECRET, APP_ENCRYPTION_KEY
+overlays/prod/pg-env.yml   POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
 ```
 
 `SESSION_SECRET` must be at least 32 random characters. QueueCraft encrypts
@@ -99,8 +102,16 @@ kubectl -n queuecraft create secret generic api-env-secret \
 kubeseal --format yaml > api-env-sealed.yml
 ```
 
-Do the same for `pg-env` in test. Production `DATABASE_URL` can point to an
-external PostgreSQL server, matching the supplied project.
+Do the same for `pg-env` in each environment. Both `DATABASE_URL` values must
+point to the in-cluster `pg:5432` Service and use the matching `POSTGRES_DB`,
+`POSTGRES_USER`, and `POSTGRES_PASSWORD` from that environment's `pg-env`
+SealedSecret. Seal each environment's secrets for its own cluster and namespace;
+never reuse test credentials in production.
+
+The production overlay now provisions a new database volume rather than
+connecting to the previously documented external PostgreSQL service. It does
+not migrate existing external database contents; export and restore that data
+before changing a running production deployment's `DATABASE_URL`.
 
 The base `regcred.yml` intentionally contains
 `REPLACE_WITH_DOCKER_CONFIG_JSON`; the uploaded archive included a live registry
@@ -119,9 +130,11 @@ kubectl apply -k deploy/kubernetes/kustomize/overlays/prod
 ```
 
 The builder image runs database migrations as an init container before the API.
-The test overlay includes PostgreSQL and its Longhorn PVC. The production
-overlay uses the externally managed CHdN PostgreSQL service through its sealed
-`DATABASE_URL`; it does not deploy a project-owned PostgreSQL pod.
+Both overlays include PostgreSQL and a Longhorn PVC in their respective
+clusters. Like test, production defines one PostgreSQL replica and a 2Gi PVC;
+this deployment package does not configure automated database backups or
+high availability. Establish those separately before relying on it for
+production data.
 
 The web container runs as UID/GID 101 and retains ports 80 and 443. Kubernetes
 adds only `NET_BIND_SERVICE` so the non-root Nginx process can bind those ports.
