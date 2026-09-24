@@ -28,6 +28,8 @@ spec:
           image: srvnexusint.hopital.chdn.lan:6443/infra/queuecraft-builder
           securityContext:
             runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
             allowPrivilegeEscalation: false
             capabilities:
               drop:
@@ -53,6 +55,8 @@ spec:
               value: "101"
           securityContext:
             runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
             allowPrivilegeEscalation: false
             capabilities:
               drop:

@@ -5,14 +5,14 @@ generated = []
 id = "KY-b-KAZ1h3oC1aFd51v3"
 uri = "file://deliverables/queuecraft-kubernetes-deployment.zip"
 type = "unspecified"
-title = "Updated QueueCraft Kubernetes deployment"
-description = "Deployment package with the API TLS certificate mount and environment settings included; production database overlay left unchanged."
+title = "Corrected QueueCraft Kubernetes deployment ZIP"
+description = "Includes numeric non-root identities for migration and API, plus the shared TLS volume configuration."
 logical_id = "f1d056db-dd7d-4124-8eb7-4c4985d2c875"
-content_hash = "sha256:421b56e3581512e387641a68e0a5bbfbf1de1285e76138f00fa488dde1c08816"
-size = 8232
-mtime_ms = 1790260771828
-storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:e2c07961-875e-4f9b-8be5-89e60317d03d/f1d056db-dd7d-4124-8eb7-4c4985d2c875/6bb1d31d-5ec3-4f25-916c-db1e6bb65798"
-storage_version_token = "1790260788916527"
+content_hash = "sha256:fd6909d457b718a7f9c34cf768ce29faf6aebe0603086607e55ed6bf1b15ef06"
+size = 8237
+mtime_ms = 1790261161632
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:e2c07961-875e-4f9b-8be5-89e60317d03d/f1d056db-dd7d-4124-8eb7-4c4985d2c875/64160b42-6d2b-4deb-9a6a-1ad0782a8bff"
+storage_version_token = "1790261185931202"
 content_type = "application/octet-stream"
 
 [[outputs]]

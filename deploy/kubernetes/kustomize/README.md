@@ -229,6 +229,9 @@ The web container runs as UID/GID 101 and retains ports 80 and 443. Kubernetes
 adds only `NET_BIND_SERVICE` so the non-root Nginx process can bind those ports.
 The certificate PVC is mounted with pod `fsGroup: 101` so the entrypoint can
 reuse or generate certificates without root access.
+The API and migration containers run as numeric UID/GID 10001; this must match
+their container images because Kubernetes cannot verify `runAsNonRoot` when an
+image declares a user by name.
 
 ## HTTPS certificate renewals
 

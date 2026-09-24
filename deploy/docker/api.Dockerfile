@@ -17,6 +17,6 @@ WORKDIR /app
 RUN groupadd --system --gid 10001 queuecraft \
   && useradd --system --uid 10001 --gid 10001 --home-dir /app queuecraft
 COPY --from=builder --chown=queuecraft:queuecraft /app/artifacts/api-server/dist ./dist
-USER queuecraft
+USER 10001:10001
 EXPOSE 8080
 CMD ["node", "--enable-source-maps", "dist/index.mjs"]
