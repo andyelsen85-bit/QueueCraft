@@ -14,3 +14,17 @@ mtime_ms = 1790158183292
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:e2c07961-875e-4f9b-8be5-89e60317d03d/f1d056db-dd7d-4124-8eb7-4c4985d2c875/7acc59d6-3aee-4ad3-9431-02dc10197d46"
 storage_version_token = "1790158451614257"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "tC1YdgvRSOA7OULivIdfM"
+uri = "file://deliverables/queuecraft-prod-overlay.zip"
+type = "unspecified"
+title = "Production Kubernetes overlay (ZIP)"
+description = "The prod overlay folder with the application config plus PostgreSQL Deployment, Service, sealed-secret template, and Longhorn PVC."
+logical_id = "fff555b0-cb1f-4075-8313-333f03823aee"
+content_hash = "sha256:a403076971a667c1e0d2ba24287496ae30d4eecbc8ab5f51773ed1ad123665ef"
+size = 1901
+mtime_ms = 1790250257416
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:e2c07961-875e-4f9b-8be5-89e60317d03d/fff555b0-cb1f-4075-8313-333f03823aee/7eca24a7-9ced-479a-b31a-00429b306f2c"
+storage_version_token = "1790250308342600"
+content_type = "application/octet-stream"
