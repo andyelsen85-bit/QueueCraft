@@ -105,7 +105,7 @@ describe("QueueCraft security and preference flows", () => {
       assert.ok(capabilities.includes("directory.manage"));
       assert.ok(capabilities.includes("directory.manage_cio"));
       assert.ok(capabilities.includes("settings.manage"));
-      assert.ok(capabilities.includes("topic.delete"));
+      assert.equal(capabilities.includes("topic.delete"), id !== "cio");
       assert.ok(!capabilities.includes("local_password.reset"));
     }
     const ordinary = getCapabilities("ordinary", snapshot, "ldaps");
@@ -603,9 +603,13 @@ describe("QueueCraft security and preference flows", () => {
     );
     assert.ok(department);
     const role = roles.find((item: { departmentId: string }) => item.departmentId === department.id);
-    const members = (await manager.get("/api/directory/members").expect(200)).body;
-    const other = members.find((member: { id: string }) => member.id !== actorId && member.id !== "local-admin");
-    assert.ok(other);
+    const other = { id: randomUUID() };
+    await db.insert(membersTable).values({
+      id: other.id,
+      name: "Assignment test member",
+      initials: "AT",
+      email: `assignment-${other.id}@example.invalid`,
+    });
     let topicId: string | undefined;
     try {
       const created = await manager.post("/api/topics")
@@ -667,8 +671,12 @@ describe("QueueCraft security and preference flows", () => {
       assert.equal((await assign(null).expect(200)).body.status, "open");
       assert.deepEqual(await getAllocations(), []);
     } finally {
-      if (topicId) await manager.delete(`/api/topics/${topicId}`)
-        .set("x-csrf-token", csrf).expect(204);
+      try {
+        if (topicId) await manager.delete(`/api/topics/${topicId}`)
+          .set("x-csrf-token", csrf).expect(204);
+      } finally {
+        await db.delete(membersTable).where(eq(membersTable.id, other.id));
+      }
     }
   });
 

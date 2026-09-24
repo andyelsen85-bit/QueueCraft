@@ -2,7 +2,7 @@ import * as React from "react"
 import { Link, useLocation } from "wouter"
 import { cn } from "@/lib/utils"
 import { Home, FolderKanban, ListTodo, ShieldAlert, Users, CalendarDays, Settings, ChevronRight } from "lucide-react"
-import { useGetSession } from "@workspace/api-client-react"
+import { useGetSession, useListDepartments } from "@workspace/api-client-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { PasswordDialog } from "@/components/password-dialog"
@@ -11,9 +11,25 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation()
   const { data: session } = useGetSession()
+  const { data: departments, isLoading: departmentsLoading, isError: departmentsError } = useListDepartments()
   const [profileOpen, setProfileOpen] = React.useState(false)
   const [passwordOpen, setPasswordOpen] = React.useState(false)
   const isLocal = session?.authProvider === "local"
+  const headOf = departments?.filter((department) => department.serviceHead.id === session?.user?.id).map((department) => department.name) ?? []
+  const deputyOf = departments?.filter((department) => department.serviceHeadDeputy?.id === session?.user?.id).map((department) => department.name) ?? []
+  const roleLabel = session?.user?.id === "local-admin" && isLocal
+    ? "Administrator"
+    : headOf.length
+      ? "Head of Service"
+      : deputyOf.length
+        ? "Deputy Head of Service"
+        : departmentsLoading
+          ? "Loading role…"
+          : departmentsError
+            ? "Role unavailable"
+            : session?.user?.title || "Member"
+  const authorityDepartments = headOf.length ? headOf : deputyOf
+  const roleDetails = authorityDepartments.length ? `${roleLabel} · ${authorityDepartments.join(", ")}` : roleLabel
 
   const navItems = [
     { label: "Dashboard", href: "/", icon: Home },
@@ -73,7 +89,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </Avatar>
               <div className="flex flex-col flex-1 min-w-0">
                 <button className="text-left text-sm font-medium truncate hover:underline" onClick={() => isLocal ? setPasswordOpen(true) : setProfileOpen(true)}>{session.user.name}</button>
-                <span className="text-xs text-sidebar-foreground/60 truncate">{session.user.title || 'Member'}</span>
+                <span title={roleDetails} className="text-xs text-sidebar-foreground/60 truncate">{roleLabel}</span>
               </div>
             </div>
             <Button variant="ghost" size="sm" className="mt-2 w-full justify-start text-sidebar-foreground/70" onClick={() => setProfileOpen(true)}>Profile</Button>
@@ -83,7 +99,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
       {session?.user && <Dialog open={profileOpen} onOpenChange={setProfileOpen}><DialogContent>
         <DialogHeader><DialogTitle>{session.user.name}</DialogTitle><DialogDescription>Profile details</DialogDescription></DialogHeader>
-        <div className="space-y-1 text-sm"><p><strong>Email:</strong> {session.user.email}</p><p><strong>Title:</strong> {session.user.title || "Member"}</p>
+        <div className="space-y-1 text-sm"><p><strong>Email:</strong> {session.user.email}</p><p><strong>Role:</strong> {roleDetails}</p>{session.user.title && <p><strong>Directory title:</strong> {session.user.title}</p>}
           {!isLocal && <p className="pt-3 text-muted-foreground">Your account is managed by the directory. Contact your administrator to change your password.</p>}
         </div>
         {isLocal && <Button onClick={() => { setProfileOpen(false); setPasswordOpen(true) }}>Change password</Button>}
