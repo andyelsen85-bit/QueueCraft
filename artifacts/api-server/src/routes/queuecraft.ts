@@ -52,6 +52,7 @@ import {
   ListRolesResponse,
   ListTopicsQueryParams,
   ListTopicsResponse,
+  ListCalendarTopicsResponse,
   UpdateMilestoneBody,
   UpdateMilestoneParams,
   UpdateMilestoneResponse,
@@ -1766,6 +1767,33 @@ router.patch("/directory/roles/:roleId", async (req, res): Promise<void> => {
     return;
   }
   res.json(UpdateRoleResponse.parse(refreshed.buildRole(role.id)));
+});
+
+router.get("/calendar/topics", async (_req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  const milestonesByTopic = new Map<string, typeof snapshot.milestones>();
+  for (const milestone of snapshot.milestones) {
+    const rows = milestonesByTopic.get(milestone.topicId) ?? [];
+    rows.push(milestone);
+    milestonesByTopic.set(milestone.topicId, rows);
+  }
+  res.json(ListCalendarTopicsResponse.parse(snapshot.topics.map((topic) => ({
+    id: topic.id,
+    title: topic.title,
+    priority: topic.priority,
+    status: topic.status,
+    departmentName: snapshot.buildTopic(topic).department.name,
+    targetDate: topic.targetDate,
+    estimatedStartDate: topic.estimatedStartDate,
+    estimatedFinishDate: topic.estimatedFinishDate,
+    milestones: (milestonesByTopic.get(topic.id) ?? []).map((milestone) => ({
+      id: milestone.id,
+      title: milestone.title,
+      status: milestone.status,
+      beginDate: milestone.beginDate,
+      targetDate: milestone.targetDate,
+    })),
+  }))));
 });
 
 router.get("/topics", async (req, res): Promise<void> => {

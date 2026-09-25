@@ -23,6 +23,7 @@ import type {
   Activity,
   AssignmentInput,
   BreakGlassValidationInput,
+  CalendarTopic,
   CollaboratorInput,
   DashboardSummary,
   Department,
@@ -893,6 +894,83 @@ export const useCreateTopic = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getCreateTopicMutationOptions(options));
     }
+
+export const getListCalendarTopicsUrl = () => {
+
+
+
+
+  return `/api/calendar/topics`
+}
+
+/**
+ * @summary List all topics and their milestone schedules for the calendar
+ */
+export const listCalendarTopics = async ( options?: Parameters<typeof customFetch>[1]): Promise<CalendarTopic[]> => {
+
+  return customFetch<CalendarTopic[]>(getListCalendarTopicsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCalendarTopicsQueryKey = () => {
+    return [
+    `/api/calendar/topics`
+    ] as const;
+    }
+
+
+export const getListCalendarTopicsQueryOptions = <TData = Awaited<ReturnType<typeof listCalendarTopics>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCalendarTopics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCalendarTopicsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCalendarTopics>>> = ({ signal }) => listCalendarTopics({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCalendarTopics>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCalendarTopicsQueryResult = NonNullable<Awaited<ReturnType<typeof listCalendarTopics>>>
+export type ListCalendarTopicsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all topics and their milestone schedules for the calendar
+ */
+
+export function useListCalendarTopics<TData = Awaited<ReturnType<typeof listCalendarTopics>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCalendarTopics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCalendarTopicsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListDependencyCandidatesUrl = (params?: ListDependencyCandidatesParams,) => {
   const normalizedParams = new URLSearchParams();

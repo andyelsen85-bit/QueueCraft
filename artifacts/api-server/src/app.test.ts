@@ -1798,6 +1798,35 @@ describe("QueueCraft security and preference flows", () => {
     }
   });
 
+  test("includes dated milestones in the calendar feed even when their topic has no dates", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const title = `Calendar milestone ${randomUUID()}`;
+    const created = await agent.post("/api/topics").set("x-csrf-token", csrf).send({
+      title,
+      description: "Temporary undated topic with a dated milestone.",
+      departmentId: "dept-platform", roleId: "role-ci-validation", priority: "P3",
+    }).expect(201);
+    try {
+      const milestone = await agent.post(`/api/topics/${created.body.id}/milestones`)
+        .set("x-csrf-token", csrf).send({
+          title: "Installation", beginDate: "2044-01-08", targetDate: "2044-01-10",
+        }).expect(201);
+      const calendar = await agent.get("/api/calendar/topics").expect(200);
+      const row = calendar.body.find((topic: { id: string }) => topic.id === created.body.id);
+      assert.equal(row.title, title);
+      assert.equal(row.estimatedStartDate, null);
+      assert.equal(row.estimatedFinishDate, null);
+      assert.equal(row.milestones.length, 1);
+      assert.equal(row.milestones[0].id, milestone.body.id);
+      assert.equal(row.milestones[0].beginDate.slice(0, 10), "2044-01-08");
+      assert.equal(row.milestones[0].targetDate.slice(0, 10), "2044-01-10");
+    } finally {
+      await agent.delete(`/api/topics/${created.body.id}`).set("x-csrf-token", csrf).expect(204);
+    }
+  });
+
   test("saves, displays, and clears a topic documentation URL", async () => {
     const agent = request.agent(app);
     await agent.get("/api/session").expect(200);

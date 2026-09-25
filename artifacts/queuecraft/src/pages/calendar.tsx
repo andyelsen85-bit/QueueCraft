@@ -1,8 +1,8 @@
 import * as React from "react"
 import { addMonths, differenceInCalendarDays, eachDayOfInterval, endOfMonth, format, isBefore, isAfter, isSameDay, isSameMonth, isWeekend, startOfMonth } from "date-fns"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, Target } from "lucide-react"
 import { Link } from "wouter"
-import { useListTopics } from "@workspace/api-client-react"
+import { useListCalendarTopics } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { PriorityBadge, StatusBadge } from "@/components/badges"
@@ -13,18 +13,74 @@ const safeDate = (dateStr?: string | null) => {
   return new Date(y, m - 1, d, 12, 0, 0); // Noon to avoid DST issues
 };
 
-const getBarColors = (status: string) => {
+type DateRange = { start: Date; end: Date };
+
+const dateRange = (begin?: string | null, target?: string | null): DateRange | null => {
+  let start = safeDate(begin);
+  let end = safeDate(target);
+  if (!start && !end) return null;
+  if (!start) start = end;
+  if (!end) end = start;
+  return isAfter(start!, end!) ? { start: end!, end: start! } : { start: start!, end: end! };
+};
+
+const overlapsMonth = (range: DateRange, start: Date, end: Date) =>
+  !isBefore(range.end, start) && !isAfter(range.start, end);
+
+const getBarColors = (status: string, milestone: boolean) => {
   switch (status) {
+    case 'completed': return 'bg-emerald-100 border-emerald-300 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-950 dark:border-emerald-700 dark:text-emerald-200';
     case 'blocked': return 'bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20';
+    case 'returned': return 'bg-amber-100 border-amber-300 text-amber-900 hover:bg-amber-200 dark:bg-amber-950 dark:border-amber-700 dark:text-amber-200';
     case 'closed': return 'bg-muted border-border text-muted-foreground hover:bg-muted/80';
-    default: return 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20';
+    default: return milestone
+      ? 'bg-sky-100 border-sky-300 text-sky-900 hover:bg-sky-200 dark:bg-sky-950 dark:border-sky-700 dark:text-sky-200'
+      : 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20';
   }
 };
 
+function TimelineCells({
+  days, monthStart, monthEnd, range, status, title, href, milestone = false,
+}: {
+  days: Date[]; monthStart: Date; monthEnd: Date; range: DateRange | null;
+  status: string; title: string; href: string; milestone?: boolean;
+}) {
+  const visible = range && overlapsMonth(range, monthStart, monthEnd);
+  const startIdx = visible ? differenceInCalendarDays(
+    isBefore(range.start, monthStart) ? monthStart : range.start, monthStart) : 0;
+  const endIdx = visible ? differenceInCalendarDays(
+    isAfter(range.end, monthEnd) ? monthEnd : range.end, monthStart) : 0;
+  return (
+    <div className="flex-1 relative flex">
+      {days.map((day) => (
+        <div key={day.toISOString()} className={`w-12 flex-shrink-0 border-r ${isWeekend(day) ? 'bg-muted/30' : ''}`} />
+      ))}
+      {visible && (
+        <div
+          className={`absolute z-10 py-[2px] ${milestone ? 'top-2 bottom-2' : 'top-2.5 bottom-2.5'}`}
+          style={{ left: `calc(${startIdx} * 3rem)`, width: `calc(${endIdx - startIdx + 1} * 3rem)` }}
+        >
+          <Link
+            href={href}
+            className={`flex h-full items-center overflow-hidden border px-2 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-background
+              ${isBefore(range.start, monthStart) ? 'rounded-l-none border-l-0' : 'rounded-l-md'}
+              ${isAfter(range.end, monthEnd) ? 'rounded-r-none border-r-0' : 'rounded-r-md'}
+              ${getBarColors(status, milestone)}`}
+            title={`${title}\n${format(range.start, "MMM d, yyyy")} - ${format(range.end, "MMM d, yyyy")}`}
+          >
+            <span className="truncate text-[11px] font-semibold leading-none">{title}</span>
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Calendar() {
   const [month, setMonth] = React.useState(() => startOfMonth(new Date()));
+  const [expandedTopics, setExpandedTopics] = React.useState<Record<string, boolean>>({});
   const scrollRef = React.useRef<HTMLDivElement>(null);
-  const { data: topics, isLoading, isError, refetch } = useListTopics({ limit: 100 });
+  const { data: topics, isLoading, isError, refetch } = useListCalendarTopics();
 
   const monthStart = React.useMemo(() => startOfMonth(month), [month]);
   const monthEnd = React.useMemo(() => endOfMonth(month), [month]);
@@ -33,26 +89,25 @@ export function Calendar() {
   const visibleTopics = React.useMemo(() => {
     return (topics ?? [])
       .map(topic => {
-        let startD = safeDate(topic.estimatedStartDate);
-        let endD = safeDate(topic.estimatedFinishDate) ?? safeDate(topic.targetDate);
-
-        if (!startD && !endD) return null;
-        if (startD && !endD) endD = startD;
-        if (!startD && endD) startD = endD;
-
-        if (isAfter(startD!, endD!)) {
-          const t = startD; startD = endD; endD = t;
-        }
-
-        if (isBefore(endD!, monthStart) || isAfter(startD!, monthEnd)) return null;
-
-        return { ...topic, startD: startD!, endD: endD! };
+        const schedule = dateRange(topic.estimatedStartDate, topic.estimatedFinishDate ?? topic.targetDate);
+        const topicRange = schedule && overlapsMonth(schedule, monthStart, monthEnd) ? schedule : null;
+        const milestones = topic.milestones.map(milestone => ({
+          ...milestone, range: dateRange(milestone.beginDate, milestone.targetDate),
+        }));
+        const milestonesThisMonth = milestones.filter(milestone =>
+          milestone.range && overlapsMonth(milestone.range, monthStart, monthEnd));
+        if (!topicRange && milestonesThisMonth.length === 0) return null;
+        const firstMilestone = milestonesThisMonth.reduce<Date | null>(
+          (first, milestone) => !first || isBefore(milestone.range!.start, first)
+            ? milestone.range!.start : first, null);
+        const focusD = topicRange?.start ?? firstMilestone!;
+        return { ...topic, topicRange, milestones, milestonesThisMonth: milestonesThisMonth.length, focusD };
       })
-      .filter((t): t is (typeof t & { startD: Date, endD: Date }) => t !== null)
+      .filter((topic): topic is NonNullable<typeof topic> => topic !== null)
       .sort((a, b) => {
-        const startDiff = a.startD.getTime() - b.startD.getTime();
+        const startDiff = a.focusD.getTime() - b.focusD.getTime();
         if (startDiff !== 0) return startDiff;
-        return b.endD.getTime() - b.startD.getTime(); // longer first
+        return a.title.localeCompare(b.title);
       });
   }, [topics, monthStart, monthEnd]);
 
@@ -61,13 +116,16 @@ export function Calendar() {
     const today = new Date();
     const activeToday = isSameMonth(today, month) && visibleTopics.some(
       (topic) =>
-        differenceInCalendarDays(today, topic.startD) >= 0 &&
-        differenceInCalendarDays(topic.endD, today) >= 0,
+        (topic.topicRange && differenceInCalendarDays(today, topic.topicRange.start) >= 0 &&
+          differenceInCalendarDays(topic.topicRange.end, today) >= 0) ||
+        topic.milestones.some(milestone => milestone.range &&
+          differenceInCalendarDays(today, milestone.range.start) >= 0 &&
+          differenceInCalendarDays(milestone.range.end, today) >= 0),
     );
     const focus = activeToday
       ? today
       : visibleTopics[0]
-        ? isBefore(visibleTopics[0].startD, monthStart) ? monthStart : visibleTopics[0].startD
+        ? isBefore(visibleTopics[0].focusD, monthStart) ? monthStart : visibleTopics[0].focusD
         : monthStart;
     scrollRef.current.scrollLeft = Math.max(0, differenceInCalendarDays(focus, monthStart) - 3) * 48;
   }, [month, monthStart, visibleTopics, isLoading, isError]);
@@ -78,15 +136,12 @@ export function Calendar() {
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Planning calendar</p>
           <h1 className="text-3xl font-bold tracking-tight">Topic Calendar</h1>
-          <p className="mt-1 text-muted-foreground">Topics span their estimated start through finish dates. Single dates form a one-day block.</p>
-           {topics?.length === 100 && (
-             <p className="text-xs text-muted-foreground mt-2">Showing the first 100 topics returned by the server. Additional topics may not appear here.</p>
-           )}
+          <p className="mt-1 text-muted-foreground">Expand a topic to see its milestones. Dated milestones appear even when the topic has no dates.</p>
         </div>
         <div className="flex items-center gap-2 rounded-md border bg-card p-1 shadow-sm">
-          <Button variant="ghost" size="icon" onClick={() => setMonth((value) => addMonths(value, -1))}><ChevronLeft className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Previous month" onClick={() => setMonth((value) => addMonths(value, -1))}><ChevronLeft className="h-4 w-4" /></Button>
           <div className="w-40 text-center text-sm font-semibold">{format(month, "MMMM yyyy")}</div>
-          <Button variant="ghost" size="icon" onClick={() => setMonth((value) => addMonths(value, 1))}><ChevronRight className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Next month" onClick={() => setMonth((value) => addMonths(value, 1))}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </div>
 
@@ -97,7 +152,7 @@ export function Calendar() {
               {/* Header Row */}
               <div className="flex border-b bg-card h-14 sticky top-0 z-30 shadow-sm">
                 <div className="w-56 sm:w-72 sticky left-0 bg-card border-r flex-shrink-0 flex items-center px-4 font-mono text-xs font-semibold uppercase text-muted-foreground z-40 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]">
-                  Topic
+                  Topic / milestone
                 </div>
                 <div className="flex flex-1">
                   {days.map(d => (
@@ -129,62 +184,70 @@ export function Calendar() {
                  </div>
                ) : visibleTopics.length === 0 ? (
                 <div className="h-48 flex items-center justify-center text-sm text-muted-foreground sticky left-0 w-full">
-                  No topics scheduled for this period.
+                   No topics or milestones scheduled for this period.
                 </div>
               ) : (
-                visibleTopics.map((topic) => {
-                  const gridStart = isBefore(topic.startD, monthStart) ? monthStart : topic.startD;
-                  const gridEnd = isAfter(topic.endD, monthEnd) ? monthEnd : topic.endD;
-
-                  const startIdx = days.findIndex(d => isSameDay(d, gridStart));
-                  const endIdx = days.findIndex(d => isSameDay(d, gridEnd));
-
-                  const sIdx = startIdx >= 0 ? startIdx : 0;
-                  const eIdx = endIdx >= 0 ? endIdx : days.length - 1;
-                  const span = eIdx - sIdx + 1;
-
-                  const isClippedLeft = isBefore(topic.startD, monthStart);
-                  const isClippedRight = isAfter(topic.endD, monthEnd);
-
-                  return (
-                    <div key={topic.id} className="flex h-16 border-b hover:bg-muted/30 group">
-                      <div className="w-56 sm:w-72 sticky left-0 bg-card group-hover:bg-muted/50 border-r flex-shrink-0 flex flex-col justify-center px-4 overflow-hidden z-20 transition-colors shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]">
-                        <Link href={`/topics/${topic.id}`} className="text-sm font-medium hover:underline truncate focus:outline-none focus:ring-1 focus:ring-primary rounded-sm">
-                          {topic.title}
-                        </Link>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <div className="scale-[0.8] origin-left"><PriorityBadge priority={topic.priority} /></div>
-                          <div className="scale-[0.8] origin-left -ml-2"><StatusBadge status={topic.status} /></div>
-                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground truncate ml-[-2px]">{topic.department?.name}</span>
-                        </div>
-                      </div>
-                      <div className="flex-1 relative flex">
-                        {days.map(d => (
-                          <div key={d.toISOString()} className={`w-12 flex-shrink-0 border-r ${isWeekend(d) ? 'bg-muted/30' : ''}`} />
-                        ))}
-                        <div
-                          className="absolute top-2.5 bottom-2.5 z-10 py-[2px]"
-                          style={{
-                            left: `calc(${sIdx} * 3rem)`,
-                            width: `calc(${span} * 3rem)`
-                          }}
-                        >
-                          <Link
-                            href={`/topics/${topic.id}`}
-                            className={`block h-full border transition-colors flex items-center px-2 overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-background
-                              ${isClippedLeft ? 'rounded-l-none border-l-0 border-l-transparent' : 'rounded-l-md'}
-                              ${isClippedRight ? 'rounded-r-none border-r-0 border-r-transparent' : 'rounded-r-md'}
-                              ${getBarColors(topic.status)}
-                            `}
-                            title={`${topic.title}\n${format(topic.startD, "MMM d")} - ${format(topic.endD, "MMM d")}`}
-                          >
-                            <span className="text-[11px] font-semibold truncate leading-none">{topic.title}</span>
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })
+                 visibleTopics.map((topic) => {
+                   const expanded = expandedTopics[topic.id] ??
+                     (!topic.topicRange && topic.milestonesThisMonth > 0);
+                   return (
+                     <React.Fragment key={topic.id}>
+                       <div className="flex h-16 border-b hover:bg-muted/30 group">
+                         <div className="w-56 sm:w-72 sticky left-0 bg-card group-hover:bg-muted/50 border-r flex-shrink-0 flex flex-col justify-center px-3 overflow-hidden z-20 transition-colors shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]">
+                           <div className="flex min-w-0 items-center gap-1">
+                             {topic.milestones.length ? (
+                               <button type="button" aria-expanded={expanded}
+                                 aria-label={`${expanded ? "Collapse" : "Expand"} milestones for ${topic.title}`}
+                                 onClick={() => setExpandedTopics((current) => ({ ...current, [topic.id]: !expanded }))}
+                                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                                 <ChevronRight className={`h-4 w-4 transition-transform ${expanded ? "rotate-90" : ""}`} />
+                               </button>
+                             ) : <span className="w-7 shrink-0" />}
+                             <Link href={`/topics/${topic.id}`} className="min-w-0 truncate rounded-sm text-sm font-medium hover:underline focus:outline-none focus:ring-1 focus:ring-primary">
+                               {topic.title}
+                             </Link>
+                             {topic.milestones.length > 0 && (
+                               <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">
+                                 {topic.milestones.length}
+                               </span>
+                             )}
+                           </div>
+                           <div className="flex items-center gap-1 pl-7">
+                             <div className="scale-[0.8] origin-left"><PriorityBadge priority={topic.priority} /></div>
+                             <div className="scale-[0.8] origin-left -ml-2"><StatusBadge status={topic.status} /></div>
+                             <span className="truncate text-[10px] text-muted-foreground">
+                               {topic.topicRange ? topic.departmentName : "Milestones this month"}
+                             </span>
+                           </div>
+                         </div>
+                         <TimelineCells days={days} monthStart={monthStart} monthEnd={monthEnd}
+                           range={topic.topicRange} status={topic.status}
+                           title={topic.title} href={`/topics/${topic.id}`} />
+                       </div>
+                       {expanded && topic.milestones.map((milestone) => (
+                         <div key={milestone.id} className="flex h-12 border-b bg-muted/10">
+                           <div className="w-56 sm:w-72 sticky left-0 z-20 flex shrink-0 items-center gap-2 overflow-hidden border-r bg-card/95 pl-10 pr-2 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]">
+                             <Target className="h-3.5 w-3.5 shrink-0 text-sky-700 dark:text-sky-300" />
+                             <div className="min-w-0">
+                               <Link href={`/topics/${topic.id}`}
+                                 className="block truncate rounded-sm text-xs font-medium hover:underline focus:outline-none focus:ring-1 focus:ring-primary">
+                                 {milestone.title}
+                               </Link>
+                               <div className="truncate text-[10px] text-muted-foreground">
+                                 {milestone.range
+                                   ? `${format(milestone.range.start, "MMM d")} – ${format(milestone.range.end, "MMM d")}`
+                                   : "No dates planned"} · {milestone.status.replaceAll("_", " ")}
+                               </div>
+                             </div>
+                           </div>
+                           <TimelineCells days={days} monthStart={monthStart} monthEnd={monthEnd}
+                             range={milestone.range} status={milestone.status}
+                             title={milestone.title} href={`/topics/${topic.id}`} milestone />
+                         </div>
+                       ))}
+                     </React.Fragment>
+                   );
+                 })
               )}
             </div>
           </div>

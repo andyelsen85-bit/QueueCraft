@@ -1925,6 +1925,29 @@ export const CreateTopicResponse = zod.object({
 
 
 /**
+ * @summary List all topics and their milestone schedules for the calendar
+ */
+export const ListCalendarTopicsResponseItem = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
+  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "departmentName": zod.string(),
+  "targetDate": zod.coerce.date().nullable(),
+  "estimatedStartDate": zod.coerce.date().nullable(),
+  "estimatedFinishDate": zod.coerce.date().nullable(),
+  "milestones": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']),
+  "beginDate": zod.coerce.date().nullable(),
+  "targetDate": zod.coerce.date().nullable()
+}))
+})
+export const ListCalendarTopicsResponse = zod.array(ListCalendarTopicsResponseItem)
+
+
+/**
  * @summary List eligible prerequisite topics, including those awaiting a finish estimate
  */
 export const ListDependencyCandidatesQueryParams = zod.object({

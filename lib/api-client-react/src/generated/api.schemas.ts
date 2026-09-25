@@ -327,6 +327,31 @@ export interface TopicDependency {
   estimatedFinishDate: string | null;
 }
 
+export interface CalendarMilestone {
+  id: string;
+  title: string;
+  status: MilestoneStatus;
+  /** @nullable */
+  beginDate: string | null;
+  /** @nullable */
+  targetDate: string | null;
+}
+
+export interface CalendarTopic {
+  id: string;
+  title: string;
+  priority: TopicPriority;
+  status: TopicStatus;
+  departmentName: string;
+  /** @nullable */
+  targetDate: string | null;
+  /** @nullable */
+  estimatedStartDate: string | null;
+  /** @nullable */
+  estimatedFinishDate: string | null;
+  milestones: CalendarMilestone[];
+}
+
 export interface Topic {
   id: string;
   title: string;

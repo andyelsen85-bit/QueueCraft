@@ -165,6 +165,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Topic"
+  /calendar/topics:
+    get:
+      operationId: listCalendarTopics
+      tags: [topics]
+      summary: List all topics and their milestone schedules for the calendar
+      responses:
+        "200":
+          description: Calendar topic schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CalendarTopic"
   /topics/dependency-candidates:
     get:
       operationId: listDependencyCandidates
@@ -985,6 +999,33 @@ components:
         estimatedFinishDate:
           type: ["string", "null"]
           format: date
+    CalendarMilestone:
+      type: object
+      required: [id, title, status, beginDate, targetDate]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        status:
+          $ref: "#/components/schemas/MilestoneStatus"
+        beginDate: { type: ["string", "null"], format: date }
+        targetDate: { type: ["string", "null"], format: date }
+    CalendarTopic:
+      type: object
+      required: [id, title, priority, status, departmentName, targetDate, estimatedStartDate, estimatedFinishDate, milestones]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        priority:
+          $ref: "#/components/schemas/TopicPriority"
+        status:
+          $ref: "#/components/schemas/TopicStatus"
+        departmentName: { type: string }
+        targetDate: { type: ["string", "null"], format: date }
+        estimatedStartDate: { type: ["string", "null"], format: date }
+        estimatedFinishDate: { type: ["string", "null"], format: date }
+        milestones:
+          type: array
+          items: { $ref: "#/components/schemas/CalendarMilestone" }
     Topic:
       type: object
       required:
