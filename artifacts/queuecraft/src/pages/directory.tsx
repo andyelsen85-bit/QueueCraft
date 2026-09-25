@@ -244,10 +244,11 @@ function exportMatrixPdf(
   roles.forEach((role, index) => {
     const x = margin + scaledMemberWidth + index * scaledRoleWidth;
     pdf.line(x, tableTop, x, tableTop + scaledTableHeight);
-    pdf.setFontSize(Math.max(2.5, headerFontSize * scale));
-    pdf.text(role.name, x + scaledRoleWidth / 2, tableTop + scaledHeaderHeight / 2, {
+    pdf.setFontSize(headerFontSize * scale);
+    // jsPDF applies `align: "center"` to the unrotated x coordinate, which
+    // shifts a 90-degree label out of its column. Center it along y instead.
+    pdf.text(role.name, x + scaledRoleWidth / 2, tableTop + scaledHeaderHeight / 2 + pdf.getTextWidth(role.name) / 2, {
       angle: 90,
-      align: "center",
     });
   });
   pdf.line(
