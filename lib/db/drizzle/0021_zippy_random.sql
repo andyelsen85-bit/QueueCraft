@@ -1,0 +1,1 @@
+ALTER TYPE "public"."milestone_status" ADD VALUE 'returned';

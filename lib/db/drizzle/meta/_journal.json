@@ -148,6 +148,13 @@
       "when": 1790324145073,
       "tag": "0020_chilly_johnny_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790327130312,
+      "tag": "0021_zippy_random",
+      "breakpoints": true
     }
   ]
 }

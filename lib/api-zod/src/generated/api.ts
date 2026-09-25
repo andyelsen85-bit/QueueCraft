@@ -797,7 +797,7 @@ export const GetMyWorkResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string().nullish(),
-  "status": zod.enum(['not_started', 'in_progress', 'completed', 'blocked']),
+  "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']),
   "beginDate": zod.coerce.date().nullish(),
   "targetDate": zod.coerce.date().nullish(),
   "assignee": zod.union([zod.object({
@@ -1667,6 +1667,8 @@ export const createTopicBodyTitleMax = 160;
 export const createTopicBodyDescriptionMin = 3;
 export const createTopicBodyDescriptionMax = 2000;
 
+export const createTopicBodyDocumentationUrlMax = 2048;
+
 export const createTopicBodyEstimatedEffortHoursMin = 0;
 
 
@@ -1674,6 +1676,7 @@ export const createTopicBodyEstimatedEffortHoursMin = 0;
 export const CreateTopicBody = zod.object({
   "title": zod.string().min(createTopicBodyTitleMin).max(createTopicBodyTitleMax),
   "description": zod.string().min(createTopicBodyDescriptionMin).max(createTopicBodyDescriptionMax),
+  "documentationUrl": zod.string().url().max(createTopicBodyDocumentationUrlMax).nullish(),
   "departmentId": zod.string(),
   "roleId": zod.string(),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
@@ -1923,6 +1926,10 @@ export const CreateTopicResponse = zod.object({
 /**
  * @summary List eligible prerequisite topics with estimated finish dates
  */
+export const ListDependencyCandidatesQueryParams = zod.object({
+  "topicId": zod.coerce.string().optional().describe('Exclude this topic and its dependents when editing')
+})
+
 export const ListDependencyCandidatesResponseItem = zod.object({
   "id": zod.string(),
   "title": zod.string(),
@@ -2224,7 +2231,7 @@ export const GetTopicResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string().nullish(),
-  "status": zod.enum(['not_started', 'in_progress', 'completed', 'blocked']),
+  "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']),
   "beginDate": zod.coerce.date().nullish(),
   "targetDate": zod.coerce.date().nullish(),
   "assignee": zod.union([zod.object({
@@ -2359,6 +2366,7 @@ export const UpdateTopicBody = zod.object({
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']).optional(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
+  "dependsOnTopicId": zod.string().nullish(),
   "estimatedEffortHours": zod.number().int().min(updateTopicBodyEstimatedEffortHoursMin).nullish(),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']).optional(),
   "completionSummary": zod.string().max(updateTopicBodyCompletionSummaryMax).nullish()
@@ -3760,7 +3768,7 @@ export const AddTopicMilestoneResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string().nullish(),
-  "status": zod.enum(['not_started', 'in_progress', 'completed', 'blocked']),
+  "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']),
   "beginDate": zod.coerce.date().nullish(),
   "targetDate": zod.coerce.date().nullish(),
   "assignee": zod.union([zod.object({
@@ -3823,7 +3831,7 @@ export const updateMilestoneBodyCompletionNoteMax = 1000;
 export const UpdateMilestoneBody = zod.object({
   "title": zod.string().min(updateMilestoneBodyTitleMin).max(updateMilestoneBodyTitleMax).optional(),
   "description": zod.string().max(updateMilestoneBodyDescriptionMax).nullish(),
-  "status": zod.enum(['not_started', 'in_progress', 'completed', 'blocked']).optional(),
+  "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']).optional(),
   "beginDate": zod.coerce.date().nullish(),
   "targetDate": zod.coerce.date().nullish(),
   "assigneeId": zod.string().nullish(),
@@ -3861,7 +3869,7 @@ export const UpdateMilestoneResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string().nullish(),
-  "status": zod.enum(['not_started', 'in_progress', 'completed', 'blocked']),
+  "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']),
   "beginDate": zod.coerce.date().nullish(),
   "targetDate": zod.coerce.date().nullish(),
   "assignee": zod.union([zod.object({

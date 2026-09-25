@@ -12,6 +12,7 @@ export type MilestoneStatus = typeof MilestoneStatus[keyof typeof MilestoneStatu
 export const MilestoneStatus = {
   not_started: 'not_started',
   in_progress: 'in_progress',
+  returned: 'returned',
   completed: 'completed',
   blocked: 'blocked',
 } as const;

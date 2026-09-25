@@ -100,6 +100,7 @@ export type MilestoneStatus = typeof MilestoneStatus[keyof typeof MilestoneStatu
 export const MilestoneStatus = {
   not_started: 'not_started',
   in_progress: 'in_progress',
+  returned: 'returned',
   completed: 'completed',
   blocked: 'blocked',
 } as const;
@@ -417,6 +418,11 @@ export interface TopicInput {
      * @maxLength 2000
      */
   description: string;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  documentationUrl?: string | null;
   departmentId: string;
   roleId: string;
   priority: TopicPriority;
@@ -458,6 +464,8 @@ export interface TopicUpdate {
   estimatedStartDate?: string | null;
   /** @nullable */
   estimatedFinishDate?: string | null;
+  /** @nullable */
+  dependsOnTopicId?: string | null;
   /**
      * @minimum 0
      * @nullable
@@ -669,6 +677,13 @@ search?: SearchParameter;
  * @maximum 100
  */
 limit?: LimitParameter;
+};
+
+export type ListDependencyCandidatesParams = {
+/**
+ * Exclude this topic and its dependents when editing
+ */
+topicId?: string;
 };
 
 export type GetOccupancyOverviewParams = {

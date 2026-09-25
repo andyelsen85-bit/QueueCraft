@@ -18,6 +18,11 @@ export interface TopicInput {
      * @maxLength 2000
      */
   description: string;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  documentationUrl?: string | null;
   departmentId: string;
   roleId: string;
   priority: TopicPriority;

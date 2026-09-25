@@ -32,6 +32,7 @@ import type {
   GetDashboardActivityParams,
   GetOccupancyOverviewParams,
   HealthStatus,
+  ListDependencyCandidatesParams,
   ListTopicsParams,
   LocalPasswordReset,
   Member,
@@ -893,20 +894,27 @@ export const useCreateTopic = <TError = ErrorType<unknown>,
       return useMutation(getCreateTopicMutationOptions(options));
     }
 
-export const getListDependencyCandidatesUrl = () => {
+export const getListDependencyCandidatesUrl = (params?: ListDependencyCandidatesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/topics/dependency-candidates`
+  return stringifiedParams.length > 0 ? `/api/topics/dependency-candidates?${stringifiedParams}` : `/api/topics/dependency-candidates`
 }
 
 /**
  * @summary List eligible prerequisite topics with estimated finish dates
  */
-export const listDependencyCandidates = async ( options?: Parameters<typeof customFetch>[1]): Promise<TopicDependency[]> => {
+export const listDependencyCandidates = async (params?: ListDependencyCandidatesParams, options?: Parameters<typeof customFetch>[1]): Promise<TopicDependency[]> => {
 
-  return customFetch<TopicDependency[]>(getListDependencyCandidatesUrl(),
+  return customFetch<TopicDependency[]>(getListDependencyCandidatesUrl(params),
   {
     ...options,
     method: 'GET'
@@ -919,23 +927,23 @@ export const listDependencyCandidates = async ( options?: Parameters<typeof cust
 
 
 
-export const getListDependencyCandidatesQueryKey = () => {
+export const getListDependencyCandidatesQueryKey = (params?: ListDependencyCandidatesParams,) => {
     return [
-    `/api/topics/dependency-candidates`
+    `/api/topics/dependency-candidates`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListDependencyCandidatesQueryOptions = <TData = Awaited<ReturnType<typeof listDependencyCandidates>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDependencyCandidates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListDependencyCandidatesQueryOptions = <TData = Awaited<ReturnType<typeof listDependencyCandidates>>, TError = ErrorType<unknown>>(params?: ListDependencyCandidatesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDependencyCandidates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListDependencyCandidatesQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListDependencyCandidatesQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDependencyCandidates>>> = ({ signal }) => listDependencyCandidates({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDependencyCandidates>>> = ({ signal }) => listDependencyCandidates(params, { signal, ...requestOptions });
 
 
 
@@ -953,11 +961,11 @@ export type ListDependencyCandidatesQueryError = ErrorType<unknown>
  */
 
 export function useListDependencyCandidates<TData = Awaited<ReturnType<typeof listDependencyCandidates>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDependencyCandidates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ListDependencyCandidatesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDependencyCandidates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListDependencyCandidatesQueryOptions(options)
+  const queryOptions = getListDependencyCandidatesQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

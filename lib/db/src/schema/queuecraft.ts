@@ -41,6 +41,7 @@ export const milestoneStatusEnum = pgEnum("milestone_status", [
   "in_progress",
   "completed",
   "blocked",
+  "returned",
 ]);
 export const memberStatusEnum = pgEnum("member_status", ["active", "disabled"]);
 export const notificationStatusEnum = pgEnum("notification_status", [

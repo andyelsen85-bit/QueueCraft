@@ -170,6 +170,11 @@ paths:
       operationId: listDependencyCandidates
       tags: [topics]
       summary: List eligible prerequisite topics with estimated finish dates
+      parameters:
+        - name: topicId
+          in: query
+          description: Exclude this topic and its dependents when editing
+          schema: { type: string }
       responses:
         "200":
           description: Topics that can be selected as prerequisites
@@ -756,7 +761,7 @@ components:
       enum: [P1, P2, P3, P4]
     MilestoneStatus:
       type: string
-      enum: [not_started, in_progress, completed, blocked]
+      enum: [not_started, in_progress, returned, completed, blocked]
     ValidationMode:
       type: string
       enum: [standard, break_glass]
@@ -1090,6 +1095,7 @@ components:
       properties:
         title: { type: string, minLength: 3, maxLength: 160 }
         description: { type: string, minLength: 3, maxLength: 2000 }
+        documentationUrl: { type: ["string", "null"], format: uri, maxLength: 2048 }
         departmentId: { type: string }
         roleId: { type: string }
         priority:
@@ -1122,6 +1128,8 @@ components:
         estimatedFinishDate:
           type: ["string", "null"]
           format: date
+        dependsOnTopicId:
+          type: ["string", "null"]
         estimatedEffortHours: { type: ["integer", "null"], minimum: 0 }
         status:
           $ref: "#/components/schemas/TopicStatus"

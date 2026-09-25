@@ -29,6 +29,8 @@ export interface TopicUpdate {
   estimatedStartDate?: Date | null;
   /** @nullable */
   estimatedFinishDate?: Date | null;
+  /** @nullable */
+  dependsOnTopicId?: string | null;
   /**
      * @minimum 0
      * @nullable

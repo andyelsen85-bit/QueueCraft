@@ -1412,6 +1412,37 @@ describe("QueueCraft security and preference flows", () => {
     }
   });
 
+  test("persists milestone status changes and clears completion when work is reopened", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const created = await agent.post("/api/topics").set("x-csrf-token", csrf)
+      .send({
+        title: `Milestone statuses ${randomUUID()}`,
+        description: "Temporary milestone status transition test.",
+        departmentId: "dept-platform", roleId: "role-ci-validation", priority: "P3",
+      }).expect(201);
+    try {
+      const milestone = await agent.post(`/api/topics/${created.body.id}/milestones`)
+        .set("x-csrf-token", csrf)
+        .send({ title: "Track status", beginDate: "2044-01-01", targetDate: "2044-01-07" })
+        .expect(201);
+      assert.equal(milestone.body.status, "not_started");
+      for (const status of ["in_progress", "completed", "returned", "not_started"] as const) {
+        const updated = await agent.patch(`/api/milestones/${milestone.body.id}`)
+          .set("x-csrf-token", csrf).send({ status }).expect(200);
+        assert.equal(updated.body.status, status);
+        if (status === "completed") assert.ok(updated.body.completedAt);
+        else assert.equal(updated.body.completedAt, null);
+      }
+      const detail = await agent.get(`/api/topics/${created.body.id}`).expect(200);
+      assert.equal(detail.body.milestones[0].status, "not_started");
+      assert.equal(detail.body.milestones[0].completedAt, null);
+    } finally {
+      await agent.delete(`/api/topics/${created.body.id}`).set("x-csrf-token", csrf).expect(204);
+    }
+  });
+
   test("shifts dependent topic chains and milestones, but blocks work until prerequisites complete", async () => {
     const agent = request.agent(app);
     await agent.get("/api/session").expect(200);
@@ -1501,6 +1532,89 @@ describe("QueueCraft security and preference flows", () => {
     }
   });
 
+  test("editing a prerequisite preserves the topic duration and moves its milestones and successors", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const ids: string[] = [];
+    const create = async (start: string, finish: string, dependsOnTopicId?: string) => {
+      const response = await agent.post("/api/topics").set("x-csrf-token", csrf).send({
+        title: `Editable prerequisite ${randomUUID()}`,
+        description: "Temporary prerequisite edit coverage.",
+        departmentId: "dept-platform", roleId: "role-ci-validation", priority: "P3",
+        estimatedStartDate: start, estimatedFinishDate: finish, dependsOnTopicId,
+      }).expect(201);
+      ids.push(response.body.id);
+      return response.body.id as string;
+    };
+    const detail = async (id: string) => (await agent.get(`/api/topics/${id}`).expect(200)).body;
+    const day = (value: string) => value.slice(0, 10);
+    try {
+      const parentA = await create("2044-01-01", "2044-01-10");
+      const parentB = await create("2044-01-01", "2044-02-01");
+      const topicId = await create("2044-01-10", "2044-01-20", parentA);
+      const successorId = await create("2044-01-20", "2044-01-25", topicId);
+      const milestone = await agent.post(`/api/topics/${topicId}/milestones`)
+        .set("x-csrf-token", csrf)
+        .send({ title: "Shift with dependency", beginDate: "2044-01-12", targetDate: "2044-01-14" })
+        .expect(201);
+      const successorMilestone = await agent.post(`/api/topics/${successorId}/milestones`)
+        .set("x-csrf-token", csrf)
+        .send({ title: "Downstream milestone", beginDate: "2044-01-21", targetDate: "2044-01-22" })
+        .expect(201);
+      const candidates = (await agent.get(`/api/topics/dependency-candidates?topicId=${topicId}`)
+        .expect(200)).body;
+      assert.ok(candidates.some((item: { id: string }) => item.id === parentB));
+      assert.ok(!candidates.some((item: { id: string }) =>
+        [topicId, successorId].includes(item.id)));
+      await agent.patch(`/api/topics/${topicId}`).set("x-csrf-token", csrf)
+        .send({ dependsOnTopicId: topicId }).expect(409);
+      await agent.patch(`/api/topics/${topicId}`).set("x-csrf-token", csrf)
+        .send({ dependsOnTopicId: parentB }).expect(200);
+      await agent.patch(`/api/topics/${parentB}`).set("x-csrf-token", csrf)
+        .send({ dependsOnTopicId: successorId }).expect(409);
+      let topic = await detail(topicId);
+      let successor = await detail(successorId);
+      assert.equal(topic.dependency.id, parentB);
+      assert.equal(day(topic.estimatedStartDate), "2044-02-01");
+      assert.equal(day(topic.estimatedFinishDate), "2044-02-11");
+      assert.equal(day(topic.milestones.find((m: { id: string }) => m.id === milestone.body.id).beginDate), "2044-02-03");
+      assert.equal(day(topic.milestones.find((m: { id: string }) => m.id === milestone.body.id).targetDate), "2044-02-05");
+      assert.equal(day(successor.estimatedStartDate), "2044-02-11");
+      assert.equal(day(successor.estimatedFinishDate), "2044-02-16");
+      assert.equal(day(successor.milestones.find((m: { id: string }) => m.id === successorMilestone.body.id).beginDate), "2044-02-12");
+      await agent.patch(`/api/topics/${topicId}`).set("x-csrf-token", csrf)
+        .send({ estimatedStartDate: "2044-02-03" }).expect(409);
+      await agent.patch(`/api/topics/${topicId}`).set("x-csrf-token", csrf)
+        .send({
+          dependsOnTopicId: parentA,
+          estimatedStartDate: "2044-02-01",
+          estimatedFinishDate: "2044-02-11",
+        }).expect(200);
+      topic = await detail(topicId);
+      successor = await detail(successorId);
+      assert.equal(day(topic.estimatedStartDate), "2044-01-10");
+      assert.equal(day(topic.estimatedFinishDate), "2044-01-20");
+      assert.equal(day(topic.milestones.find((m: { id: string }) => m.id === milestone.body.id).beginDate), "2044-01-12");
+      assert.equal(day(successor.estimatedStartDate), "2044-01-20");
+      await agent.patch(`/api/topics/${topicId}`).set("x-csrf-token", csrf)
+        .send({ dependsOnTopicId: null }).expect(200);
+      topic = await detail(topicId);
+      assert.equal(topic.dependency, null);
+      assert.equal(day(topic.estimatedStartDate), "2044-01-10");
+      await agent.post(`/api/topics/${topicId}/validate`)
+        .set("x-csrf-token", csrf).send({}).expect(200);
+      await agent.patch(`/api/topics/${topicId}`).set("x-csrf-token", csrf)
+        .send({ status: "in_progress" }).expect(200);
+      await agent.patch(`/api/topics/${topicId}`).set("x-csrf-token", csrf)
+        .send({ dependsOnTopicId: parentB }).expect(409);
+    } finally {
+      for (const id of ids.reverse()) {
+        await agent.delete(`/api/topics/${id}`).set("x-csrf-token", csrf).expect(204);
+      }
+    }
+  });
+
   test("saves, displays, and clears a topic documentation URL", async () => {
     const agent = request.agent(app);
     await agent.get("/api/session").expect(200);
@@ -1510,20 +1624,24 @@ describe("QueueCraft security and preference flows", () => {
       (item: { departmentId: string }) => item.departmentId === "dept-platform",
     );
     assert.ok(role);
+    const input = {
+      title: `Documentation link ${randomUUID()}`,
+      description: "Temporary topic for documentation URL verification.",
+      departmentId: "dept-platform",
+      roleId: role.id,
+      priority: "P3",
+    };
+    await agent.post("/api/topics").set("x-csrf-token", csrf.body.csrfToken)
+      .send({ ...input, documentationUrl: "javascript:alert(1)" }).expect(400);
     const created = await agent
       .post("/api/topics")
       .set("x-csrf-token", csrf.body.csrfToken)
-      .send({
-        title: `Documentation link ${randomUUID()}`,
-        description: "Temporary topic for documentation URL verification.",
-        departmentId: "dept-platform",
-        roleId: role.id,
-        priority: "P3",
-      })
+      .send({ ...input, documentationUrl: "https://docs.example.org/created" })
       .expect(201);
     try {
-      assert.equal(created.body.documentationUrl, null);
+      assert.equal(created.body.documentationUrl, "https://docs.example.org/created");
       const path = `/api/topics/${created.body.id}`;
+      assert.equal((await agent.get(path).expect(200)).body.documentationUrl, "https://docs.example.org/created");
       const saved = await agent.patch(path)
         .set("x-csrf-token", csrf.body.csrfToken)
         .send({ documentationUrl: "https://docs.example.org/guide" })
@@ -1533,10 +1651,6 @@ describe("QueueCraft security and preference flows", () => {
       assert.equal(loaded.body.documentationUrl, "https://docs.example.org/guide");
       await agent.patch(path)
         .set("x-csrf-token", csrf.body.csrfToken)
-        .send({ documentationUrl: "javascript:alert(1)" })
-        .expect(400);
-      await agent.patch(path)
-        .set("x-csrf-token", csrf.body.csrfToken)
         .send({ documentationUrl: "https://user:password@docs.example.org" })
         .expect(400);
       const cleared = await agent.patch(path)
@@ -1544,7 +1658,6 @@ describe("QueueCraft security and preference flows", () => {
         .send({ documentationUrl: null })
         .expect(200);
       assert.equal(cleared.body.documentationUrl, null);
-      assert.equal((await agent.get(path).expect(200)).body.documentationUrl, null);
     } finally {
       await db.delete(activityTable).where(eq(activityTable.topicId, created.body.id));
       await db.delete(topicsTable).where(eq(topicsTable.id, created.body.id));

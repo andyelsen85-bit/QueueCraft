@@ -56,6 +56,15 @@ const createSchema = z
   .object({
     title: z.string().min(3).max(160),
     description: z.string().min(3).max(2000),
+    documentationUrl: z.string().max(2048).refine((value) => {
+      if (!value.trim()) return true;
+      try {
+        const url = new URL(value.trim());
+        return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password;
+      } catch {
+        return false;
+      }
+    }, "Enter a valid HTTP or HTTPS URL without credentials"),
     departmentId: z.string().min(1),
     roleId: z.string().min(1),
     priority: z.enum(["P1", "P2", "P3", "P4"]),
@@ -280,6 +289,7 @@ export function Topics() {
     defaultValues: {
       title: "",
       description: "",
+      documentationUrl: "",
       departmentId: "",
       roleId: "",
       priority: "P3",
@@ -341,6 +351,7 @@ export function Topics() {
       {
         data: {
           ...data,
+          documentationUrl: data.documentationUrl.trim() || null,
           targetDate: data.targetDate || null,
           estimatedStartDate: data.estimatedStartDate || null,
           estimatedFinishDate: data.estimatedFinishDate || null,
@@ -608,6 +619,24 @@ export function Topics() {
                         <Textarea
                           placeholder="Detailed description of the requirement..."
                           className="min-h-[120px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="documentationUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Documentation URL (optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://example.com/documentation"
                           {...field}
                         />
                       </FormControl>

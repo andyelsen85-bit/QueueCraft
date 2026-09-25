@@ -36,7 +36,7 @@ export const securityHeaders = helmet({
 
 export const apiLimiter = rateLimit({
   windowMs: 60_000,
-  limit: 240,
+  limit: process.env.NODE_ENV === "test" ? 1_000 : 240,
   standardHeaders: "draft-8",
   legacyHeaders: false,
 });

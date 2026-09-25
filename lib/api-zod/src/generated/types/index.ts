@@ -26,6 +26,7 @@ export * from './getOccupancyOverviewParams';
 export * from './groupCount';
 export * from './healthStatus';
 export * from './limitParameter';
+export * from './listDependencyCandidatesParams';
 export * from './listTopicsParams';
 export * from './localPasswordReset';
 export * from './member';

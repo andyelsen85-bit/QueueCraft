@@ -1,6 +1,6 @@
 import * as React from "react"
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ status, label: customLabel }: { status: string; label?: string }) {
   const colors: Record<string, string> = {
     pending_validation: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
     open: "bg-blue-500/10 text-blue-600 border-blue-500/20",
@@ -17,7 +17,7 @@ export function StatusBadge({ status }: { status: string }) {
 
   return (
     <span className={`inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium uppercase tracking-wider font-mono ${colors[status] || colors.closed}`}>
-      {label}
+      {customLabel ?? label}
     </span>
   )
 }

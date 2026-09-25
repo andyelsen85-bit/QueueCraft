@@ -14,6 +14,8 @@ import {
   useUpdateMilestone,
   useDeleteMilestone,
   useListMembers,
+  useListDependencyCandidates,
+  getListDependencyCandidatesQueryKey,
   getGetTopicQueryKey,
   getListTopicsQueryKey,
   getGetValidationQueueQueryKey,
@@ -88,7 +90,6 @@ import {
   Users,
   Plus,
   Target,
-  Check,
   Pencil,
   Trash2,
   History,
@@ -109,6 +110,15 @@ import {
 const dateInputValue = (value?: string | null) =>
   value ? value.slice(0, 10) : "";
 
+const daysBetween = (from: string, to: string) =>
+  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000);
+
+const shiftedDate = (date: string, days: number) => {
+  const value = new Date(`${date}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+};
+
 const milestoneAllocationEntries = (values: Record<string, number>) => {
   if (Object.values(values).some((value) =>
     !Number.isInteger(value) || value < 0 || value > 100)) return null;
@@ -124,6 +134,7 @@ export function TopicDetail() {
   const { data: topic, isLoading } = useGetTopic(topicId!);
   const { data: session } = useGetSession();
   const { data: members } = useListMembers();
+  const { data: dependencyCandidates } = useListDependencyCandidates({ topicId: topicId! });
   const sortedMembers = React.useMemo(
     () =>
       [...(members ?? [])].sort((left, right) =>
@@ -155,6 +166,7 @@ export function TopicDetail() {
   const [deleteError, setDeleteError] = React.useState("");
   const [assignmentError, setAssignmentError] = React.useState("");
   const [milestoneError, setMilestoneError] = React.useState("");
+  const [milestoneStatusError, setMilestoneStatusError] = React.useState("");
   const [milestoneAllocations, setMilestoneAllocations] = React.useState<Record<string, number>>({});
   const [editMilestoneAllocations, setEditMilestoneAllocations] = React.useState<Record<string, number>>({});
   const [rescopeOpen, setRescopeOpen] = React.useState(false);
@@ -168,6 +180,7 @@ export function TopicDetail() {
   const invalidateData = () => {
     queryClient.invalidateQueries({ queryKey: getGetTopicQueryKey(topicId!) });
     queryClient.invalidateQueries({ queryKey: getListTopicsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListDependencyCandidatesQueryKey() });
     queryClient.invalidateQueries({
       queryKey: getGetValidationQueueQueryKey(),
     });
@@ -197,8 +210,10 @@ export function TopicDetail() {
         priority: z.enum(["P1", "P2", "P3", "P4"]),
         estimatedStartDate: z.string().optional().nullable(),
         estimatedFinishDate: z.string().optional().nullable(),
+        dependsOnTopicId: z.string().optional().nullable(),
         estimatedEffortHours: z.coerce.number().min(0).optional().nullable(),
-      }),
+      }).refine((data) => !data.dependsOnTopicId || Boolean(data.estimatedFinishDate),
+        { message: "Set an estimated finish for this topic", path: ["estimatedFinishDate"] }),
     ),
   });
 
@@ -225,10 +240,30 @@ export function TopicDetail() {
         priority: topic.priority as any,
         estimatedStartDate: dateInputValue(topic.estimatedStartDate),
         estimatedFinishDate: dateInputValue(topic.estimatedFinishDate),
+        dependsOnTopicId: topic.dependency?.id ?? null,
         estimatedEffortHours: topic.estimatedEffortHours || 0,
       });
     }
   }, [topic, editTopicOpen, editTopicForm]);
+
+  const selectedEditDependencyId = editTopicForm.watch("dependsOnTopicId");
+  const existingEditDependency = topic?.dependency;
+  const selectedEditDependency = dependencyCandidates?.find((entry) => entry.id === selectedEditDependencyId)
+    ?? (existingEditDependency?.id === selectedEditDependencyId ? existingEditDependency : null);
+  React.useEffect(() => {
+    if (!editTopicOpen || !selectedEditDependency?.estimatedFinishDate) return;
+    const anchor = dateInputValue(selectedEditDependency.estimatedFinishDate);
+    const start = editTopicForm.getValues("estimatedStartDate");
+    const finish = editTopicForm.getValues("estimatedFinishDate");
+    if (start === anchor) return;
+    const duration = start && finish ? daysBetween(start, finish) : null;
+    editTopicForm.setValue("estimatedStartDate", anchor, { shouldValidate: true });
+    if (duration !== null && duration >= 0) {
+      editTopicForm.setValue("estimatedFinishDate", shiftedDate(anchor, duration), { shouldValidate: true });
+    } else if (finish && finish < anchor) {
+      editTopicForm.setValue("estimatedFinishDate", "", { shouldValidate: true });
+    }
+  }, [editTopicOpen, selectedEditDependency?.estimatedFinishDate, selectedEditDependencyId, editTopicForm]);
 
   const onEditTopic = (data: any) => {
     setEditTopicError("");
@@ -241,6 +276,7 @@ export function TopicDetail() {
           estimatedEffortHours: data.estimatedEffortHours || null,
           estimatedStartDate: data.estimatedStartDate || null,
           estimatedFinishDate: data.estimatedFinishDate || null,
+          dependsOnTopicId: data.dependsOnTopicId || null,
         },
       },
       {
@@ -422,10 +458,19 @@ export function TopicDetail() {
     );
   };
 
-  const onUpdateMilestoneStatus = (milestoneId: string, status: any) => {
+  const onUpdateMilestoneStatus = (
+    milestoneId: string,
+    status: "not_started" | "in_progress" | "returned" | "completed",
+  ) => {
+    setMilestoneStatusError("");
     updateMilestone.mutate(
       { milestoneId, data: { status } },
-      { onSuccess: invalidateData },
+      {
+        onSuccess: invalidateData,
+        onError: (error) => setMilestoneStatusError(
+          error instanceof Error ? error.message : "Could not update milestone status.",
+        ),
+      },
     );
   };
 
@@ -846,6 +891,66 @@ export function TopicDetail() {
                       )}
                     />
                   </div>
+                  <FormField
+                    control={editTopicForm.control}
+                    name="dependsOnTopicId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Starts after another topic (optional)</FormLabel>
+                        <Select
+                          value={field.value || "none"}
+                          onValueChange={(value) => {
+                            if (value === "none") {
+                              field.onChange(null);
+                              editTopicForm.setValue("estimatedStartDate", dateInputValue(topic.estimatedStartDate),
+                                { shouldValidate: true });
+                              editTopicForm.setValue("estimatedFinishDate", dateInputValue(topic.estimatedFinishDate),
+                                { shouldValidate: true });
+                              return;
+                            }
+                            const next = dependencyCandidates?.find((candidate) => candidate.id === value);
+                            if (!next?.estimatedFinishDate) return;
+                            const anchor = dateInputValue(next.estimatedFinishDate);
+                            const start = editTopicForm.getValues("estimatedStartDate");
+                            const finish = editTopicForm.getValues("estimatedFinishDate");
+                            const duration = start && finish ? daysBetween(start, finish) : null;
+                            field.onChange(value);
+                            editTopicForm.setValue("estimatedStartDate", anchor, { shouldValidate: true });
+                            if (duration !== null && duration >= 0) {
+                              editTopicForm.setValue("estimatedFinishDate", shiftedDate(anchor, duration),
+                                { shouldValidate: true });
+                            } else if (finish && finish < anchor) {
+                              editTopicForm.setValue("estimatedFinishDate", "", { shouldValidate: true });
+                            }
+                          }}
+                        >
+                          <FormControl>
+                            <SelectTrigger><SelectValue placeholder="No prerequisite" /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">No prerequisite</SelectItem>
+                            {topic.dependency && (
+                              <SelectItem value={topic.dependency.id}>
+                                {topic.dependency.title} · {topic.dependency.status.replaceAll("_", " ")}
+                              </SelectItem>
+                            )}
+                            {["pending_validation", "open"].includes(topic.status) &&
+                              !topic.milestones.some((milestone) => ["in_progress", "completed"].includes(milestone.status)) &&
+                              dependencyCandidates?.filter((candidate) => candidate.id !== topic.dependency?.id).map((candidate) => (
+                                <SelectItem key={candidate.id} value={candidate.id}>
+                                  {candidate.title} · {candidate.status.replaceAll("_", " ")} · {formatDate(candidate.estimatedFinishDate)}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Changing the prerequisite keeps the planned duration and moves milestone dates.
+                          Work remains blocked until the prerequisite is completed.
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={editTopicForm.control}
@@ -854,7 +959,7 @@ export function TopicDetail() {
                         <FormItem>
                           <FormLabel>Est. Start Date</FormLabel>
                           <FormControl>
-                            <DateField {...field} value={field.value || ""} disabled={Boolean(topic.dependency)} />
+                            <DateField {...field} value={field.value || ""} disabled={Boolean(selectedEditDependencyId)} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -1110,6 +1215,11 @@ export function TopicDetail() {
                   )}
                 </CardHeader>
                 <CardContent className="p-0">
+                  {milestoneStatusError && (
+                    <p role="alert" className="px-6 pt-4 text-sm text-destructive">
+                      {milestoneStatusError}
+                    </p>
+                  )}
                   {isPendingValidation && (
                     <p className="border-b bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
                       You can plan milestone occupancy now. It will not count toward anyone’s occupancy until this topic is validated.
@@ -1164,20 +1274,30 @@ export function TopicDetail() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            <StatusBadge status={m.status} />
-                            {!isPendingValidation && prerequisiteReady && canManageMilestones &&
-                              m.status !== "completed" && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8"
-                                  onClick={() =>
-                                    onUpdateMilestoneStatus(m.id, "completed")
-                                  }
-                                >
-                                  <Check className="h-4 w-4 mr-1" /> Mark Done
-                                </Button>
-                              )}
+                            <StatusBadge status={m.status} label={m.status === "completed" ? "Done" : undefined} />
+                            {!isPendingValidation && canManageMilestones && (
+                              <Select
+                                value={m.status}
+                                onValueChange={(status) => onUpdateMilestoneStatus(
+                                  m.id,
+                                  status as "not_started" | "in_progress" | "returned" | "completed",
+                                )}
+                                disabled={updateMilestone.isPending}
+                              >
+                                <SelectTrigger aria-label={`Status for ${m.title}`} className="h-8 w-[155px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="not_started">Not Started</SelectItem>
+                                  <SelectItem value="in_progress" disabled={!prerequisiteReady}>In Progress</SelectItem>
+                                  <SelectItem value="returned">Returned</SelectItem>
+                                  <SelectItem value="completed" disabled={!prerequisiteReady}>Done</SelectItem>
+                                  {m.status === "blocked" && (
+                                    <SelectItem value="blocked" disabled>Blocked (legacy)</SelectItem>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            )}
                             {canManageMilestones && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
