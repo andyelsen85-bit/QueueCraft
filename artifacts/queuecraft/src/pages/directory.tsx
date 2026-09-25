@@ -50,6 +50,7 @@ import {
   Network,
   Grid2X2,
   Download,
+  ChevronDown,
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 
@@ -186,138 +187,121 @@ function exportMatrixPdf(
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 32;
-  const memberColumnWidth = 126;
-  const roleColumnWidth = 58;
-  const rowHeight = 21;
-  const headerHeight = 44;
-  const availableWidth = pageWidth - margin * 2 - memberColumnWidth;
-  const rolesPerPage = Math.max(1, Math.floor(availableWidth / roleColumnWidth));
-  const rowsPerPage = Math.max(
-    1,
-    Math.floor((pageHeight - 83 - headerHeight - 50) / rowHeight),
+  const memberColumnWidth = 132;
+  const roleColumnWidth = 44;
+  const rowHeight = 19;
+  const tableTop = 74;
+  const legendHeight = 30;
+  const headerFontSize = 7;
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(headerFontSize);
+  const longestRoleName = roles.reduce(
+    (longest, role) => Math.max(longest, pdf.getTextWidth(role.name)),
+    0,
   );
-  const rolePages = Math.max(1, Math.ceil(roles.length / rolesPerPage));
-  const rowPages = Math.max(1, Math.ceil(members.length / rowsPerPage));
-  const totalPages = rolePages * rowPages;
+  const headerHeight = Math.max(42, longestRoleName + 12);
+  const tableWidth = memberColumnWidth + roles.length * roleColumnWidth;
+  const tableHeight = headerHeight + members.length * rowHeight;
+  const availableWidth = pageWidth - margin * 2;
+  const availableHeight = pageHeight - tableTop - margin - legendHeight;
+  const scale = Math.min(1, availableWidth / tableWidth, availableHeight / tableHeight);
+  const scaledMemberWidth = memberColumnWidth * scale;
+  const scaledRoleWidth = roleColumnWidth * scale;
+  const scaledRowHeight = rowHeight * scale;
+  const scaledHeaderHeight = headerHeight * scale;
+  const scaledTableWidth = tableWidth * scale;
+  const scaledTableHeight = tableHeight * scale;
   const generatedDate = new Date();
   const generated = [
     String(generatedDate.getDate()).padStart(2, "0"),
     String(generatedDate.getMonth() + 1).padStart(2, "0"),
     generatedDate.getFullYear(),
   ].join("/");
-  let pageNumber = 0;
 
-  for (let rowPage = 0; rowPage < rowPages; rowPage += 1) {
-    const pageMembers = members.slice(
-      rowPage * rowsPerPage,
-      (rowPage + 1) * rowsPerPage,
-    );
-    for (let rolePage = 0; rolePage < rolePages; rolePage += 1) {
-      if (pageNumber > 0) pdf.addPage();
-      pageNumber += 1;
-      const pageRoles = roles.slice(
-        rolePage * rolesPerPage,
-        (rolePage + 1) * rolesPerPage,
-      );
-      pdf.setFillColor(15, 23, 42);
-      pdf.rect(0, 0, pageWidth, 66, "F");
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(18);
-      pdf.text("QueueCraft", margin, 27);
-      pdf.setFontSize(11);
-      pdf.setFont("helvetica", "normal");
-      pdf.text("Directory member-by-role matrix", margin, 46);
-      pdf.setFontSize(9);
-      pdf.text(generated, pageWidth - margin, 27, { align: "right" });
-      pdf.text(`Page ${pageNumber} of ${totalPages}`, pageWidth - margin, 46, {
-        align: "right",
-      });
+  pdf.setFillColor(15, 23, 42);
+  pdf.rect(0, 0, pageWidth, 58, "F");
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(17);
+  pdf.text("QueueCraft", margin, 25);
+  pdf.setFontSize(10);
+  pdf.setFont("helvetica", "normal");
+  pdf.text("Directory member-by-role matrix", margin, 43);
+  pdf.setFontSize(9);
+  pdf.text(generated, pageWidth - margin, 26, { align: "right" });
 
-      const tableTop = 83;
-      const tableWidth = memberColumnWidth + pageRoles.length * roleColumnWidth;
-      pdf.setFillColor(241, 245, 249);
-      pdf.rect(margin, tableTop, tableWidth, headerHeight, "F");
-      pdf.setDrawColor(203, 213, 225);
-      pdf.setLineWidth(0.6);
-      pdf.rect(margin, tableTop, tableWidth, headerHeight + pageMembers.length * rowHeight);
-      pdf.setTextColor(30, 41, 59);
-      pdf.setFont("helvetica", "bold");
-      pdf.text("MEMBER", margin + 8, tableTop + 23);
-      pageRoles.forEach((role, index) => {
-        const x = margin + memberColumnWidth + index * roleColumnWidth;
-        pdf.line(x, tableTop, x, tableTop + headerHeight + pageMembers.length * rowHeight);
-        const lines = pdf.splitTextToSize(role.name, roleColumnWidth - 8).slice(0, 3);
-        pdf.setFontSize(lines.length > 2 ? 6.5 : 7.5);
-        pdf.text(lines, x + roleColumnWidth / 2, tableTop + 12, {
-          align: "center",
-        });
-      });
-      pdf.line(
-        margin + memberColumnWidth,
-        tableTop,
-        margin + memberColumnWidth,
-        tableTop + headerHeight + pageMembers.length * rowHeight,
-      );
-      pageMembers.forEach((member, memberIndex) => {
-        const y = tableTop + headerHeight + memberIndex * rowHeight;
-        if (memberIndex % 2 === 0) {
-          pdf.setFillColor(248, 250, 252);
-          pdf.rect(margin, y, tableWidth, rowHeight, "F");
-        }
-        pdf.setDrawColor(226, 232, 240);
-        pdf.line(margin, y, margin + tableWidth, y);
-        pdf.setTextColor(51, 65, 85);
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(8);
-        pdf.text(pdf.splitTextToSize(member.name, memberColumnWidth - 14)[0], margin + 8, y + 14);
-        pageRoles.forEach((role, roleIndex) => {
-          const x = margin + memberColumnWidth + roleIndex * roleColumnWidth;
-          const isLead = role.lead.id === member.id;
-          const isDeputy = role.deputy?.id === member.id;
-          const isMember = (role.memberIds ?? []).includes(member.id);
-          if (!isLead && !isDeputy && !isMember) return;
-          pdf.setFont("helvetica", "bold");
-          pdf.setFontSize(9);
-          pdf.setTextColor(isLead ? 185 : 15, isLead ? 28 : 23, isLead ? 28 : 42);
-          pdf.text(isLead ? "X!" : "X", x + roleColumnWidth / 2, y + 14, {
-            align: "center",
-          });
-        });
-      });
-      const legendY = Math.min(
-        pageHeight - 25,
-        tableTop + headerHeight + pageMembers.length * rowHeight + 18,
-      );
-      pdf.setFontSize(8);
-      pdf.setTextColor(71, 85, 105);
-      pdf.setFont("helvetica", "normal");
-      pdf.text("Legend:", margin, legendY);
-      pdf.setTextColor(15, 23, 42);
-      pdf.text("X = member", margin + 38, legendY);
-      pdf.setTextColor(185, 28, 28);
-      pdf.text("X! = role lead", margin + 104, legendY);
-      if (rolePages > 1 || rowPages > 1) {
-        pdf.setTextColor(100, 116, 139);
-        pdf.text(
-          `Showing roles ${rolePage * rolesPerPage + 1}–${Math.min(
-            roles.length,
-            (rolePage + 1) * rolesPerPage,
-          )} and members ${rowPage * rowsPerPage + 1}–${Math.min(
-            members.length,
-            (rowPage + 1) * rowsPerPage,
-          )}`,
-          pageWidth - margin,
-          legendY,
-          { align: "right" },
-        );
-      }
+  pdf.setFillColor(241, 245, 249);
+  pdf.rect(margin, tableTop, scaledTableWidth, scaledHeaderHeight, "F");
+  pdf.setDrawColor(203, 213, 225);
+  pdf.setLineWidth(Math.max(0.25, 0.6 * scale));
+  pdf.rect(margin, tableTop, scaledTableWidth, scaledTableHeight);
+  pdf.setTextColor(30, 41, 59);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(Math.max(3, 9 * scale));
+  pdf.text("MEMBER", margin + 7 * scale, tableTop + scaledHeaderHeight / 2, {
+    baseline: "middle",
+  });
+  roles.forEach((role, index) => {
+    const x = margin + scaledMemberWidth + index * scaledRoleWidth;
+    pdf.line(x, tableTop, x, tableTop + scaledTableHeight);
+    pdf.setFontSize(Math.max(2.5, headerFontSize * scale));
+    pdf.text(role.name, x + scaledRoleWidth / 2, tableTop + scaledHeaderHeight / 2, {
+      angle: 90,
+      align: "center",
+    });
+  });
+  pdf.line(
+    margin + scaledMemberWidth,
+    tableTop,
+    margin + scaledMemberWidth,
+    tableTop + scaledTableHeight,
+  );
+  members.forEach((member, memberIndex) => {
+    const y = tableTop + scaledHeaderHeight + memberIndex * scaledRowHeight;
+    if (memberIndex % 2 === 0) {
+      pdf.setFillColor(248, 250, 252);
+      pdf.rect(margin, y, scaledTableWidth, scaledRowHeight, "F");
     }
-  }
+    pdf.setDrawColor(226, 232, 240);
+    pdf.line(margin, y, margin + scaledTableWidth, y);
+    pdf.setTextColor(51, 65, 85);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(Math.max(3, 8 * scale));
+    pdf.text(member.name, margin + 7 * scale, y + scaledRowHeight * 0.72, {
+      maxWidth: Math.max(1, (scaledMemberWidth - 14 * scale)),
+    });
+    roles.forEach((role, roleIndex) => {
+      const x = margin + scaledMemberWidth + roleIndex * scaledRoleWidth;
+      const isLead = role.lead.id === member.id;
+      const isDeputy = role.deputy?.id === member.id;
+      const isMember = (role.memberIds ?? []).includes(member.id);
+      if (!isLead && !isDeputy && !isMember) return;
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(Math.max(3, 9 * scale));
+      pdf.setTextColor(isLead ? 185 : 15, isLead ? 28 : 23, isLead ? 28 : 42);
+      pdf.text(isLead ? "X!" : "X", x + scaledRoleWidth / 2, y + scaledRowHeight * 0.72, {
+        align: "center",
+      });
+    });
+  });
+  const legendY = Math.min(pageHeight - margin, tableTop + scaledTableHeight + 18 * scale);
+  pdf.setFontSize(Math.max(5, 8 * scale));
+  pdf.setTextColor(71, 85, 105);
+  pdf.setFont("helvetica", "normal");
+  pdf.text("Legend:", margin, legendY);
+  pdf.setTextColor(15, 23, 42);
+  pdf.text("X = member", margin + 38 * scale, legendY);
+  pdf.setTextColor(185, 28, 28);
+  pdf.text("X! = role lead", margin + 104 * scale, legendY);
   pdf.save(`queuecraft-directory-matrix-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
 function DirectoryMatrix({ members, roles }: DirectoryMatrixProps) {
+  const roleHeaderHeight = Math.max(
+    112,
+    ...roles.map((role) => role.name.length * 16 + 16),
+  );
+
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -342,20 +326,26 @@ function DirectoryMatrix({ members, roles }: DirectoryMatrixProps) {
           <span><strong className="text-foreground">X</strong> Member</span>
           <span><strong className="text-destructive">X!</strong> Role lead</span>
         </div>
-        <div className="overflow-auto rounded-md border">
-          <table className="w-full min-w-max border-collapse text-sm">
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full table-fixed border-collapse text-sm">
             <thead>
               <tr className="bg-muted/60">
-                <th className="sticky left-0 z-10 min-w-48 border-b border-r bg-muted/90 px-4 py-3 text-left font-semibold">
+                <th className="sticky left-0 z-10 w-1/5 border-b border-r bg-muted/90 px-3 py-3 text-left font-semibold">
                   Member
                 </th>
                 {roles.map((role) => (
                   <th
                     key={role.id}
-                    className="min-w-24 max-w-32 border-b px-3 py-3 text-center font-semibold"
+                    className="border-b border-l px-0.5 py-2 text-center align-bottom font-semibold"
                     title={role.name}
                   >
-                    <span className="line-clamp-2">{role.name}</span>
+                    <span
+                      className="mx-auto block whitespace-nowrap text-xs [writing-mode:vertical-rl] [transform:rotate(180deg)]"
+                      style={{ height: `${roleHeaderHeight}px` }}
+                      aria-label={role.name}
+                    >
+                      {role.name}
+                    </span>
                   </th>
                 ))}
               </tr>
@@ -372,7 +362,7 @@ function DirectoryMatrix({ members, roles }: DirectoryMatrixProps) {
                     )}
                   </th>
                   {roles.map((role) => (
-                    <td key={role.id} className="border-t px-3 py-3 text-center">
+                    <td key={role.id} className="border-t border-l px-0.5 py-2 text-center">
                       <MatrixCell member={member} role={role} />
                     </td>
                   ))}
@@ -437,6 +427,9 @@ export function Directory() {
   const [memberActionError, setMemberActionError] = React.useState("");
   const [memberActionMessage, setMemberActionMessage] = React.useState("");
   const [resetPassword, setResetPassword] = React.useState("");
+  const [expandedRoleMembers, setExpandedRoleMembers] = React.useState<Set<string>>(
+    () => new Set(),
+  );
 
   const invalidateDirectory = () => {
     queryClient.invalidateQueries({ queryKey: getListDepartmentsQueryKey() });
@@ -1005,57 +998,127 @@ export function Directory() {
           )}
           <Card>
             <div className="divide-y divide-border">
-              {sortedMembers.map((member) => (
-                <div
-                  key={member.id}
-                  className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors"
-                >
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-muted text-foreground border">
-                      {member.initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="font-semibold truncate">
-                      {member.name}
-                    </span>
-                    <span className="text-sm text-muted-foreground truncate">
-                      {member.title || "Member"}
-                    </span>
-                  </div>
-                  <div className="hidden sm:block text-sm text-muted-foreground font-mono truncate">
-                    {member.email}
-                  </div>
-                  <div className="hidden sm:block text-sm font-medium">
-                    <span className="text-muted-foreground text-xs uppercase mr-1">
-                      BAU:
-                    </span>
-                    {(member.dailyBusinessPercent ?? 0)}%
-                    {member.dailyBusinessTasks.length > 0 && (
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        ({member.dailyBusinessTasks.map((task) => task.name).join(", ")})
-                      </span>
+              {sortedMembers.map((member) => {
+                const assignedRoles = sortedRoles.filter(
+                  (role) =>
+                    role.lead.id === member.id ||
+                    role.deputy?.id === member.id ||
+                    (role.memberIds ?? []).includes(member.id),
+                );
+                const isExpanded = expandedRoleMembers.has(member.id);
+                return (
+                  <React.Fragment key={member.id}>
+                    <div className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-muted text-foreground border">
+                          {member.initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <span className="font-semibold truncate">{member.name}</span>
+                        <span className="text-sm text-muted-foreground truncate">
+                          {member.title || "Member"}
+                        </span>
+                      </div>
+                      <div className="hidden sm:block text-sm text-muted-foreground font-mono truncate">
+                        {member.email}
+                      </div>
+                      <div className="hidden sm:block text-sm font-medium">
+                        <span className="text-muted-foreground text-xs uppercase mr-1">
+                          BAU:
+                        </span>
+                        {(member.dailyBusinessPercent ?? 0)}%
+                        {member.dailyBusinessTasks.length > 0 && (
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            ({member.dailyBusinessTasks.map((task) => task.name).join(", ")})
+                          </span>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`${isExpanded ? "Hide" : "Show"} role cases for ${member.name}`}
+                        aria-expanded={isExpanded}
+                        disabled={!assignedRoles.length}
+                        onClick={() =>
+                          setExpandedRoleMembers((current) => {
+                            const next = new Set(current);
+                            if (next.has(member.id)) next.delete(member.id);
+                            else next.add(member.id);
+                            return next;
+                          })
+                        }
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                        />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Edit ${member.name}`}
+                        onClick={() => openMember(member)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        aria-label={`Delete ${member.name}`}
+                        onClick={() => void deleteMember(member)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {isExpanded && (
+                      <div className="space-y-3 bg-muted/20 px-6 py-4 sm:pl-20">
+                        {assignedRoles.map((role) => {
+                          const otherMemberIds = [
+                            role.deputy?.id,
+                            ...(role.memberIds ?? []),
+                          ].filter(
+                            (id, index, ids): id is string =>
+                              Boolean(id) &&
+                              id !== role.lead.id &&
+                              ids.indexOf(id) === index,
+                          );
+                          const otherMembers = otherMemberIds
+                            .map((id) => sortedMembers.find((candidate) => candidate.id === id))
+                            .filter((candidate): candidate is NonNullable<typeof candidate> =>
+                              Boolean(candidate),
+                            );
+                          return (
+                            <div key={role.id} className="rounded-md border bg-background p-3">
+                              <h3 className="text-sm font-semibold">{role.name}</h3>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Assigned members besides the role lead
+                              </p>
+                              {otherMembers.length ? (
+                                <ul className="mt-2 flex flex-wrap gap-2">
+                                  {otherMembers.map((assignedMember) => (
+                                    <li
+                                      key={assignedMember.id}
+                                      className="rounded-full bg-muted px-2.5 py-1 text-xs"
+                                    >
+                                      {assignedMember.name}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                  No other assigned members.
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Edit ${member.name}`}
-                    onClick={() => openMember(member)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    aria-label={`Delete ${member.name}`}
-                    onClick={() => void deleteMember(member)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                  </React.Fragment>
+                );
+              })}
             </div>
           </Card>
         </TabsContent>

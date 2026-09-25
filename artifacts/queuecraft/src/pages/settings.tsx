@@ -13,7 +13,16 @@ type Status = {
   smtp: { host: string | null; port: number; secure: boolean; user: string | null; passwordConfigured: boolean; from: string | null; fromName: string | null }
 }
 type Draft = Record<string, string | number | boolean>
-type Rule = { id: string; action: string; enabled: boolean }
+const recipientGroups = [
+  ["affected_role_members", "Member of Affected Role"],
+  ["head_of_service", "Head of Service"],
+  ["head_of_service_deputy", "Head of Service Deputy"],
+  ["lead_of_affected_role", "Lead of Affected Role"],
+  ["deputy_of_affected_role", "Deputy of Affected Role (optional)"],
+] as const
+type RecipientGroup = (typeof recipientGroups)[number][0]
+type Rule = { id: string; action: string; enabled: boolean; recipientGroups: RecipientGroup[] }
+type NotificationStatus = { frequencyMinutes: number; queuedItems: number; recipients: number }
 type HttpsStatus = { certificateInstalled: boolean; privateKeyInstalled: boolean; chainInstalled: boolean; subject: string | null; expiresAt: string | null; fingerprint: string | null; runtimeConfigured: boolean; installed?: boolean }
 const actions = ["topic.created", "topic.updated", "topic.finish_date_changed", "topic.allocations_replaced", "topic.assignee_changed", "topic.validation", "topic.collaborator_added", "topic.milestone_added", "topic.milestone_updated", "topic.milestone_deleted"]
 
@@ -26,6 +35,7 @@ export function SettingsPage() {
   const [message, setMessage] = React.useState("")
   const [tab, setTab] = React.useState<"connections" | "notifications" | "recovery">("connections")
   const [rules, setRules] = React.useState<Rule[]>([])
+  const [notificationStatus, setNotificationStatus] = React.useState<NotificationStatus>({ frequencyMinutes: 5, queuedItems: 0, recipients: 0 })
   const [testRecipient, setTestRecipient] = React.useState("")
   const [httpsStatus, setHttpsStatus] = React.useState<HttpsStatus | null>(null)
   const [certificatePem, setCertificatePem] = React.useState("")
@@ -45,10 +55,33 @@ export function SettingsPage() {
     })
     const ruleResponse = await fetch("/api/admin/notification-rules", { credentials: "include" })
     if (ruleResponse.ok) setRules(await ruleResponse.json())
+    const notificationResponse = await fetch("/api/admin/notification-settings", { credentials: "include" })
+    if (notificationResponse.ok) setNotificationStatus(await notificationResponse.json())
     const httpsResponse = await fetch("/api/admin/settings/https", { credentials: "include" })
     if (httpsResponse.ok) setHttpsStatus(await httpsResponse.json())
   }, [])
   React.useEffect(() => { void load() }, [load])
+  React.useEffect(() => {
+    if (tab !== "notifications") return
+    let active = true
+    const refreshQueue = async () => {
+      try {
+        const response = await fetch("/api/admin/notification-settings", { credentials: "include" })
+        if (!response.ok || !active) return
+        const next = await response.json() as NotificationStatus
+        if (active) setNotificationStatus((current) => ({
+          ...current,
+          queuedItems: next.queuedItems,
+          recipients: next.recipients,
+        }))
+      } catch {
+        // The next refresh will retry; leave the current draft frequency intact.
+      }
+    }
+    void refreshQueue()
+    const timer = window.setInterval(() => void refreshQueue(), 15_000)
+    return () => { active = false; window.clearInterval(timer) }
+  }, [tab])
   const set = (key: string, value: string | number | boolean) => setDraft((current) => ({ ...current, [key]: value }))
   const save = async () => {
     setSaving(true); setMessage("")
@@ -70,6 +103,19 @@ export function SettingsPage() {
     const response = await fetch(`/api/admin/notification-rules/${ruleId}`, { method: "DELETE", credentials: "include", headers: { "x-csrf-token": csrf.csrfToken } })
     if (response.ok) { setRules((current) => current.filter((rule) => rule.id !== ruleId)); setMessage("Notification rule deleted.") }
     else setMessage("Notification rule could not be deleted.")
+  }
+  const saveNotificationSettings = async () => {
+    const csrf = await fetch("/api/auth/csrf", { credentials: "include" }).then((response) => response.json())
+    const response = await fetch("/api/admin/notification-settings", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", "x-csrf-token": csrf.csrfToken }, body: JSON.stringify({ frequencyMinutes: notificationStatus.frequencyMinutes }) })
+    if (response.ok) { setMessage("Notification frequency saved."); await load() }
+    else setMessage((await response.json()).error ?? "Notification frequency could not be saved.")
+  }
+  const deleteNotificationCache = async () => {
+    if (!window.confirm("Delete all pending and retryable notification changes from the cache?")) return
+    const csrf = await fetch("/api/auth/csrf", { credentials: "include" }).then((response) => response.json())
+    const response = await fetch("/api/admin/notification-cache", { method: "DELETE", credentials: "include", headers: { "x-csrf-token": csrf.csrfToken } })
+    if (response.ok) { const result = await response.json(); setMessage(`${result.deletedItems} queued change(s) deleted.`); await load() }
+    else setMessage((await response.json()).error ?? "Notification cache could not be deleted.")
   }
   const sendTest = async () => {
     setMessage("")
@@ -142,7 +188,14 @@ export function SettingsPage() {
       </form>
     </CardContent></Card>}
     </>}
-    {tab === "notifications" && <Card><CardHeader><CardTitle>Topic email notifications</CardTitle><CardDescription>Enable email for topic changes. Recipients are selected from the changed topic: all members of its role, the role lead and deputy, and the corresponding department lead and deputy.</CardDescription></CardHeader><CardContent className="space-y-3">{rules.map((rule) => <div key={rule.id} className="grid gap-2 md:grid-cols-[1fr_auto_auto_auto] md:items-center"><select className="h-10 rounded-md border bg-background px-3 text-sm" value={rule.action} onChange={(event) => setRules((current) => current.map((item) => item.id === rule.id ? { ...item, action: event.target.value } : item))}>{actions.map((action) => <option key={action} value={action}>{action}</option>)}</select><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={rule.enabled} onChange={(event) => setRules((current) => current.map((item) => item.id === rule.id ? { ...item, enabled: event.target.checked } : item))} />Enabled</label><Button type="button" variant="outline" onClick={() => void saveRule(rule)}>Save</Button><Button type="button" variant="outline" onClick={() => void deleteRule(rule.id)}>Delete</Button></div>)}<Button type="button" variant="outline" disabled={rules.length >= actions.length} onClick={() => setRules((current) => [...current, { id: crypto.randomUUID(), action: actions.find((action) => !current.some((rule) => rule.action === action)) ?? actions[0], enabled: true }])}>Add notification rule</Button></CardContent></Card>}
+    {tab === "notifications" && <div className="space-y-4">
+      <Card><CardHeader><CardTitle>Topic email notifications</CardTitle><CardDescription>Choose recipient permission groups separately for each topic change. Changes are retained in a durable queue and combined into one HTML email per recipient after the configured interval.</CardDescription></CardHeader><CardContent className="space-y-5">
+        <div className="flex flex-wrap items-end gap-3 border-b pb-4"><div className="w-48 space-y-1"><Label htmlFor="notification-frequency">Digest frequency (minutes)</Label><Input id="notification-frequency" type="number" min={1} max={1440} value={notificationStatus.frequencyMinutes} onChange={(event) => setNotificationStatus((current) => ({ ...current, frequencyMinutes: Number(event.target.value) }))} /></div><Button type="button" onClick={() => void saveNotificationSettings()}>Save frequency</Button></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-muted/40 p-3 text-sm"><span><strong>{notificationStatus.queuedItems}</strong> queued changes for <strong>{notificationStatus.recipients}</strong> recipients</span><Button type="button" variant="outline" disabled={!notificationStatus.queuedItems} onClick={() => void deleteNotificationCache()}>Delete notification cache</Button></div>
+        {rules.map((rule) => <div key={rule.id} className="space-y-3 rounded-md border p-4"><div className="flex flex-wrap items-center gap-3"><select className="h-10 min-w-64 flex-1 rounded-md border bg-background px-3 text-sm" value={rule.action} onChange={(event) => setRules((current) => current.map((item) => item.id === rule.id ? { ...item, action: event.target.value } : item))}>{actions.map((action) => <option key={action} value={action}>{action}</option>)}</select><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={rule.enabled} onChange={(event) => setRules((current) => current.map((item) => item.id === rule.id ? { ...item, enabled: event.target.checked } : item))} />Enabled</label><Button type="button" variant="outline" onClick={() => void saveRule(rule)}>Save</Button><Button type="button" variant="outline" onClick={() => void deleteRule(rule.id)}>Delete</Button></div><div className="flex flex-wrap gap-x-5 gap-y-2">{recipientGroups.map(([value, label]) => <label key={value} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={rule.recipientGroups?.includes(value) ?? false} onChange={(event) => setRules((current) => current.map((item) => item.id === rule.id ? { ...item, recipientGroups: event.target.checked ? [...(item.recipientGroups ?? []), value] : (item.recipientGroups ?? []).filter((group) => group !== value) } : item))} />{label}</label>)}</div></div>)}
+        <Button type="button" variant="outline" disabled={rules.length >= actions.length} onClick={() => setRules((current) => [...current, { id: crypto.randomUUID(), action: actions.find((action) => !current.some((rule) => rule.action === action)) ?? actions[0], enabled: true, recipientGroups: recipientGroups.map(([group]) => group) }])}>Add notification rule</Button>
+      </CardContent></Card>
+    </div>}
     {tab === "recovery" && canRestore && <Card><CardHeader className="flex-row items-start gap-3 space-y-0"><DatabaseBackup className="mt-0.5 h-5 w-5 text-primary" /><div><CardTitle>Application backup</CardTitle><CardDescription>Export every QueueCraft application table or restore a validated QueueCraft JSON backup. Production database backups remain the primary disaster-recovery mechanism.</CardDescription></div></CardHeader><CardContent className="flex flex-wrap gap-3"><Button type="button" onClick={() => void exportBackup()}>Download backup</Button><Label className="inline-flex h-10 cursor-pointer items-center rounded-md border px-4 text-sm font-medium hover:bg-accent">Restore backup<Input className="sr-only" type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; if (file) void restoreBackup(file); event.target.value = "" }} /></Label></CardContent></Card>}
     {message && <p className="text-sm text-muted-foreground">{message}</p>}
   </div>

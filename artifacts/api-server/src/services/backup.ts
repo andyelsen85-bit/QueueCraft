@@ -13,6 +13,7 @@ import {
   milestonesTable,
   notificationOutboxTable,
   notificationRulesTable,
+  notificationSettingsTable,
   roleDepartmentsTable,
   roleMembersTable,
   rolesTable,
@@ -41,6 +42,7 @@ export const BACKUP_TABLES = [
   ["audit_log", auditLogTable],
   ["notification_outbox", notificationOutboxTable],
   ["notification_rules", notificationRulesTable],
+  ["notification_settings", notificationSettingsTable],
 ] as const;
 export type BackupTableName = (typeof BACKUP_TABLES)[number][0];
 
@@ -83,14 +85,83 @@ export function validateBackup(value: unknown): QueueCraftBackup {
     throw new Error(
       `Unsupported backup format; expected ${BACKUP_FORMAT} v${BACKUP_VERSION}`,
     );
-  if (
-    c.fingerprint !== BACKUP_FINGERPRINT ||
-    JSON.stringify(c.manifest) !== JSON.stringify(BACKUP_MANIFEST)
-  )
-    throw new Error("Backup schema manifest does not match this application");
   if (!c.tables || typeof c.tables !== "object" || Array.isArray(c.tables))
     throw new Error("Backup tables must be an object");
-  const tables = c.tables as Record<string, unknown>;
+  const inputManifest = c.manifest as typeof BACKUP_MANIFEST | undefined;
+  const currentManifest = JSON.stringify(inputManifest) === JSON.stringify(BACKUP_MANIFEST)
+    && c.fingerprint === BACKUP_FINGERPRINT;
+  // Accept both earlier v2 shapes: the pre-digest backup, and the first
+  // digest implementation before topic/actor context was added.
+  const previousManifest = BACKUP_MANIFEST
+    .filter((entry) => entry.name !== "notification_settings")
+    .map((entry) => ({
+      ...entry,
+      columns: entry.columns.filter((column) =>
+        !(entry.name === "notification_outbox" && ["action", "topicTitle", "actorName"].includes(column.key))
+        && !(entry.name === "notification_rules" && column.key === "recipientGroups"),
+      ),
+    }));
+  const digestPreviousManifest = BACKUP_MANIFEST.map((entry) => ({
+    ...entry,
+    columns: entry.columns.filter((column) =>
+      !(entry.name === "notification_outbox" && ["topicTitle", "actorName"].includes(column.key)),
+    ),
+  }));
+  const previousNoSettings = JSON.stringify(inputManifest) === JSON.stringify(previousManifest)
+    && typeof c.fingerprint === "string"
+    && c.fingerprint === createHash("sha256").update(JSON.stringify(inputManifest)).digest("hex");
+  const previousWithSettings = JSON.stringify(inputManifest) === JSON.stringify(digestPreviousManifest)
+    && typeof c.fingerprint === "string"
+    && c.fingerprint === createHash("sha256").update(JSON.stringify(inputManifest)).digest("hex");
+  const previousShape = previousNoSettings || previousWithSettings;
+  if (!currentManifest && !previousShape)
+    throw new Error("Backup schema manifest does not match this application");
+  const tables = { ...(c.tables as Record<string, unknown>) };
+  if (previousShape) {
+    const previousTableNames = previousNoSettings
+      ? [...tableNames].filter((name) => name !== "notification_settings")
+      : [...tableNames];
+    const previousKeys = Object.keys(tables);
+    if (previousKeys.length !== previousTableNames.length || previousKeys.some((key) => !previousTableNames.some((name) => name === key))) {
+      throw new Error("Backup table coverage does not match the previous schema");
+    }
+    for (const name of previousTableNames) {
+      if (!Array.isArray(tables[name]) || (tables[name] as unknown[]).some(
+        (row) => !row || typeof row !== "object" || Array.isArray(row),
+      )) throw new Error(`Backup table ${name} contains an invalid row`);
+    }
+    if (previousNoSettings) tables["notification_settings"] = [];
+    tables["notification_rules"] = (tables["notification_rules"] as Record<string, unknown>[]).map((row) => ({
+      ...row,
+      recipientGroups: row.recipientGroups ?? [
+        "affected_role_members",
+        "head_of_service",
+        "head_of_service_deputy",
+        "lead_of_affected_role",
+        "deputy_of_affected_role",
+      ],
+    }));
+    const legacyActions: Record<string, string> = {
+      "QueueCraft: Topic created": "topic.created",
+      "QueueCraft: Topic updated": "topic.updated",
+      "QueueCraft: Committed finish date changed": "topic.finish_date_changed",
+      "QueueCraft: Topic allocations replaced": "topic.allocations_replaced",
+      "QueueCraft: Primary assignee changed": "topic.assignee_changed",
+      "QueueCraft: Topic validated": "topic.validation",
+      "QueueCraft: Collaborator added": "topic.collaborator_added",
+      "QueueCraft: Milestone added": "topic.milestone_added",
+      "QueueCraft: Milestone updated": "topic.milestone_updated",
+      "QueueCraft: Milestone deleted": "topic.milestone_deleted",
+    };
+    tables["notification_outbox"] = (tables["notification_outbox"] as Record<string, unknown>[]).map((row) => ({
+      ...row,
+      action: String(row.subject).startsWith("QueueCraft break-glass validation:")
+        ? "security.break_glass_alert"
+        : row.action ?? legacyActions[String(row.subject)] ?? "topic.updated",
+      topicTitle: row.topicTitle ?? "",
+      actorName: row.actorName ?? "",
+    }));
+  }
   const keys = Object.keys(tables);
   if (
     keys.length !== BACKUP_TABLES.length ||
@@ -106,7 +177,12 @@ export function validateBackup(value: unknown): QueueCraftBackup {
     )
       throw new Error(`Backup table ${name} contains an invalid row`);
   }
-  return value as QueueCraftBackup;
+  return {
+    ...(value as QueueCraftBackup),
+    manifest: BACKUP_MANIFEST,
+    fingerprint: BACKUP_FINGERPRINT,
+    tables: tables as QueueCraftBackup["tables"],
+  };
 }
 
 function reviveRows(name: BackupTableName, rows: unknown[]) {
@@ -147,6 +223,7 @@ export async function exportBackup(): Promise<QueueCraftBackup> {
 const deleteOrder = [
   notificationOutboxTable,
   notificationRulesTable,
+  notificationSettingsTable,
   collaboratorMilestonesTable,
   topicAllocationsTable,
   topicFinishDateRevisionsTable,
@@ -244,6 +321,26 @@ export async function restoreBackup(
         .insert(auditLogTable)
         .values(incomingAudit as never)
         .onConflictDoNothing();
+    await tx.execute(sql`
+      UPDATE notification_outbox AS n
+      SET topic_title = COALESCE(NULLIF(n.topic_title, ''), t.title),
+          actor_name = COALESCE(
+            NULLIF(n.actor_name, ''),
+            (
+              SELECT m.name
+              FROM activity AS a
+              JOIN members AS m ON m.id = a.actor_id
+              WHERE a.topic_id = n.topic_id
+                AND a.created_at <= n.created_at
+              ORDER BY a.created_at DESC
+              LIMIT 1
+            ),
+            'QueueCraft user'
+          )
+      FROM topics AS t
+      WHERE t.id = n.topic_id
+    `);
+    await tx.execute(sql`UPDATE notification_outbox SET actor_name = 'QueueCraft user' WHERE actor_name = ''`);
     if (auditEvent) await tx.insert(auditLogTable).values(auditEvent);
     await tx.execute(
       sql`DO $$ DECLARE r record; BEGIN FOR r IN SELECT c.oid::regclass s, n.nspname ns, t.relname tn, a.attname cn FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_depend d ON d.objid=c.oid AND d.deptype='a' JOIN pg_class t ON t.oid=d.refobjid JOIN pg_attribute a ON a.attrelid=t.oid AND a.attnum=d.refobjsubid WHERE c.relkind='S' AND n.nspname=current_schema() LOOP EXECUTE format('SELECT setval(%L, COALESCE((SELECT MAX(%I) FROM %I.%I), 1), true)', r.s, r.cn, r.ns, r.tn); END LOOP; END $$;`,

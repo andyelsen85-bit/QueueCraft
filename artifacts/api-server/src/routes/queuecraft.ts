@@ -14,6 +14,7 @@ import {
   rolesTable,
   notificationRulesTable,
   notificationOutboxTable,
+  notificationSettingsTable,
   topicCollaboratorsTable,
   topicFinishDateRevisionsTable,
   topicAllocationsTable,
@@ -103,8 +104,10 @@ import { clearOidcConfigurationCache } from "../services/oidc";
 import { httpsCertificateStatus, installHttpsCertificate, validateHttpsCertificate } from "../services/https-certificate";
 import { searchLdapsUsers } from "../services/ldaps";
 import {
+  BREAK_GLASS_NOTIFICATION_ACTION,
   enqueueRuleNotifications,
   NOTIFICATION_ACTIONS,
+  NOTIFICATION_RECIPIENT_GROUPS,
 } from "../services/notifications";
 import {
   BACKUP_FORMAT,
@@ -127,6 +130,31 @@ function initials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join("");
+}
+
+function displayActivityValue(value: unknown): string {
+  if (value == null || value === "") return "—";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (Array.isArray(value)) return value.map(displayActivityValue).join(", ");
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function activityFieldLabel(field: string) {
+  const labels: Record<string, string> = {
+    title: "Title",
+    description: "Description",
+    departmentId: "Department",
+    roleId: "Affected role",
+    priority: "Priority",
+    status: "Status",
+    primaryAssigneeId: "Primary assignee",
+    targetDate: "Target date",
+    estimatedStartDate: "Estimated start",
+    estimatedFinishDate: "Estimated finish",
+    estimatedEffortHours: "Estimated effort (hours)",
+  };
+  return labels[field] ?? field.replace(/[A-Z]/g, (letter) => ` ${letter.toLowerCase()}`);
 }
 
 type DailyBusinessTask = { name: string; percent: number };
@@ -426,6 +454,7 @@ async function addActivity(
     action,
     topicId,
     detail,
+    actorId: currentUserId(req),
     isBreakGlass,
   });
 }
@@ -764,6 +793,56 @@ router.get("/admin/notification-rules", async (req, res): Promise<void> => {
   res.json(rules);
 });
 
+router.get("/admin/notification-settings", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "settings.manage")) return;
+  const [settings] = await db.select().from(notificationSettingsTable)
+    .where(eq(notificationSettingsTable.id, "default")).limit(1);
+  const queued = await db.select({ recipient: notificationOutboxTable.recipient })
+    .from(notificationOutboxTable)
+    .where(and(
+      inArray(notificationOutboxTable.status, ["pending", "failed"]),
+      ne(notificationOutboxTable.action, BREAK_GLASS_NOTIFICATION_ACTION),
+    ));
+  res.json({
+    frequencyMinutes: settings?.frequencyMinutes ?? 5,
+    queuedItems: queued.length,
+    recipients: new Set(queued.map((item) => item.recipient.trim().toLowerCase())).size,
+  });
+});
+
+router.put("/admin/notification-settings", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "settings.manage")) return;
+  const frequencyMinutes = req.body?.frequencyMinutes;
+  if (!Number.isInteger(frequencyMinutes) || frequencyMinutes < 1 || frequencyMinutes > 1440) {
+    res.status(400).json({ error: "Frequency must be a whole number from 1 to 1440 minutes" });
+    return;
+  }
+  const [settings] = await db.insert(notificationSettingsTable)
+    .values({ id: "default", frequencyMinutes })
+    .onConflictDoUpdate({
+      target: notificationSettingsTable.id,
+      set: { frequencyMinutes, updatedAt: new Date() },
+    }).returning();
+  res.json(settings);
+});
+
+router.delete("/admin/notification-cache", async (req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "settings.manage")) return;
+  const deleted = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(731904221)`);
+    return tx.delete(notificationOutboxTable)
+      .where(and(
+        inArray(notificationOutboxTable.status, ["pending", "failed"]),
+        ne(notificationOutboxTable.action, BREAK_GLASS_NOTIFICATION_ACTION),
+      ))
+      .returning({ id: notificationOutboxTable.id });
+  });
+  res.json({ deletedItems: deleted.length });
+});
+
 router.put(
   "/admin/notification-rules/:ruleId",
   async (req, res): Promise<void> => {
@@ -772,11 +851,16 @@ router.put(
     const { ruleId } = req.params;
     const action = req.body?.action;
     const enabled = req.body?.enabled;
+    const recipientGroups = req.body?.recipientGroups;
     if (
       !NOTIFICATION_ACTIONS.includes(action) ||
-      typeof enabled !== "boolean"
+      typeof enabled !== "boolean" ||
+      !Array.isArray(recipientGroups) ||
+      recipientGroups.length === 0 ||
+      recipientGroups.some((group: unknown) => !NOTIFICATION_RECIPIENT_GROUPS.includes(group as typeof NOTIFICATION_RECIPIENT_GROUPS[number])) ||
+      new Set(recipientGroups).size !== recipientGroups.length
     ) {
-      res.status(400).json({ error: "Action and enabled are required" });
+      res.status(400).json({ error: "Action, enabled, and at least one valid unique recipient group are required" });
       return;
     }
     const [duplicate] = await db
@@ -790,10 +874,10 @@ router.put(
     }
     const [rule] = await db
       .insert(notificationRulesTable)
-      .values({ id: ruleId, action, enabled })
+      .values({ id: ruleId, action, enabled, recipientGroups })
       .onConflictDoUpdate({
         target: notificationRulesTable.id,
-        set: { action, enabled, updatedAt: new Date() },
+        set: { action, enabled, recipientGroups, updatedAt: new Date() },
       })
       .returning();
     res.json(rule);
@@ -1620,7 +1704,19 @@ router.post("/topics", async (req, res): Promise<void> => {
       req,
       id,
       "Topic created",
-      "Submitted for Service Head validation.",
+      [
+        `Title: ${parsed.data.title}`,
+        `Description: ${parsed.data.description}`,
+        `Department: ${snapshot.departmentById.get(parsed.data.departmentId)?.name ?? parsed.data.departmentId}`,
+        `Affected role: ${role.name}`,
+        `Priority: ${parsed.data.priority}`,
+        `Primary assignee: ${parsed.data.primaryAssigneeId ? snapshot.memberById.get(parsed.data.primaryAssigneeId)?.name ?? parsed.data.primaryAssigneeId : "—"}`,
+        `Target date: ${displayActivityValue(parsed.data.targetDate)}`,
+        `Estimated start: ${displayActivityValue(estimatedStartDate)}`,
+        `Estimated finish: ${displayActivityValue(estimatedFinishDate)}`,
+        `Estimated effort (hours): ${displayActivityValue(parsed.data.estimatedEffortHours)}`,
+        "Initial status: Pending validation",
+      ].join("\n"),
       false,
       tx,
     );
@@ -1780,6 +1876,31 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
     return;
   }
   const completedAt = body.data.status === "completed" ? new Date() : undefined;
+  const changedValues = Object.entries(body.data).flatMap(([field, rawValue]) => {
+    const nextValue = field === "estimatedStartDate" || field === "estimatedFinishDate"
+      ? dateOnly(rawValue as string | null | undefined)
+      : rawValue;
+    const previousValue = currentTopic[field as keyof typeof currentTopic];
+    if (JSON.stringify(previousValue ?? null) === JSON.stringify(nextValue ?? null)) return [];
+    let previousDisplay = displayActivityValue(previousValue);
+    let nextDisplay = displayActivityValue(nextValue);
+    if (field === "primaryAssigneeId") {
+      previousDisplay = current.memberById.get(String(previousValue))?.name ?? previousDisplay;
+      nextDisplay = current.memberById.get(String(nextValue))?.name ?? nextDisplay;
+    }
+    if (field === "departmentId") {
+      previousDisplay = current.departmentById.get(String(previousValue))?.name ?? previousDisplay;
+      nextDisplay = current.departmentById.get(String(nextValue))?.name ?? nextDisplay;
+    }
+    if (field === "roleId") {
+      previousDisplay = current.roleById.get(String(previousValue))?.name ?? previousDisplay;
+      nextDisplay = current.roleById.get(String(nextValue))?.name ?? nextDisplay;
+    }
+    return [`${activityFieldLabel(field)}: ${previousDisplay} → ${nextDisplay}`];
+  });
+  const updateDetail = changedValues.length
+    ? changedValues.join("\n")
+    : "No field values changed.";
   const [updated] = await db.transaction(async (tx) => {
     const rows = await tx
       .update(topicsTable)
@@ -1804,7 +1925,7 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
         req,
         rows[0].id,
         "Topic updated",
-        "Topic details or status were updated.",
+        updateDetail,
         false,
         tx,
       );
@@ -1855,7 +1976,7 @@ router.patch(
         req,
         topic.id,
         "Committed finish date changed",
-        body.data.note,
+        `Committed finish date: ${displayActivityValue(topic.targetDate)} → ${displayActivityValue(targetDate)}\nReason: ${body.data.note}`,
         false,
         tx,
       );
@@ -1920,6 +2041,11 @@ router.put("/topics/:topicId/allocations", async (req, res): Promise<void> => {
     return;
   }
   const members = new Map(before.members.map((member) => [member.id, member]));
+  const allocationSummary = (allocations: Array<{ memberId: string; allocationPercent: number }>) => allocations.length
+    ? allocations.map((allocation) => `${members.get(allocation.memberId)?.name ?? allocation.memberId}: ${allocation.allocationPercent}%`).join(", ")
+    : "none";
+  const previousAllocations = before.allocations.filter((allocation) => allocation.topicId === topic.id);
+  const newAllocations = body.data.allocations;
   const collaboratorIds = new Set(
     before.collaborators
       .filter((item) => item.topicId === topic.id)
@@ -1966,7 +2092,7 @@ router.put("/topics/:topicId/allocations", async (req, res): Promise<void> => {
       req,
       topic.id,
       "Topic allocations replaced",
-      `${body.data.allocations.length} member allocations for the topic date range`,
+      `Allocations changed from [${allocationSummary(previousAllocations)}] to [${allocationSummary(newAllocations)}].`,
       false,
       tx,
     );
@@ -2343,9 +2469,7 @@ router.post("/topics/:topicId/assign", async (req, res): Promise<void> => {
         req,
         rows[0].id,
         body.data.memberId ? "Primary assignee changed" : "Primary assignee removed",
-        body.data.memberId
-          ? `Accountable owner: ${before.memberById.get(body.data.memberId)?.name}.`
-          : "Topic has no primary owner.",
+        `Primary assignee changed from ${before.memberById.get(topic.primaryAssigneeId ?? "")?.name ?? "—"} to ${body.data.memberId ? before.memberById.get(body.data.memberId)?.name ?? body.data.memberId : "—"}.`,
         false,
         tx,
       );

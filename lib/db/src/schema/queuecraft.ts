@@ -325,6 +325,9 @@ export const notificationOutboxTable = pgTable("notification_outbox", {
   id: text("id").primaryKey(),
   topicId: text("topic_id").references(() => topicsTable.id),
   recipient: text("recipient").notNull(),
+  action: text("action").notNull().default("topic.updated"),
+  topicTitle: text("topic_title").notNull().default(""),
+  actorName: text("actor_name").notNull().default(""),
   subject: text("subject").notNull(),
   body: text("body").notNull(),
   status: notificationStatusEnum("status").notNull().default("pending"),
@@ -345,6 +348,13 @@ export const notificationRulesTable = pgTable(
     id: text("id").primaryKey(),
     action: text("action").notNull(),
     enabled: boolean("enabled").notNull().default(true),
+    recipientGroups: text("recipient_groups").array().notNull().default([
+      "affected_role_members",
+      "head_of_service",
+      "head_of_service_deputy",
+      "lead_of_affected_role",
+      "deputy_of_affected_role",
+    ]),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -357,6 +367,17 @@ export const notificationRulesTable = pgTable(
     uniqueIndex("notification_rules_action_unique").on(table.action),
   ],
 );
+
+export const notificationSettingsTable = pgTable("notification_settings", {
+  id: text("id").primaryKey().default("default"),
+  frequencyMinutes: integer("frequency_minutes").notNull().default(5),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+}, (table) => [
+  check("notification_settings_frequency_range", sql`${table.frequencyMinutes} between 1 and 1440`),
+]);
 
 export const insertTopicSchema = createInsertSchema(topicsTable).omit({
   createdAt: true,
@@ -390,4 +411,5 @@ export const queuecraftTables = {
   auditLogTable,
   notificationOutboxTable,
   notificationRulesTable,
+  notificationSettingsTable,
 } as const;

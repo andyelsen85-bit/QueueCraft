@@ -1,0 +1,1 @@
+ALTER TABLE "notification_settings" ADD CONSTRAINT "notification_settings_frequency_range" CHECK ("notification_settings"."frequency_minutes" between 1 and 1440);

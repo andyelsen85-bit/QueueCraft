@@ -1,6 +1,6 @@
 import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import request from "supertest";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { getTableConfig } from "drizzle-orm/pg-core";
@@ -14,6 +14,7 @@ import {
   membersTable,
   milestonesTable,
   notificationOutboxTable,
+  notificationSettingsTable,
   pool,
   rolesTable,
   topicFinishDateRevisionsTable,
@@ -33,6 +34,7 @@ import {
 } from "./services/backup";
 import { exportBackup, restoreBackup } from "./services/backup";
 import { resolveEncryptionKey } from "./config";
+import { groupNotificationsByRecipient, queueMail, renderNotificationDigest } from "./services/mailer";
 import {
   decryptRuntimeSettings,
   encryptRuntimeSettings,
@@ -40,6 +42,7 @@ import {
 import { serializeOidcRequestBody } from "./services/oidc";
 import {
   collectTopicNotificationMemberIds,
+  BREAK_GLASS_NOTIFICATION_ACTION,
   notificationAction,
 } from "./services/notifications";
 
@@ -376,8 +379,169 @@ describe("QueueCraft security and preference flows", () => {
     );
   });
 
+  test("notification rules can independently select recipient permission groups", () => {
+    assert.deepEqual(
+      collectTopicNotificationMemberIds(
+        [{ leadId: "role-lead", deputyId: "role-deputy" }],
+        [{ serviceHeadId: "service-head", serviceHeadDeputyId: "service-deputy" }],
+        [{ memberId: "role-member" }],
+        ["affected_role_members", "head_of_service"],
+      ),
+      ["service-head", "role-member"],
+    );
+    assert.deepEqual(
+      collectTopicNotificationMemberIds(
+        [{ leadId: "role-lead", deputyId: "role-deputy" }],
+        [],
+        [],
+        ["deputy_of_affected_role"],
+      ),
+      ["role-deputy"],
+    );
+  });
+
+  test("notification settings, recipient groups, and cache controls keep urgent alerts intact", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const previous = (await agent.get("/api/admin/notification-settings").expect(200)).body.frequencyMinutes;
+    const ruleId = randomUUID();
+    const digestId = randomUUID();
+    const urgentId = randomUUID();
+    try {
+      await agent.put("/api/admin/notification-settings")
+        .set("x-csrf-token", csrf).send({ frequencyMinutes: 0 }).expect(400);
+      await agent.put("/api/admin/notification-settings")
+        .set("x-csrf-token", csrf).send({ frequencyMinutes: 7 }).expect(200);
+      assert.equal((await agent.get("/api/admin/notification-settings").expect(200)).body.frequencyMinutes, 7);
+      await agent.put(`/api/admin/notification-rules/${ruleId}`)
+        .set("x-csrf-token", csrf)
+        .send({ action: "topic.created", enabled: true, recipientGroups: ["head_of_service"] })
+        .expect(200);
+      const rules = (await agent.get("/api/admin/notification-rules").expect(200)).body;
+      assert.deepEqual(rules.find((rule: { id: string }) => rule.id === ruleId).recipientGroups, ["head_of_service"]);
+      await db.insert(notificationOutboxTable).values([
+        { id: digestId, recipient: "digest@example.invalid", subject: "Topic created", body: "A change", action: "topic.created" },
+        { id: urgentId, recipient: "urgent@example.invalid", subject: "Break-glass", body: "Urgent", action: BREAK_GLASS_NOTIFICATION_ACTION },
+      ]);
+      const status = (await agent.get("/api/admin/notification-settings").expect(200)).body;
+      assert.equal(status.queuedItems, 1);
+      assert.equal(status.recipients, 1);
+      assert.equal((await agent.delete("/api/admin/notification-cache")
+        .set("x-csrf-token", csrf).expect(200)).body.deletedItems, 1);
+      assert.equal((await db.select().from(notificationOutboxTable).where(eq(notificationOutboxTable.id, digestId))).length, 0);
+      assert.equal((await db.select().from(notificationOutboxTable).where(eq(notificationOutboxTable.id, urgentId))).length, 1);
+    } finally {
+      await agent.delete(`/api/admin/notification-rules/${ruleId}`).set("x-csrf-token", csrf);
+      await db.delete(notificationOutboxTable).where(inArray(notificationOutboxTable.id, [digestId, urgentId]));
+      if (previous === 5) {
+        await db.delete(notificationSettingsTable).where(eq(notificationSettingsTable.id, "default"));
+      } else {
+        await agent.put("/api/admin/notification-settings")
+          .set("x-csrf-token", csrf).send({ frequencyMinutes: previous }).expect(200);
+      }
+    }
+  });
+
+  test("accepts the immediately previous notification backup schema", () => {
+    const previousManifest = BACKUP_MANIFEST
+      .filter((entry) => entry.name !== "notification_settings")
+      .map((entry) => ({
+        ...entry,
+        columns: entry.columns.filter((column) =>
+          !(entry.name === "notification_outbox" && ["action", "topicTitle", "actorName"].includes(column.key))
+          && !(entry.name === "notification_rules" && column.key === "recipientGroups"),
+        ),
+      }));
+    const tables = Object.fromEntries(previousManifest.map(({ name }) => [
+      name,
+      name === "notification_outbox"
+        ? [{ id: "legacy-security", topicId: "topic", recipient: "authority@example.invalid", subject: "QueueCraft break-glass validation: Critical", body: "Alert" }]
+        : [],
+    ]));
+    const legacy = validateBackup({
+      format: BACKUP_FORMAT,
+      version: BACKUP_VERSION,
+      manifest: previousManifest,
+      fingerprint: createHash("sha256").update(JSON.stringify(previousManifest)).digest("hex"),
+      tables,
+    });
+    assert.deepEqual(legacy.tables.notification_settings, []);
+    assert.equal((legacy.tables.notification_outbox[0] as { action: string }).action, BREAK_GLASS_NOTIFICATION_ACTION);
+    assert.equal(legacy.manifest, BACKUP_MANIFEST);
+  });
+
   test("maps topic allocation changes to their notification action", () => {
     assert.equal(notificationAction("Topic allocations replaced"), "topic.allocations_replaced");
+  });
+
+  test("notification digest escapes HTML and includes topic, actor, and changed values", () => {
+    const item = {
+      id: "notification",
+      topicId: "topic",
+      recipient: "a@example.invalid",
+      action: "topic.updated",
+      topicTitle: "<img src=x onerror=alert(1)>",
+      actorName: "Sam <script>alert(1)</script>",
+      subject: "QueueCraft: Topic updated",
+      body: "Title: old → <b>new</b>",
+      status: "pending",
+      error: null,
+      attempts: 0,
+      nextAttemptAt: new Date("2025-01-01T00:00:00.000Z"),
+      sentAt: null,
+      createdAt: new Date("2025-01-01T00:00:00.000Z"),
+    } as Parameters<typeof renderNotificationDigest>[0][number];
+    const html = renderNotificationDigest([item]);
+    assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
+    assert.match(html, /Sam &lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+    assert.match(html, /&lt;b&gt;new&lt;\/b&gt;/);
+    assert.doesNotMatch(html, /<script>|<img src=x/);
+  });
+
+  test("groups a recipient's changes case-insensitively into one digest batch", () => {
+    const base = {
+      id: "notification",
+      topicId: "topic",
+      subject: "QueueCraft: Topic updated",
+      action: "topic.updated",
+      topicTitle: "Example topic",
+      actorName: "Actor",
+      body: "Change",
+      status: "pending" as const,
+      error: null,
+      attempts: 0,
+      nextAttemptAt: new Date(),
+      sentAt: null,
+      createdAt: new Date(),
+    };
+    const groups = groupNotificationsByRecipient([
+      { ...base, id: "one", recipient: "Member@example.invalid" },
+      { ...base, id: "two", recipient: "member@EXAMPLE.invalid" },
+      { ...base, id: "three", recipient: "other@example.invalid" },
+    ]);
+    assert.equal(groups.size, 2);
+    assert.equal(groups.get("member@example.invalid")?.length, 2);
+  });
+
+  test("queueMail classifies break-glass alerts as immediate security messages", async () => {
+    let queued: Record<string, unknown> | undefined;
+    const executor = {
+      insert: () => ({
+        values: async (value: Record<string, unknown>) => { queued = value; },
+      }),
+    };
+    const start = Date.now();
+    await queueMail(executor, {
+      topicId: "topic",
+      recipient: "authority@example.invalid",
+      subject: "QueueCraft break-glass validation: Critical topic",
+      body: "Original alert details",
+    });
+    assert.equal(queued?.action, BREAK_GLASS_NOTIFICATION_ACTION);
+    assert.equal(queued?.subject, "QueueCraft break-glass validation: Critical topic");
+    assert.equal(queued?.body, "Original alert details");
+    assert.ok((queued?.nextAttemptAt as Date).getTime() <= start + 1_000);
   });
 
   test("rejects a state-changing request without a CSRF token", async () => {
