@@ -28,3 +28,17 @@ mtime_ms = 1790250257416
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:e2c07961-875e-4f9b-8be5-89e60317d03d/fff555b0-cb1f-4075-8313-333f03823aee/7eca24a7-9ced-479a-b31a-00429b306f2c"
 storage_version_token = "1790250308342600"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "yWyPnViGJ9v64ct9M6nKY"
+uri = "file://deliverables/queuecraft-workload-intake.html"
+type = "html"
+title = "QueueCraft workload intake guide"
+description = "Printable guide and response sheet for collecting current BAU occupancy and active topics."
+logical_id = "74532c91-242f-4ae8-b085-76078ba98b45"
+content_hash = "sha256:0b77cf09f2025cddc1e6c987248395fb6923c2c8fe1966911a2ba43a621999f7"
+size = 8842
+mtime_ms = 1790319932933
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:e2c07961-875e-4f9b-8be5-89e60317d03d/74532c91-242f-4ae8-b085-76078ba98b45/6b10d775-f62f-4024-bfba-3e909335ba16"
+storage_version_token = "1790319984613409"
+content_type = "text/html"
