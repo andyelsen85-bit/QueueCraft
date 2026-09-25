@@ -51,14 +51,14 @@ function TimelineCells({
   const endIdx = visible ? differenceInCalendarDays(
     isAfter(range.end, monthEnd) ? monthEnd : range.end, monthStart) : 0;
   return (
-    <div className="flex-1 relative flex">
+    <div className="flex-1 min-w-0 relative flex">
       {days.map((day) => (
-        <div key={day.toISOString()} className={`w-12 flex-shrink-0 border-r ${isWeekend(day) ? 'bg-muted/30' : ''}`} />
+        <div key={day.toISOString()} className={`min-w-6 flex-1 border-r ${isWeekend(day) ? 'bg-muted/30' : ''}`} />
       ))}
       {visible && (
         <div
           className={`absolute z-10 py-[2px] ${milestone ? 'top-2 bottom-2' : 'top-2.5 bottom-2.5'}`}
-          style={{ left: `calc(${startIdx} * 3rem)`, width: `calc(${endIdx - startIdx + 1} * 3rem)` }}
+          style={{ left: `${startIdx / days.length * 100}%`, width: `${(endIdx - startIdx + 1) / days.length * 100}%` }}
         >
           <Link
             href={href}
@@ -113,6 +113,10 @@ export function Calendar() {
 
   React.useEffect(() => {
     if (!scrollRef.current || isLoading || isError) return;
+    if (scrollRef.current.scrollWidth <= scrollRef.current.clientWidth) {
+      scrollRef.current.scrollLeft = 0;
+      return;
+    }
     const today = new Date();
     const activeToday = isSameMonth(today, month) && visibleTopics.some(
       (topic) =>
@@ -127,7 +131,8 @@ export function Calendar() {
       : visibleTopics[0]
         ? isBefore(visibleTopics[0].focusD, monthStart) ? monthStart : visibleTopics[0].focusD
         : monthStart;
-    scrollRef.current.scrollLeft = Math.max(0, differenceInCalendarDays(focus, monthStart) - 3) * 48;
+    const dayWidth = scrollRef.current.querySelector<HTMLElement>("[data-calendar-day]")?.getBoundingClientRect().width ?? 24;
+    scrollRef.current.scrollLeft = Math.max(0, differenceInCalendarDays(focus, monthStart) - 3) * dayWidth;
   }, [month, monthStart, visibleTopics, isLoading, isError]);
 
   return (
@@ -145,18 +150,18 @@ export function Calendar() {
         </div>
       </div>
 
-      <Card className="flex-1 overflow-hidden flex flex-col">
-        <CardContent className="p-0 flex flex-col flex-1 overflow-hidden">
+      <Card className="flex-1 min-w-0 overflow-hidden flex flex-col">
+        <CardContent className="p-0 min-w-0 flex flex-col flex-1 overflow-hidden">
            <div ref={scrollRef} className="flex-1 overflow-auto bg-muted/5 max-h-[calc(100vh-16rem)] min-h-[400px]">
-            <div className="min-w-max flex flex-col">
+             <div className="w-full min-w-[936px] flex flex-col">
               {/* Header Row */}
               <div className="flex border-b bg-card h-14 sticky top-0 z-30 shadow-sm">
-                <div className="w-56 sm:w-72 sticky left-0 bg-card border-r flex-shrink-0 flex items-center px-4 font-mono text-xs font-semibold uppercase text-muted-foreground z-40 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]">
+                <div className="w-48 sticky left-0 bg-card border-r flex-shrink-0 flex items-center px-4 font-mono text-xs font-semibold uppercase text-muted-foreground z-40 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]">
                   Topic / milestone
                 </div>
-                <div className="flex flex-1">
+                <div className="flex flex-1 min-w-0">
                   {days.map(d => (
-                    <div key={d.toISOString()} className={`w-12 flex-shrink-0 border-r flex flex-col items-center justify-center text-xs ${isWeekend(d) ? 'bg-muted/30' : ''}`}>
+                    <div key={d.toISOString()} data-calendar-day className={`min-w-6 flex-1 border-r flex flex-col items-center justify-center text-xs ${isWeekend(d) ? 'bg-muted/30' : ''}`}>
                       <span className="text-muted-foreground font-mono text-[10px] uppercase">{format(d, "E").charAt(0)}</span>
                       <span className={`font-medium mt-0.5 ${isSameDay(d, new Date()) ? 'bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center' : ''}`}>{format(d, "d")}</span>
                     </div>
@@ -168,7 +173,7 @@ export function Calendar() {
                {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="flex h-16 border-b">
-                    <div className="w-56 sm:w-72 sticky left-0 bg-card border-r p-4 flex flex-col justify-center gap-2 z-20">
+                     <div className="w-48 sticky left-0 bg-card border-r p-4 flex flex-col justify-center gap-2 z-20">
                       <div className="h-3 w-32 bg-muted rounded animate-pulse" />
                       <div className="h-2 w-24 bg-muted rounded animate-pulse" />
                     </div>
@@ -193,7 +198,7 @@ export function Calendar() {
                    return (
                      <React.Fragment key={topic.id}>
                        <div className="flex h-16 border-b hover:bg-muted/30 group">
-                         <div className="w-56 sm:w-72 sticky left-0 bg-card group-hover:bg-muted/50 border-r flex-shrink-0 flex flex-col justify-center px-3 overflow-hidden z-20 transition-colors shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]">
+                          <div className="w-48 sticky left-0 bg-card group-hover:bg-muted/50 border-r flex-shrink-0 flex flex-col justify-center px-3 overflow-hidden z-20 transition-colors shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]">
                            <div className="flex min-w-0 items-center gap-1">
                              {topic.milestones.length ? (
                                <button type="button" aria-expanded={expanded}
@@ -226,7 +231,7 @@ export function Calendar() {
                        </div>
                        {expanded && topic.milestones.map((milestone) => (
                          <div key={milestone.id} className="flex h-12 border-b bg-muted/10">
-                           <div className="w-56 sm:w-72 sticky left-0 z-20 flex shrink-0 items-center gap-2 overflow-hidden border-r bg-card/95 pl-10 pr-2 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]">
+                            <div className="w-48 sticky left-0 z-20 flex shrink-0 items-center gap-2 overflow-hidden border-r bg-card/95 pl-10 pr-2 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]">
                              <Target className="h-3.5 w-3.5 shrink-0 text-sky-700 dark:text-sky-300" />
                              <div className="min-w-0">
                                <Link href={`/topics/${topic.id}`}
