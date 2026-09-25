@@ -5,3 +5,4 @@
 - [BAU legacy values on publish](bau-publish-backfill.md) — schema-only publish may skip data backfill; treat old scalar BAU as a named task until edited.
 - [Urgent security mail and digests](urgent-security-mail.md) — keep break-glass alerts immediate and outside user-clearable digest queues.
 - [Milestone occupancy transition](milestone-occupancy.md) — old topic-level allocations remain historical, never counted or automatically distributed to milestones.
+- [OpenAPI date responses](openapi-date-responses.md) — generated date response parsing serializes date-only fields as ISO datetimes; normalize before date arithmetic or date inputs.

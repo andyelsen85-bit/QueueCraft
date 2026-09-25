@@ -1,6 +1,7 @@
 import * as React from "react";
 import {
   useListTopics,
+  useListDependencyCandidates,
   useCreateTopic,
   useListDepartments,
   useListRoles,
@@ -61,6 +62,7 @@ const createSchema = z
     targetDate: z.string().optional().nullable(),
     estimatedStartDate: z.string().optional().nullable(),
     estimatedFinishDate: z.string().optional().nullable(),
+    dependsOnTopicId: z.string().optional().nullable(),
     estimatedEffortHours: z.coerce.number().int().min(0).optional().nullable(),
   })
   .refine(
@@ -72,7 +74,20 @@ const createSchema = z
       message: "Estimated finish must be on or after the start date",
       path: ["estimatedFinishDate"],
     },
+  )
+  .refine(
+    (data) => !data.dependsOnTopicId || Boolean(data.estimatedStartDate && data.estimatedFinishDate),
+    { message: "Set an estimated finish for the dependent topic", path: ["estimatedFinishDate"] },
   );
+
+const daysBetween = (from: string, to: string) =>
+  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000);
+
+const shiftedDate = (date: string, days: number) => {
+  const value = new Date(`${date}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+};
 
 type CreateFormValues = z.infer<typeof createSchema>;
 
@@ -258,6 +273,7 @@ export function Topics() {
   );
 
   const createTopic = useCreateTopic();
+  const { data: dependencyCandidates } = useListDependencyCandidates();
 
   const form = useForm<CreateFormValues>({
     resolver: zodResolver(createSchema),
@@ -270,12 +286,30 @@ export function Topics() {
       targetDate: "",
       estimatedStartDate: "",
       estimatedFinishDate: "",
+      dependsOnTopicId: null,
       estimatedEffortHours: null,
     },
   });
 
   const watchDept = form.watch("departmentId");
   const watchRole = form.watch("roleId");
+  const selectedDependencyId = form.watch("dependsOnTopicId");
+  const selectedDependency = dependencyCandidates?.find((topic) => topic.id === selectedDependencyId);
+  React.useEffect(() => {
+    if (!selectedDependency?.estimatedFinishDate) return;
+    const anchor = selectedDependency.estimatedFinishDate.slice(0, 10);
+    const priorStart = form.getValues("estimatedStartDate");
+    const priorFinish = form.getValues("estimatedFinishDate");
+    if (priorStart === anchor) return;
+    const duration = priorStart && priorFinish ? daysBetween(priorStart, priorFinish) : null;
+    form.setValue("estimatedStartDate", anchor, { shouldValidate: true });
+    if (duration !== null && duration >= 0) {
+      form.setValue("estimatedFinishDate", shiftedDate(anchor, duration),
+        { shouldValidate: true });
+    } else if (priorFinish && priorFinish < anchor) {
+      form.setValue("estimatedFinishDate", "", { shouldValidate: true });
+    }
+  }, [selectedDependency?.estimatedFinishDate, selectedDependencyId, form]);
   const createFilteredRoles = React.useMemo(
     () =>
       sortedRoles.filter(
@@ -310,6 +344,7 @@ export function Topics() {
           targetDate: data.targetDate || null,
           estimatedStartDate: data.estimatedStartDate || null,
           estimatedFinishDate: data.estimatedFinishDate || null,
+          dependsOnTopicId: data.dependsOnTopicId || null,
           estimatedEffortHours: data.estimatedEffortHours ?? null,
         },
       },
@@ -481,6 +516,33 @@ export function Topics() {
                       finish date can later be re-scoped with a mandatory note.
                     </p>
                   </div>
+                  <FormField
+                    control={form.control}
+                    name="dependsOnTopicId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Starts after another topic (optional)</FormLabel>
+                        <Select value={field.value || "none"} onValueChange={(value) => field.onChange(value === "none" ? null : value)}>
+                          <FormControl>
+                            <SelectTrigger><SelectValue placeholder="No prerequisite" /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">No prerequisite</SelectItem>
+                            {dependencyCandidates?.map((candidate) => (
+                              <SelectItem key={candidate.id} value={candidate.id}>
+                                {candidate.title} · {candidate.status.replaceAll("_", " ")} · {formatDate(candidate.estimatedFinishDate)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Available: pending validation, open, and running topics with an estimated finish.
+                          Work cannot start until the prerequisite is completed. Its finish date sets this topic’s start.
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <div className="grid gap-4 sm:grid-cols-3">
                     <FormField
                       control={form.control}
@@ -489,7 +551,7 @@ export function Topics() {
                         <FormItem>
                           <FormLabel>Estimated Start</FormLabel>
                           <FormControl>
-                             <DateField {...field} value={field.value || ""} />
+                             <DateField {...field} value={field.value || ""} disabled={Boolean(selectedDependencyId)} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

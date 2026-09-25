@@ -450,7 +450,8 @@ describe("QueueCraft security and preference flows", () => {
         ...entry,
         columns: entry.columns.filter((column) =>
           !(entry.name === "notification_outbox" && ["action", "topicTitle", "actorName"].includes(column.key))
-          && !(entry.name === "notification_rules" && column.key === "recipientGroups"),
+          && !(entry.name === "notification_rules" && column.key === "recipientGroups")
+          && !(entry.name === "topics" && column.key === "dependsOnTopicId"),
         ),
       }));
     const tables = Object.fromEntries(previousManifest.map(({ name }) => [
@@ -469,6 +470,24 @@ describe("QueueCraft security and preference flows", () => {
     assert.deepEqual(legacy.tables.notification_settings, []);
     assert.equal((legacy.tables.notification_outbox[0] as { action: string }).action, BREAK_GLASS_NOTIFICATION_ACTION);
     assert.equal(legacy.manifest, BACKUP_MANIFEST);
+  });
+
+  test("accepts backups made before topic dependencies", () => {
+    const oldManifest = BACKUP_MANIFEST.map((entry) => ({
+      ...entry,
+      columns: entry.columns.filter((column) =>
+        !(entry.name === "topics" && column.key === "dependsOnTopicId")),
+    }));
+    const restored = validateBackup({
+      format: BACKUP_FORMAT,
+      version: BACKUP_VERSION,
+      manifest: oldManifest,
+      fingerprint: createHash("sha256").update(JSON.stringify(oldManifest)).digest("hex"),
+      tables: Object.fromEntries(oldManifest.map(({ name }) => [
+        name, name === "topics" ? [{ id: "legacy-topic", title: "Old topic" }] : [],
+      ])),
+    });
+    assert.equal((restored.tables.topics[0] as { dependsOnTopicId: string | null }).dependsOnTopicId, null);
   });
 
   test("maps topic allocation changes to their notification action", () => {
@@ -1390,6 +1409,95 @@ describe("QueueCraft security and preference flows", () => {
         row.member.id === "member-andy").milestoneAllocationPercent, 0);
     } finally {
       await agent.delete(`/api/topics/${created.body.id}`).set("x-csrf-token", csrf).expect(204);
+    }
+  });
+
+  test("shifts dependent topic chains and milestones, but blocks work until prerequisites complete", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const ids: string[] = [];
+    const create = async (title: string, start: string, finish: string, dependsOnTopicId?: string) => {
+      const result = await agent.post("/api/topics").set("x-csrf-token", csrf)
+        .send({
+          title: `${title} ${randomUUID()}`, description: "Temporary dependency scheduling test topic.",
+          departmentId: "dept-platform", roleId: "role-ci-validation",
+          priority: "P3", primaryAssigneeId: "member-andy",
+          estimatedStartDate: start, estimatedFinishDate: finish, dependsOnTopicId,
+        }).expect(201);
+      ids.push(result.body.id);
+      return result.body;
+    };
+    const detail = async (id: string) => (await agent.get(`/api/topics/${id}`).expect(200)).body;
+    const occupancy = async () => {
+      const rows = (await agent
+        .get("/api/occupancy/overview?startDate=2044-02-08&endDate=2044-02-10")
+        .expect(200)).body;
+      return rows.find((row: { member: { id: string } }) => row.member.id === "member-andy");
+    };
+    try {
+      const parent = await create("Dependency predecessor", "2044-01-01", "2044-01-31");
+      const candidates = (await agent.get("/api/topics/dependency-candidates").expect(200)).body;
+      assert.ok(candidates.some((item: { id: string }) => item.id === parent.id));
+      const child = await create("Dependent work", "2044-01-31", "2044-02-10", parent.id);
+      const grandchild = await create("Next dependent work", "2044-02-10", "2044-02-15", child.id);
+      assert.equal(child.dependency.id, parent.id);
+      assert.equal((await detail(grandchild.id)).dependency.id, child.id);
+      const milestone = await agent.post(`/api/topics/${child.id}/milestones`)
+        .set("x-csrf-token", csrf)
+        .send({
+          title: "Dependent milestone", beginDate: "2044-02-01", targetDate: "2044-02-03",
+          allocations: [{ memberId: "member-andy", allocationPercent: 20 }],
+        }).expect(201);
+      const nextMilestone = await agent.post(`/api/topics/${grandchild.id}/milestones`)
+        .set("x-csrf-token", csrf)
+        .send({ title: "Next milestone", beginDate: "2044-02-11", targetDate: "2044-02-12" })
+        .expect(201);
+      await agent.post(`/api/topics/${child.id}/validate`).set("x-csrf-token", csrf).send({}).expect(200);
+      assert.equal((await occupancy()).milestoneAllocationPercent, 0);
+      await agent.patch(`/api/topics/${child.id}`).set("x-csrf-token", csrf)
+        .send({ status: "in_progress" }).expect(409);
+      await agent.post(`/api/topics/${child.id}/assign`).set("x-csrf-token", csrf)
+        .send({ memberId: "member-andy" }).expect(409);
+      await agent.patch(`/api/milestones/${milestone.body.id}`).set("x-csrf-token", csrf)
+        .send({ status: "completed" }).expect(409);
+      await agent.patch(`/api/topics/${child.id}`).set("x-csrf-token", csrf)
+        .send({ estimatedStartDate: "2044-02-02" }).expect(409);
+      await agent.patch(`/api/topics/${parent.id}`).set("x-csrf-token", csrf)
+        .send({ estimatedFinishDate: null }).expect(409);
+      await agent.delete(`/api/topics/${parent.id}`).set("x-csrf-token", csrf).expect(409);
+      const changed = await agent.patch(`/api/topics/${parent.id}`).set("x-csrf-token", csrf)
+        .send({ estimatedFinishDate: "2044-02-07" });
+      assert.equal(changed.status, 200, changed.text);
+      const shiftedChild = await detail(child.id);
+      assert.equal(shiftedChild.estimatedStartDate.slice(0, 10), "2044-02-07");
+      assert.equal(shiftedChild.estimatedFinishDate.slice(0, 10), "2044-02-17");
+      assert.equal(shiftedChild.milestones.find((m: { id: string }) => m.id === milestone.body.id).beginDate.slice(0, 10), "2044-02-08");
+      assert.equal(shiftedChild.milestones.find((m: { id: string }) => m.id === milestone.body.id).targetDate.slice(0, 10), "2044-02-10");
+      const shiftedGrandchild = await detail(grandchild.id);
+      assert.equal(shiftedGrandchild.estimatedStartDate.slice(0, 10), "2044-02-17");
+      assert.equal(shiftedGrandchild.estimatedFinishDate.slice(0, 10), "2044-02-22");
+      assert.equal(shiftedGrandchild.milestones.find((m: { id: string }) => m.id === nextMilestone.body.id).beginDate.slice(0, 10), "2044-02-18");
+      assert.equal((await occupancy()).milestoneAllocationPercent, 0);
+      await agent.post(`/api/topics/${parent.id}/validate`).set("x-csrf-token", csrf).send({}).expect(200);
+      await agent.patch(`/api/topics/${parent.id}`).set("x-csrf-token", csrf)
+        .send({ status: "completed" }).expect(200);
+      assert.equal((await occupancy()).milestoneAllocationPercent, 20);
+      await agent.patch(`/api/topics/${child.id}`).set("x-csrf-token", csrf)
+        .send({ status: "in_progress" }).expect(200);
+      await agent.patch(`/api/topics/${grandchild.id}`).set("x-csrf-token", csrf)
+        .send({ status: "in_progress" }).expect(409);
+      await agent.patch(`/api/topics/${child.id}`).set("x-csrf-token", csrf)
+        .send({ status: "completed" }).expect(200);
+      await agent.post(`/api/topics/${grandchild.id}/validate`).set("x-csrf-token", csrf).send({}).expect(200);
+      await agent.patch(`/api/topics/${grandchild.id}`).set("x-csrf-token", csrf)
+        .send({ status: "in_progress" }).expect(200);
+      const afterCompletion = (await agent.get("/api/topics/dependency-candidates").expect(200)).body;
+      assert.equal(afterCompletion.some((item: { id: string }) => item.id === parent.id), false);
+    } finally {
+      for (const id of ids.reverse()) {
+        await agent.delete(`/api/topics/${id}`).set("x-csrf-token", csrf).expect(204);
+      }
     }
   });
 

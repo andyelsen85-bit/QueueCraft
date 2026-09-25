@@ -23,7 +23,7 @@ import {
   getGetDashboardActivityQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useLocation, useParams } from "wouter";
+import { Link, useLocation, useParams } from "wouter";
 import { startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -519,6 +519,8 @@ export function TopicDetail() {
   }
 
   const isPendingValidation = topic.status === "pending_validation";
+  const prerequisiteReady = !topic.dependency ||
+    ["completed", "closed"].includes(topic.dependency.status);
   const userId = session?.user?.id;
   const canManageMilestones = Boolean(userId && (
     userId === topic.creator.id ||
@@ -715,10 +717,10 @@ export function TopicDetail() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="in_progress" disabled={!prerequisiteReady}>In Progress</SelectItem>
+                  <SelectItem value="completed" disabled={!prerequisiteReady}>Completed</SelectItem>
                   <SelectItem value="returned">Returned</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
+                  <SelectItem value="closed" disabled={!prerequisiteReady}>Closed</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -852,7 +854,7 @@ export function TopicDetail() {
                         <FormItem>
                           <FormLabel>Est. Start Date</FormLabel>
                           <FormControl>
-                            <DateField {...field} value={field.value || ""} />
+                            <DateField {...field} value={field.value || ""} disabled={Boolean(topic.dependency)} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -933,6 +935,25 @@ export function TopicDetail() {
               </div>
             </CardContent>
           </Card>
+
+          {topic.dependency && (
+            <Card>
+              <CardContent className="p-4 text-sm">
+                <div className="font-medium">Starts after prerequisite</div>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <Link href={`/topics/${topic.dependency.id}`} className="text-primary underline underline-offset-2">
+                    {topic.dependency.title}
+                  </Link>
+                  <StatusBadge status={topic.dependency.status} />
+                </div>
+                <p className="mt-2 text-muted-foreground">
+                  Planned start follows its estimated finish ({formatDate(topic.dependency.estimatedFinishDate)}).
+                  {!prerequisiteReady && " Work cannot start until the prerequisite is completed."}
+                  {" "}Changes to its estimated finish move this topic’s estimates and milestone dates by the same number of days.
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           <TabsRoot defaultValue="milestones">
             <TabsList className="w-full justify-start border-b border-border bg-transparent rounded-none p-0 h-auto mb-4">
@@ -1144,7 +1165,7 @@ export function TopicDetail() {
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
                             <StatusBadge status={m.status} />
-                            {!isPendingValidation && canManageMilestones &&
+                            {!isPendingValidation && prerequisiteReady && canManageMilestones &&
                               m.status !== "completed" && (
                                 <Button
                                   size="sm"
@@ -1413,7 +1434,8 @@ export function TopicDetail() {
                 <Select
                   value={topic.primaryAssignee?.id ?? "none"}
                   onValueChange={onAssign}
-                  disabled={assignTopic.isPending || (isPendingValidation && !topic.primaryAssignee)}
+                  disabled={assignTopic.isPending || (isPendingValidation && !topic.primaryAssignee) ||
+                    (!prerequisiteReady && topic.status === "open")}
                 >
                   <SelectTrigger aria-label="Primary assignee" className="mt-3 w-full bg-background">
                     <SelectValue placeholder="Choose a primary assignee" />

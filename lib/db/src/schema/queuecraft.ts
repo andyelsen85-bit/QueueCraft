@@ -10,6 +10,7 @@ import {
   text,
   timestamp,
   uniqueIndex,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { sql } from "drizzle-orm";
@@ -169,6 +170,7 @@ export const topicsTable = pgTable("topics", {
   targetDate: date("target_date", { mode: "string" }),
   estimatedStartDate: date("estimated_start_date", { mode: "string" }),
   estimatedFinishDate: date("estimated_finish_date", { mode: "string" }),
+  dependsOnTopicId: text("depends_on_topic_id").references((): AnyPgColumn => topicsTable.id),
   estimatedEffortHours: integer("estimated_effort_hours"),
   validationMode: validationModeEnum("validation_mode")
     .notNull()

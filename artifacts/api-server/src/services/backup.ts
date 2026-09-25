@@ -100,14 +100,16 @@ export function validateBackup(value: unknown): QueueCraftBackup {
       ...entry,
       columns: entry.columns.filter((column) =>
         !(entry.name === "notification_outbox" && ["action", "topicTitle", "actorName"].includes(column.key))
-        && !(entry.name === "notification_rules" && column.key === "recipientGroups"),
+        && !(entry.name === "notification_rules" && column.key === "recipientGroups")
+        && !(entry.name === "topics" && column.key === "dependsOnTopicId"),
       ),
     }));
   const digestPreviousManifest = BACKUP_MANIFEST.filter((entry) =>
     entry.name !== "milestone_allocations").map((entry) => ({
     ...entry,
     columns: entry.columns.filter((column) =>
-      !(entry.name === "notification_outbox" && ["topicTitle", "actorName"].includes(column.key)),
+      !(entry.name === "notification_outbox" && ["topicTitle", "actorName"].includes(column.key))
+      && !(entry.name === "topics" && column.key === "dependsOnTopicId"),
     ),
   }));
   const previousNoSettings = JSON.stringify(inputManifest) === JSON.stringify(previousManifest)
@@ -116,17 +118,31 @@ export function validateBackup(value: unknown): QueueCraftBackup {
   const previousWithSettings = JSON.stringify(inputManifest) === JSON.stringify(digestPreviousManifest)
     && typeof c.fingerprint === "string"
     && c.fingerprint === createHash("sha256").update(JSON.stringify(inputManifest)).digest("hex");
-  const priorMilestoneManifest = BACKUP_MANIFEST.filter((entry) => entry.name !== "milestone_allocations");
+  const priorMilestoneManifest = BACKUP_MANIFEST.filter((entry) => entry.name !== "milestone_allocations")
+    .map((entry) => ({
+      ...entry,
+      columns: entry.columns.filter((column) =>
+        !(entry.name === "topics" && column.key === "dependsOnTopicId")),
+    }));
   const previousMilestoneShape =
     JSON.stringify(inputManifest) === JSON.stringify(priorMilestoneManifest) &&
     c.fingerprint === createHash("sha256").update(JSON.stringify(inputManifest)).digest("hex");
-  const previousShape = previousNoSettings || previousWithSettings || previousMilestoneShape;
+  const priorDependencyManifest = BACKUP_MANIFEST.map((entry) => ({
+    ...entry,
+    columns: entry.columns.filter((column) =>
+      !(entry.name === "topics" && column.key === "dependsOnTopicId")),
+  }));
+  const previousDependencyShape = JSON.stringify(inputManifest) === JSON.stringify(priorDependencyManifest)
+    && c.fingerprint === createHash("sha256").update(JSON.stringify(inputManifest)).digest("hex");
+  const previousShape = previousNoSettings || previousWithSettings ||
+    previousMilestoneShape || previousDependencyShape;
   if (!currentManifest && !previousShape)
     throw new Error("Backup schema manifest does not match this application");
   const tables = { ...(c.tables as Record<string, unknown>) };
   if (previousShape) {
     const previousTableNames = [...tableNames].filter((name) =>
-      name !== "milestone_allocations" && (!previousNoSettings || name !== "notification_settings"));
+      (previousDependencyShape || name !== "milestone_allocations") &&
+      (!previousNoSettings || name !== "notification_settings"));
     const previousKeys = Object.keys(tables);
     if (previousKeys.length !== previousTableNames.length || previousKeys.some((key) => !previousTableNames.some((name) => name === key))) {
       throw new Error("Backup table coverage does not match the previous schema");
@@ -137,7 +153,11 @@ export function validateBackup(value: unknown): QueueCraftBackup {
       )) throw new Error(`Backup table ${name} contains an invalid row`);
     }
     if (previousNoSettings) tables["notification_settings"] = [];
-    tables["milestone_allocations"] = [];
+    if (!previousDependencyShape) tables["milestone_allocations"] = [];
+    tables["topics"] = (tables["topics"] as Record<string, unknown>[]).map((row) => ({
+      ...row,
+      dependsOnTopicId: null,
+    }));
     tables["notification_rules"] = (tables["notification_rules"] as Record<string, unknown>[]).map((row) => ({
       ...row,
       recipientGroups: row.recipientGroups ?? [
@@ -313,8 +333,17 @@ export async function restoreBackup(
       if (rows.length)
         await tx
           .insert(table)
-          .values(rows as never)
+          .values((name === "topics"
+            ? rows.map((row) => ({ ...(row as Record<string, unknown>), dependsOnTopicId: null }))
+            : rows) as never)
           .onConflictDoNothing();
+    }
+    // Restore self-references after every topic exists, regardless of backup row order.
+    for (const row of backup.tables.topics as Array<{ id: string; dependsOnTopicId?: string | null }>) {
+      if (row.dependsOnTopicId) {
+        await tx.update(topicsTable).set({ dependsOnTopicId: row.dependsOnTopicId })
+          .where(sql`${topicsTable.id} = ${row.id}`);
+      }
     }
     const existingAuditIds = new Set(existingAudit.map((row) => row.id));
     const incomingAudit = reviveRows(

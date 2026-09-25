@@ -316,6 +316,14 @@ export interface MilestoneAllocationInput {
   allocationPercent: number;
 }
 
+export interface TopicDependency {
+  id: string;
+  title: string;
+  status: TopicStatus;
+  /** @nullable */
+  estimatedFinishDate: string | null;
+}
+
 export interface Topic {
   id: string;
   title: string;
@@ -340,6 +348,7 @@ export interface Topic {
   estimatedStartDate?: string | null;
   /** @nullable */
   estimatedFinishDate?: string | null;
+  dependency?: TopicDependency | null;
   /**
      * @minimum 0
      * @nullable
@@ -419,6 +428,8 @@ export interface TopicInput {
   estimatedStartDate?: string | null;
   /** @nullable */
   estimatedFinishDate?: string | null;
+  /** @nullable */
+  dependsOnTopicId?: string | null;
   /**
      * @minimum 0
      * @nullable

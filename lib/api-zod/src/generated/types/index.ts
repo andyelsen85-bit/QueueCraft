@@ -59,6 +59,7 @@ export * from './topicAllocation';
 export * from './topicAllocationInput';
 export * from './topicAllocationReplace';
 export * from './topicCollaborator';
+export * from './topicDependency';
 export * from './topicDetail';
 export * from './topicFilters';
 export * from './topicInput';

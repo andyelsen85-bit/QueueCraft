@@ -42,6 +42,7 @@ import {
   GetSessionResponse,
   GetTopicParams,
   GetTopicResponse,
+  ListDependencyCandidatesResponse,
   DeleteTopicParams,
   GetValidationQueueResponse,
   ListDepartmentsResponse,
@@ -205,6 +206,62 @@ const dateOnly = (value: Date | string | null | undefined) => {
   if (typeof value === "string") return value.slice(0, 10);
   return value.toISOString().slice(0, 10);
 };
+
+function dateDistance(from: string, to: string) {
+  return Math.round(
+    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000,
+  );
+}
+
+function moveDate(value: string, days: number) {
+  const result = new Date(`${value}T00:00:00Z`);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result.toISOString().slice(0, 10);
+}
+
+function prerequisiteComplete(
+  topic: { dependsOnTopicId: string | null },
+  topics: Array<{ id: string; status: string }>,
+) {
+  if (!topic.dependsOnTopicId) return true;
+  const status = topics.find((entry) => entry.id === topic.dependsOnTopicId)?.status;
+  return status === "completed" || status === "closed";
+}
+
+async function shiftDependentSchedules(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  req: Request,
+  predecessorId: string,
+  days: number,
+) {
+  if (days === 0) return;
+  const visited = new Set([predecessorId]);
+  const shiftChildren = async (parentId: string): Promise<void> => {
+    const dependents = await tx.select().from(topicsTable)
+      .where(eq(topicsTable.dependsOnTopicId, parentId)).for("update");
+    for (const dependent of dependents) {
+      if (visited.has(dependent.id) || !dependent.estimatedStartDate || !dependent.estimatedFinishDate) {
+        throw new Error("Invalid dependent topic schedule");
+      }
+      visited.add(dependent.id);
+      const start = moveDate(dependent.estimatedStartDate, days);
+      const finish = moveDate(dependent.estimatedFinishDate, days);
+      await tx.update(topicsTable).set({
+        estimatedStartDate: start,
+        estimatedFinishDate: finish,
+        updatedAt: new Date(),
+      }).where(eq(topicsTable.id, dependent.id));
+      await tx.update(milestonesTable).set({
+        beginDate: sql`${milestonesTable.beginDate} + ${days}::integer`,
+        targetDate: sql`${milestonesTable.targetDate} + ${days}::integer`,
+      }).where(eq(milestonesTable.topicId, dependent.id));
+      await addActivity(req, dependent.id, "Dependency schedule shifted",
+        `Estimated start and finish, and milestone dates, moved ${days} day(s) because a prerequisite's estimated finish changed.`, false, tx);
+      await shiftChildren(dependent.id);
+    }
+  };
+  await shiftChildren(predecessorId);
+}
 
 async function loadSnapshot() {
   const [
@@ -384,6 +441,18 @@ async function loadSnapshot() {
       targetDate: topic.targetDate,
       estimatedStartDate: topic.estimatedStartDate,
       estimatedFinishDate: topic.estimatedFinishDate,
+      dependency: topic.dependsOnTopicId
+        ? (() => {
+            const predecessor = topics.find((entry) => entry.id === topic.dependsOnTopicId);
+            if (!predecessor) throw new Error(`Prerequisite ${topic.dependsOnTopicId} not found`);
+            return {
+              id: predecessor.id,
+              title: predecessor.title,
+              status: predecessor.status,
+              estimatedFinishDate: predecessor.estimatedFinishDate,
+            };
+          })()
+        : null,
       estimatedEffortHours: topic.estimatedEffortHours,
       validationMode: topic.validationMode,
       validationReason: topic.validationReason,
@@ -1669,6 +1738,22 @@ router.get("/topics", async (req, res): Promise<void> => {
   );
 });
 
+router.get("/topics/dependency-candidates", async (_req, res): Promise<void> => {
+  const snapshot = await loadSnapshot();
+  res.json(ListDependencyCandidatesResponse.parse(
+    snapshot.topics
+      .filter((topic) =>
+        ["pending_validation", "open", "in_progress"].includes(topic.status) &&
+        topic.estimatedFinishDate)
+      .map((topic) => ({
+        id: topic.id,
+        title: topic.title,
+        status: topic.status,
+        estimatedFinishDate: topic.estimatedFinishDate,
+      })),
+  ));
+});
+
 router.post("/topics", async (req, res): Promise<void> => {
   const parsed = CreateTopicBody.safeParse(req.body);
   if (!parsed.success) {
@@ -1693,6 +1778,20 @@ router.post("/topics", async (req, res): Promise<void> => {
   }
   const estimatedStartDate = dateOnly(parsed.data.estimatedStartDate);
   const estimatedFinishDate = dateOnly(parsed.data.estimatedFinishDate);
+  const dependsOnTopicId = parsed.data.dependsOnTopicId || null;
+  const prerequisite = dependsOnTopicId
+    ? snapshot.topics.find((topic) => topic.id === dependsOnTopicId)
+    : null;
+  if (dependsOnTopicId && (!prerequisite ||
+    !["pending_validation", "open", "in_progress"].includes(prerequisite.status) ||
+    !prerequisite.estimatedFinishDate)) {
+    res.status(400).json({ error: "Select an active or pending prerequisite with an estimated finish date" });
+    return;
+  }
+  if (dependsOnTopicId && (!estimatedStartDate || !estimatedFinishDate)) {
+    res.status(400).json({ error: "Dependent topics require estimated start and finish dates" });
+    return;
+  }
   if (
     estimatedStartDate &&
     estimatedFinishDate &&
@@ -1708,6 +1807,16 @@ router.post("/topics", async (req, res): Promise<void> => {
   }
   const id = randomUUID();
   const [created] = await db.transaction(async (tx) => {
+    const [currentPrerequisite] = dependsOnTopicId
+      ? await tx.select().from(topicsTable).where(eq(topicsTable.id, dependsOnTopicId)).for("update")
+      : [null];
+    if (dependsOnTopicId && (!currentPrerequisite ||
+      !["pending_validation", "open", "in_progress"].includes(currentPrerequisite.status) ||
+      !currentPrerequisite.estimatedFinishDate)) return [];
+    const plannedStart = currentPrerequisite?.estimatedFinishDate ?? estimatedStartDate;
+    const plannedFinish = currentPrerequisite?.estimatedFinishDate && estimatedStartDate && estimatedFinishDate
+      ? moveDate(currentPrerequisite.estimatedFinishDate, dateDistance(estimatedStartDate, estimatedFinishDate))
+      : estimatedFinishDate;
     const rows = await tx
       .insert(topicsTable)
       .values({
@@ -1720,8 +1829,9 @@ router.post("/topics", async (req, res): Promise<void> => {
         creatorId: currentUserId(req),
         primaryAssigneeId: parsed.data.primaryAssigneeId,
         targetDate: dateOnly(parsed.data.targetDate),
-        estimatedStartDate,
-        estimatedFinishDate,
+        estimatedStartDate: plannedStart,
+        estimatedFinishDate: plannedFinish,
+        dependsOnTopicId,
         estimatedEffortHours: parsed.data.estimatedEffortHours,
         status: "pending_validation",
       })
@@ -1738,8 +1848,9 @@ router.post("/topics", async (req, res): Promise<void> => {
         `Priority: ${parsed.data.priority}`,
         `Primary assignee: ${parsed.data.primaryAssigneeId ? snapshot.memberById.get(parsed.data.primaryAssigneeId)?.name ?? parsed.data.primaryAssigneeId : "—"}`,
         `Target date: ${displayActivityValue(parsed.data.targetDate)}`,
-        `Estimated start: ${displayActivityValue(estimatedStartDate)}`,
-        `Estimated finish: ${displayActivityValue(estimatedFinishDate)}`,
+        `Estimated start: ${displayActivityValue(plannedStart)}`,
+        `Estimated finish: ${displayActivityValue(plannedFinish)}`,
+        `Prerequisite: ${currentPrerequisite?.title ?? "—"}`,
         `Estimated effort (hours): ${displayActivityValue(parsed.data.estimatedEffortHours)}`,
         "Initial status: Pending validation",
       ].join("\n"),
@@ -1748,6 +1859,10 @@ router.post("/topics", async (req, res): Promise<void> => {
     );
     return rows;
   });
+  if (!created) {
+    res.status(409).json({ error: "Prerequisite changed while creating this topic. Refresh and try again." });
+    return;
+  }
   const refreshed = await loadSnapshot();
   res
     .status(201)
@@ -1787,6 +1902,10 @@ router.delete("/topics/:topicId", async (req, res): Promise<void> => {
   const isLocalAdmin = userId === "local-admin" && req.session.authProvider === "local";
   if (!isLocalAdmin && ![department?.serviceHeadId, department?.serviceHeadDeputyId].includes(userId)) {
     res.status(403).json({ error: "Only this department's Service Head or Deputy can delete this topic" });
+    return;
+  }
+  if (snapshot.topics.some((entry) => entry.dependsOnTopicId === topic.id)) {
+    res.status(409).json({ error: "Remove dependent topics before deleting their prerequisite" });
     return;
   }
   const deleted = await db.transaction(async (tx) => {
@@ -1865,6 +1984,21 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
     body.data.estimatedFinishDate === undefined
       ? currentTopic.estimatedFinishDate
       : dateOnly(body.data.estimatedFinishDate);
+  if (currentTopic.dependsOnTopicId &&
+    body.data.estimatedStartDate !== undefined &&
+    nextStart !== currentTopic.estimatedStartDate) {
+    res.status(409).json({ error: "The estimated start is set by the prerequisite's estimated finish" });
+    return;
+  }
+  if (!nextFinish && current.topics.some((topic) => topic.dependsOnTopicId === currentTopic.id)) {
+    res.status(409).json({ error: "Set an estimated finish before updating topics that depend on this one" });
+    return;
+  }
+  if (body.data.status && ["in_progress", "completed", "closed"].includes(body.data.status) &&
+    !prerequisiteComplete(currentTopic, current.topics)) {
+    res.status(409).json({ error: "The prerequisite must be completed before this topic can start" });
+    return;
+  }
   if (nextStart && nextFinish && nextStart > nextFinish) {
     res
       .status(400)
@@ -1925,6 +2059,12 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
     ? changedValues.join("\n")
     : "No field values changed.";
   const [updated] = await db.transaction(async (tx) => {
+    const [locked] = await tx.select().from(topicsTable)
+      .where(eq(topicsTable.id, params.data.topicId)).for("update");
+    if (!locked || locked.estimatedFinishDate !== currentTopic.estimatedFinishDate) return [];
+    const days = locked.estimatedFinishDate && nextFinish
+      ? dateDistance(locked.estimatedFinishDate, nextFinish)
+      : 0;
     const rows = await tx
       .update(topicsTable)
       .set({
@@ -1944,6 +2084,7 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
       .where(eq(topicsTable.id, params.data.topicId))
       .returning();
     if (rows[0]) {
+      await shiftDependentSchedules(tx, req, rows[0].id, days);
       await addActivity(
         req,
         rows[0].id,
@@ -1956,7 +2097,7 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
     return rows;
   });
   if (!updated) {
-    res.status(404).json({ error: "Topic not found" });
+    res.status(409).json({ error: "Topic schedule changed. Refresh and try again." });
     return;
   }
   const snapshot = await loadSnapshot();
@@ -2097,6 +2238,7 @@ router.get("/occupancy/overview", async (req, res): Promise<void> => {
         return allocation.memberId === member.id &&
           milestone?.beginDate && milestone.targetDate &&
           topicById.get(milestone.topicId)?.status !== "pending_validation" &&
+          prerequisiteComplete(topicById.get(milestone.topicId)!, snapshot.topics) &&
           milestone.beginDate <= endDate && milestone.targetDate >= startDate
           ? [{ ...milestone, allocationPercent: allocation.allocationPercent }]
           : [];
@@ -2321,6 +2463,11 @@ router.post("/topics/:topicId/assign", async (req, res): Promise<void> => {
     return;
   }
   if (!requireTopicManager(req, res, topic, before)) return;
+  if (topic.status === "open" && body.data.memberId &&
+    !prerequisiteComplete(topic, before.topics)) {
+    res.status(409).json({ error: "The prerequisite must be completed before this topic can start" });
+    return;
+  }
   if (topic.status === "pending_validation" && !topic.primaryAssigneeId && body.data.memberId) {
     res
       .status(409)
@@ -2612,6 +2759,11 @@ router.patch("/milestones/:milestoneId", async (req, res): Promise<void> => {
     return;
   }
   if (!requireTopicManager(req, res, topic, before)) return;
+  if (body.data.status && ["in_progress", "completed"].includes(body.data.status) &&
+    !prerequisiteComplete(topic, before.topics)) {
+    res.status(409).json({ error: "The prerequisite must be completed before milestone work can start" });
+    return;
+  }
   const nextBeginDate =
     body.data.beginDate === undefined
       ? existingMilestone.beginDate

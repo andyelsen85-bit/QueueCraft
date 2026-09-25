@@ -601,6 +601,12 @@ export const GetMyWorkResponse = zod.object({
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
+  "dependency": zod.union([zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "estimatedFinishDate": zod.coerce.date().nullable()
+}),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(getMyWorkResponseCreatedItemEstimatedEffortHoursMin).nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
@@ -758,6 +764,12 @@ export const GetMyWorkResponse = zod.object({
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
+  "dependency": zod.union([zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "estimatedFinishDate": zod.coerce.date().nullable()
+}),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(getMyWorkResponseAssignedItemEstimatedEffortHoursMin).nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
@@ -959,6 +971,12 @@ export const GetMyWorkResponse = zod.object({
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
+  "dependency": zod.union([zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "estimatedFinishDate": zod.coerce.date().nullable()
+}),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(getMyWorkResponseCollaborationsItemEstimatedEffortHoursMin).nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
@@ -1116,6 +1134,12 @@ export const GetMyWorkResponse = zod.object({
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
+  "dependency": zod.union([zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "estimatedFinishDate": zod.coerce.date().nullable()
+}),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(getMyWorkResponseValidationQueueItemEstimatedEffortHoursMin).nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
@@ -1349,6 +1373,12 @@ export const GetValidationQueueResponseItem = zod.object({
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
+  "dependency": zod.union([zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "estimatedFinishDate": zod.coerce.date().nullable()
+}),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(getValidationQueueResponseEstimatedEffortHoursMin).nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
@@ -1596,6 +1626,12 @@ export const ListTopicsResponseItem = zod.object({
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
+  "dependency": zod.union([zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "estimatedFinishDate": zod.coerce.date().nullable()
+}),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(listTopicsResponseEstimatedEffortHoursMin).nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
@@ -1645,6 +1681,7 @@ export const CreateTopicBody = zod.object({
   "primaryAssigneeId": zod.string().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
+  "dependsOnTopicId": zod.string().nullish(),
   "estimatedEffortHours": zod.number().int().min(createTopicBodyEstimatedEffortHoursMin).nullish()
 })
 
@@ -1852,6 +1889,12 @@ export const CreateTopicResponse = zod.object({
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
+  "dependency": zod.union([zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "estimatedFinishDate": zod.coerce.date().nullable()
+}),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(createTopicResponseEstimatedEffortHoursMin).nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
@@ -1875,6 +1918,18 @@ export const CreateTopicResponse = zod.object({
   "updatedAt": zod.coerce.date(),
   "completedAt": zod.coerce.date().nullish()
 })
+
+
+/**
+ * @summary List eligible prerequisite topics with estimated finish dates
+ */
+export const ListDependencyCandidatesResponseItem = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "estimatedFinishDate": zod.coerce.date().nullable()
+})
+export const ListDependencyCandidatesResponse = zod.array(ListDependencyCandidatesResponseItem)
 
 
 /**
@@ -2136,6 +2191,12 @@ export const GetTopicResponse = zod.object({
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
+  "dependency": zod.union([zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "estimatedFinishDate": zod.coerce.date().nullable()
+}),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(getTopicResponseOneEstimatedEffortHoursMin).nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
@@ -2507,6 +2568,12 @@ export const UpdateTopicResponse = zod.object({
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
+  "dependency": zod.union([zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "estimatedFinishDate": zod.coerce.date().nullable()
+}),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(updateTopicResponseEstimatedEffortHoursMin).nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
@@ -2762,6 +2829,12 @@ export const UpdateTopicFinishDateResponse = zod.object({
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
+  "dependency": zod.union([zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "estimatedFinishDate": zod.coerce.date().nullable()
+}),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(updateTopicFinishDateResponseEstimatedEffortHoursMin).nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
@@ -3048,6 +3121,12 @@ export const ValidateTopicResponse = zod.object({
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
+  "dependency": zod.union([zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "estimatedFinishDate": zod.coerce.date().nullable()
+}),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(validateTopicResponseEstimatedEffortHoursMin).nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
@@ -3294,6 +3373,12 @@ export const ValidateTopicBreakGlassResponse = zod.object({
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
+  "dependency": zod.union([zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "estimatedFinishDate": zod.coerce.date().nullable()
+}),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(validateTopicBreakGlassResponseEstimatedEffortHoursMin).nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
@@ -3534,6 +3619,12 @@ export const AssignTopicResponse = zod.object({
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
+  "dependency": zod.union([zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "estimatedFinishDate": zod.coerce.date().nullable()
+}),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(assignTopicResponseEstimatedEffortHoursMin).nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),

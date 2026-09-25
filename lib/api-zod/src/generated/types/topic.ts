@@ -9,6 +9,7 @@ import type { Department } from './department';
 import type { Member } from './member';
 import type { Role } from './role';
 import type { TopicCollaborator } from './topicCollaborator';
+import type { TopicDependency } from './topicDependency';
 import type { TopicPriority } from './topicPriority';
 import type { TopicStatus } from './topicStatus';
 import type { ValidationMode } from './validationMode';
@@ -37,6 +38,7 @@ export interface Topic {
   estimatedStartDate?: Date | null;
   /** @nullable */
   estimatedFinishDate?: Date | null;
+  dependency?: TopicDependency | null;
   /**
      * @minimum 0
      * @nullable

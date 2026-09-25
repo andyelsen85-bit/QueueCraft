@@ -51,6 +51,7 @@ import type {
   Topic,
   TopicAllocation,
   TopicCollaborator,
+  TopicDependency,
   TopicDetail,
   TopicFilters,
   TopicInput,
@@ -891,6 +892,83 @@ export const useCreateTopic = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getCreateTopicMutationOptions(options));
     }
+
+export const getListDependencyCandidatesUrl = () => {
+
+
+
+
+  return `/api/topics/dependency-candidates`
+}
+
+/**
+ * @summary List eligible prerequisite topics with estimated finish dates
+ */
+export const listDependencyCandidates = async ( options?: Parameters<typeof customFetch>[1]): Promise<TopicDependency[]> => {
+
+  return customFetch<TopicDependency[]>(getListDependencyCandidatesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDependencyCandidatesQueryKey = () => {
+    return [
+    `/api/topics/dependency-candidates`
+    ] as const;
+    }
+
+
+export const getListDependencyCandidatesQueryOptions = <TData = Awaited<ReturnType<typeof listDependencyCandidates>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDependencyCandidates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDependencyCandidatesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDependencyCandidates>>> = ({ signal }) => listDependencyCandidates({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDependencyCandidates>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDependencyCandidatesQueryResult = NonNullable<Awaited<ReturnType<typeof listDependencyCandidates>>>
+export type ListDependencyCandidatesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List eligible prerequisite topics with estimated finish dates
+ */
+
+export function useListDependencyCandidates<TData = Awaited<ReturnType<typeof listDependencyCandidates>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDependencyCandidates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDependencyCandidatesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetTopicUrl = (topicId: string,) => {
 
