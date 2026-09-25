@@ -2142,18 +2142,23 @@ router.get("/occupancy/overview", async (req, res): Promise<void> => {
       Math.floor((to.getTime() - from.getTime()) / 86400000) + 1,
     );
   };
+  const topicById = new Map(snapshot.topics.map((topic) => [topic.id, topic]));
+  const allocationPeriod = (allocation: (typeof snapshot.allocations)[number]) => {
+    const topic = topicById.get(allocation.topicId);
+    if (!topic) return null;
+    // Older allocations may predate the requirement for estimated topic dates.
+    const start = topic.estimatedStartDate ?? dateOnly(allocation.createdAt);
+    const end = topic.estimatedFinishDate ?? topic.targetDate ??
+      (topic.status === "closed" ? dateOnly(topic.updatedAt) : endDate);
+    return start && end ? { start, end } : null;
+  };
   const overview = snapshot.members
     .filter((member) => member.status === "active")
     .map((member) => {
       const topicRows = snapshot.allocations.filter((allocation) => {
         if (allocation.memberId !== member.id) return false;
-        const topic = snapshot.topics.find(
-          (item) => item.id === allocation.topicId,
-        );
-        if (!topic) return false;
-        const start = topic.estimatedStartDate;
-        const end = topic.estimatedFinishDate ?? topic.targetDate;
-        return Boolean(start && end && start <= endDate && end >= startDate);
+        const period = allocationPeriod(allocation);
+        return Boolean(period && period.start <= endDate && period.end >= startDate);
       });
       const uniqueTopicRows = topicRows.reduce<typeof topicRows>(
         (latest, allocation) => {
@@ -2176,14 +2181,11 @@ router.get("/occupancy/overview", async (req, res): Promise<void> => {
           milestone.targetDate! >= startDate,
       );
       const topicPercent = uniqueTopicRows.reduce((sum, row) => {
-        const topic = snapshot.topics.find((item) => item.id === row.topicId)!;
+        const period = allocationPeriod(row)!;
         return (
           sum +
           (row.allocationPercent *
-            overlapDays(
-              topic.estimatedStartDate!,
-              topic.estimatedFinishDate ?? topic.targetDate!,
-            )) /
+            overlapDays(period.start, period.end)) /
             rangeDays
         );
       }, 0);
@@ -2205,26 +2207,19 @@ router.get("/occupancy/overview", async (req, res): Promise<void> => {
         endDate,
         dailyBusinessPercent: member.dailyBusinessPercent,
         dailyBusinessTasks: member.dailyBusinessTasks,
-        topics: uniqueTopicRows.map((row) => ({
-          topicId: row.topicId,
-          title:
-            snapshot.topics.find((topic) => topic.id === row.topicId)?.title ??
-            "Unknown topic",
-          allocationPercent: Math.round(
-            (row.allocationPercent *
-              overlapDays(
-                snapshot.topics.find((topic) => topic.id === row.topicId)!
-                  .estimatedStartDate!,
-                snapshot.topics.find((topic) => topic.id === row.topicId)!
-                  .estimatedFinishDate ??
-                  snapshot.topics.find((topic) => topic.id === row.topicId)!
-                    .targetDate!,
-              )) /
-              rangeDays,
-          ),
-          allocationType: "topic" as const,
-          milestoneId: null,
-        })),
+        topics: uniqueTopicRows.map((row) => {
+          const period = allocationPeriod(row)!;
+          return {
+            topicId: row.topicId,
+            title: topicById.get(row.topicId)?.title ?? "Unknown topic",
+            allocationPercent: Math.round(
+              (row.allocationPercent * overlapDays(period.start, period.end)) /
+                rangeDays,
+            ),
+            allocationType: "topic" as const,
+            milestoneId: null,
+          };
+        }),
         milestones: milestoneRows.map((row) => ({
           topicId: row.topicId,
           milestoneId: row.id,

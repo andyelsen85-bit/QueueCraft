@@ -1187,4 +1187,61 @@ describe("QueueCraft security and preference flows", () => {
       .where(eq(activityTable.topicId, created.body.id));
     await db.delete(topicsTable).where(eq(topicsTable.id, created.body.id));
   });
+
+  test("counts an existing topic allocation without an estimated start date", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = await agent.get("/api/auth/csrf").expect(200);
+    const roles = await agent.get("/api/directory/roles").expect(200);
+    const role = roles.body.find(
+      (item: { departmentId: string }) => item.departmentId === "dept-platform",
+    );
+    assert.ok(role);
+    const created = await agent
+      .post("/api/topics")
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({
+        title: `Legacy allocation ${randomUUID()}`,
+        description: "Existing allocation with no estimated topic dates.",
+        departmentId: "dept-platform",
+        roleId: role.id,
+        priority: "P3",
+        primaryAssigneeId: "member-andy",
+        targetDate: "2041-01-31",
+      })
+      .expect(201);
+    try {
+      await db.insert(topicAllocationsTable).values({
+        topicId: created.body.id,
+        memberId: "member-andy",
+        allocationPercent: 35,
+      });
+      const during = await agent
+        .get("/api/occupancy/overview?startDate=2041-01-13&endDate=2041-01-19")
+        .expect(200);
+      const row = during.body.find(
+        (item: { member: { id: string } }) => item.member.id === "member-andy",
+      );
+      assert.equal(
+        row.topics.find((item: { topicId: string }) => item.topicId === created.body.id)
+          ?.allocationPercent,
+        35,
+      );
+      assert.ok(row.topicAllocationPercent >= 35);
+      const after = await agent
+        .get("/api/occupancy/overview?startDate=2041-02-03&endDate=2041-02-09")
+        .expect(200);
+      const afterRow = after.body.find(
+        (item: { member: { id: string } }) => item.member.id === "member-andy",
+      );
+      assert.equal(
+        afterRow.topics.some((item: { topicId: string }) => item.topicId === created.body.id),
+        false,
+      );
+    } finally {
+      await db.delete(topicAllocationsTable).where(eq(topicAllocationsTable.topicId, created.body.id));
+      await db.delete(activityTable).where(eq(activityTable.topicId, created.body.id));
+      await db.delete(topicsTable).where(eq(topicsTable.id, created.body.id));
+    }
+  });
 });
