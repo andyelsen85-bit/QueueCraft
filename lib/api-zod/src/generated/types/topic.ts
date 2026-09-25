@@ -17,6 +17,11 @@ export interface Topic {
   id: string;
   title: string;
   description: string;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  documentationUrl?: string | null;
   department: Department;
   role: Role;
   priority: TopicPriority;

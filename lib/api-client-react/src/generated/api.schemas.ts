@@ -301,6 +301,11 @@ export interface Topic {
   id: string;
   title: string;
   description: string;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  documentationUrl?: string | null;
   department: Department;
   role: Role;
   priority: TopicPriority;
@@ -413,6 +418,11 @@ export interface TopicUpdate {
      * @maxLength 2000
      */
   description?: string;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  documentationUrl?: string | null;
   priority?: TopicPriority;
   /** @nullable */
   estimatedStartDate?: string | null;

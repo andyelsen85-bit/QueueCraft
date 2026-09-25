@@ -1244,4 +1244,54 @@ describe("QueueCraft security and preference flows", () => {
       await db.delete(topicsTable).where(eq(topicsTable.id, created.body.id));
     }
   });
+
+  test("saves, displays, and clears a topic documentation URL", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = await agent.get("/api/auth/csrf").expect(200);
+    const roles = await agent.get("/api/directory/roles").expect(200);
+    const role = roles.body.find(
+      (item: { departmentId: string }) => item.departmentId === "dept-platform",
+    );
+    assert.ok(role);
+    const created = await agent
+      .post("/api/topics")
+      .set("x-csrf-token", csrf.body.csrfToken)
+      .send({
+        title: `Documentation link ${randomUUID()}`,
+        description: "Temporary topic for documentation URL verification.",
+        departmentId: "dept-platform",
+        roleId: role.id,
+        priority: "P3",
+      })
+      .expect(201);
+    try {
+      assert.equal(created.body.documentationUrl, null);
+      const path = `/api/topics/${created.body.id}`;
+      const saved = await agent.patch(path)
+        .set("x-csrf-token", csrf.body.csrfToken)
+        .send({ documentationUrl: "https://docs.example.org/guide" })
+        .expect(200);
+      assert.equal(saved.body.documentationUrl, "https://docs.example.org/guide");
+      const loaded = await agent.get(path).expect(200);
+      assert.equal(loaded.body.documentationUrl, "https://docs.example.org/guide");
+      await agent.patch(path)
+        .set("x-csrf-token", csrf.body.csrfToken)
+        .send({ documentationUrl: "javascript:alert(1)" })
+        .expect(400);
+      await agent.patch(path)
+        .set("x-csrf-token", csrf.body.csrfToken)
+        .send({ documentationUrl: "https://user:password@docs.example.org" })
+        .expect(400);
+      const cleared = await agent.patch(path)
+        .set("x-csrf-token", csrf.body.csrfToken)
+        .send({ documentationUrl: null })
+        .expect(200);
+      assert.equal(cleared.body.documentationUrl, null);
+      assert.equal((await agent.get(path).expect(200)).body.documentationUrl, null);
+    } finally {
+      await db.delete(activityTable).where(eq(activityTable.topicId, created.body.id));
+      await db.delete(topicsTable).where(eq(topicsTable.id, created.body.id));
+    }
+  });
 });

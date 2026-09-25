@@ -144,6 +144,7 @@ function activityFieldLabel(field: string) {
   const labels: Record<string, string> = {
     title: "Title",
     description: "Description",
+    documentationUrl: "Documentation URL",
     departmentId: "Department",
     roleId: "Affected role",
     priority: "Priority",
@@ -332,6 +333,7 @@ async function loadSnapshot() {
       id: topic.id,
       title: topic.title,
       description: topic.description,
+      documentationUrl: topic.documentationUrl,
       department: buildDepartment(topic.departmentId),
       role: buildRole(topic.roleId),
       priority: topic.priority,
@@ -1812,6 +1814,16 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid topic update" });
     return;
   }
+  const documentationUrl = body.data.documentationUrl === undefined
+    ? undefined
+    : body.data.documentationUrl?.trim() || null;
+  if (documentationUrl) {
+    const url = new URL(documentationUrl);
+    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) {
+      res.status(400).json({ error: "Documentation URL must be an HTTP or HTTPS link without credentials" });
+      return;
+    }
+  }
   const current = await loadSnapshot();
   const currentTopic = current.topics.find(
     (topic) => topic.id === params.data.topicId,
@@ -1876,7 +1888,8 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
     return;
   }
   const completedAt = body.data.status === "completed" ? new Date() : undefined;
-  const changedValues = Object.entries(body.data).flatMap(([field, rawValue]) => {
+  const normalizedUpdate = { ...body.data, documentationUrl };
+  const changedValues = Object.entries(normalizedUpdate).flatMap(([field, rawValue]) => {
     const nextValue = field === "estimatedStartDate" || field === "estimatedFinishDate"
       ? dateOnly(rawValue as string | null | undefined)
       : rawValue;
@@ -1905,7 +1918,7 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
     const rows = await tx
       .update(topicsTable)
       .set({
-        ...body.data,
+        ...normalizedUpdate,
         estimatedStartDate:
           body.data.estimatedStartDate === undefined
             ? undefined

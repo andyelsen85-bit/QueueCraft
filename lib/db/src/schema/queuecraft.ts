@@ -151,6 +151,7 @@ export const topicsTable = pgTable("topics", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description").notNull(),
+  documentationUrl: text("documentation_url"),
   departmentId: text("department_id")
     .notNull()
     .references(() => departmentsTable.id),

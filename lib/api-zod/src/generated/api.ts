@@ -171,6 +171,8 @@ export const GetDashboardActivityResponse = zod.array(GetDashboardActivityRespon
 /**
  * @summary Get the current user's topics, milestones, collaborations, and validations
  */
+export const getMyWorkResponseCreatedItemDocumentationUrlMax = 2048;
+
 export const getMyWorkResponseCreatedItemDepartmentServiceHeadDailyBusinessPercentMin = 0;
 export const getMyWorkResponseCreatedItemDepartmentServiceHeadDailyBusinessPercentMax = 100;
 
@@ -236,6 +238,8 @@ export const getMyWorkResponseCreatedItemValidatorOneDailyBusinessTasksItemNameM
 
 export const getMyWorkResponseCreatedItemValidatorOneDailyBusinessTasksItemPercentMin = 0;
 export const getMyWorkResponseCreatedItemValidatorOneDailyBusinessTasksItemPercentMax = 100;
+
+export const getMyWorkResponseAssignedItemDocumentationUrlMax = 2048;
 
 export const getMyWorkResponseAssignedItemDepartmentServiceHeadDailyBusinessPercentMin = 0;
 export const getMyWorkResponseAssignedItemDepartmentServiceHeadDailyBusinessPercentMax = 100;
@@ -314,6 +318,8 @@ export const getMyWorkResponseMilestonesItemAssigneeOneDailyBusinessTasksItemPer
 export const getMyWorkResponseMilestonesItemWorkloadPercentMin = 0;
 export const getMyWorkResponseMilestonesItemWorkloadPercentMax = 100;
 
+export const getMyWorkResponseCollaborationsItemDocumentationUrlMax = 2048;
+
 export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDailyBusinessPercentMin = 0;
 export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDailyBusinessPercentMax = 100;
 
@@ -379,6 +385,8 @@ export const getMyWorkResponseCollaborationsItemValidatorOneDailyBusinessTasksIt
 
 export const getMyWorkResponseCollaborationsItemValidatorOneDailyBusinessTasksItemPercentMin = 0;
 export const getMyWorkResponseCollaborationsItemValidatorOneDailyBusinessTasksItemPercentMax = 100;
+
+export const getMyWorkResponseValidationQueueItemDocumentationUrlMax = 2048;
 
 export const getMyWorkResponseValidationQueueItemDepartmentServiceHeadDailyBusinessPercentMin = 0;
 export const getMyWorkResponseValidationQueueItemDepartmentServiceHeadDailyBusinessPercentMax = 100;
@@ -453,6 +461,7 @@ export const GetMyWorkResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string(),
+  "documentationUrl": zod.string().url().max(getMyWorkResponseCreatedItemDocumentationUrlMax).nullish(),
   "department": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -609,6 +618,7 @@ export const GetMyWorkResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string(),
+  "documentationUrl": zod.string().url().max(getMyWorkResponseAssignedItemDocumentationUrlMax).nullish(),
   "department": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -791,6 +801,7 @@ export const GetMyWorkResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string(),
+  "documentationUrl": zod.string().url().max(getMyWorkResponseCollaborationsItemDocumentationUrlMax).nullish(),
   "department": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -947,6 +958,7 @@ export const GetMyWorkResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string(),
+  "documentationUrl": zod.string().url().max(getMyWorkResponseValidationQueueItemDocumentationUrlMax).nullish(),
   "department": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1105,6 +1117,8 @@ export const GetMyWorkResponse = zod.object({
 /**
  * @summary Get topics waiting for Service Head validation
  */
+export const getValidationQueueResponseDocumentationUrlMax = 2048;
+
 export const getValidationQueueResponseDepartmentServiceHeadDailyBusinessPercentMin = 0;
 export const getValidationQueueResponseDepartmentServiceHeadDailyBusinessPercentMax = 100;
 
@@ -1177,6 +1191,7 @@ export const GetValidationQueueResponseItem = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string(),
+  "documentationUrl": zod.string().url().max(getValidationQueueResponseDocumentationUrlMax).nullish(),
   "department": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1349,6 +1364,8 @@ export const ListTopicsQueryParams = zod.object({
   "limit": zod.coerce.number().int().min(1).max(listTopicsQueryLimitMax).default(listTopicsQueryLimitDefault)
 })
 
+export const listTopicsResponseDocumentationUrlMax = 2048;
+
 export const listTopicsResponseDepartmentServiceHeadDailyBusinessPercentMin = 0;
 export const listTopicsResponseDepartmentServiceHeadDailyBusinessPercentMax = 100;
 
@@ -1421,6 +1438,7 @@ export const ListTopicsResponseItem = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string(),
+  "documentationUrl": zod.string().url().max(listTopicsResponseDocumentationUrlMax).nullish(),
   "department": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1602,6 +1620,8 @@ export const CreateTopicBody = zod.object({
   "estimatedEffortHours": zod.number().int().min(createTopicBodyEstimatedEffortHoursMin).nullish()
 })
 
+export const createTopicResponseDocumentationUrlMax = 2048;
+
 export const createTopicResponseDepartmentServiceHeadDailyBusinessPercentMin = 0;
 export const createTopicResponseDepartmentServiceHeadDailyBusinessPercentMax = 100;
 
@@ -1674,6 +1694,7 @@ export const CreateTopicResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string(),
+  "documentationUrl": zod.string().url().max(createTopicResponseDocumentationUrlMax).nullish(),
   "department": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1835,6 +1856,8 @@ export const GetTopicParams = zod.object({
   "topicId": zod.coerce.string()
 })
 
+export const getTopicResponseOneDocumentationUrlMax = 2048;
+
 export const getTopicResponseOneDepartmentServiceHeadDailyBusinessPercentMin = 0;
 export const getTopicResponseOneDepartmentServiceHeadDailyBusinessPercentMax = 100;
 
@@ -1945,6 +1968,7 @@ export const GetTopicResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string(),
+  "documentationUrl": zod.string().url().max(getTopicResponseOneDocumentationUrlMax).nullish(),
   "department": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -2203,6 +2227,8 @@ export const updateTopicBodyTitleMax = 160;
 export const updateTopicBodyDescriptionMin = 3;
 export const updateTopicBodyDescriptionMax = 2000;
 
+export const updateTopicBodyDocumentationUrlMax = 2048;
+
 export const updateTopicBodyEstimatedEffortHoursMin = 0;
 
 export const updateTopicBodyCompletionSummaryMax = 1000;
@@ -2212,6 +2238,7 @@ export const updateTopicBodyCompletionSummaryMax = 1000;
 export const UpdateTopicBody = zod.object({
   "title": zod.string().min(updateTopicBodyTitleMin).max(updateTopicBodyTitleMax).optional(),
   "description": zod.string().min(updateTopicBodyDescriptionMin).max(updateTopicBodyDescriptionMax).optional(),
+  "documentationUrl": zod.string().url().max(updateTopicBodyDocumentationUrlMax).nullish(),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']).optional(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
@@ -2219,6 +2246,8 @@ export const UpdateTopicBody = zod.object({
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']).optional(),
   "completionSummary": zod.string().max(updateTopicBodyCompletionSummaryMax).nullish()
 })
+
+export const updateTopicResponseDocumentationUrlMax = 2048;
 
 export const updateTopicResponseDepartmentServiceHeadDailyBusinessPercentMin = 0;
 export const updateTopicResponseDepartmentServiceHeadDailyBusinessPercentMax = 100;
@@ -2292,6 +2321,7 @@ export const UpdateTopicResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string(),
+  "documentationUrl": zod.string().url().max(updateTopicResponseDocumentationUrlMax).nullish(),
   "department": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -2472,6 +2502,8 @@ export const UpdateTopicFinishDateBody = zod.object({
   "note": zod.string().min(1).max(updateTopicFinishDateBodyNoteMax)
 })
 
+export const updateTopicFinishDateResponseDocumentationUrlMax = 2048;
+
 export const updateTopicFinishDateResponseDepartmentServiceHeadDailyBusinessPercentMin = 0;
 export const updateTopicFinishDateResponseDepartmentServiceHeadDailyBusinessPercentMax = 100;
 
@@ -2544,6 +2576,7 @@ export const UpdateTopicFinishDateResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string(),
+  "documentationUrl": zod.string().url().max(updateTopicFinishDateResponseDocumentationUrlMax).nullish(),
   "department": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -2809,6 +2842,8 @@ export const ValidateTopicBody = zod.object({
   "note": zod.string().max(validateTopicBodyNoteMax).nullish()
 })
 
+export const validateTopicResponseDocumentationUrlMax = 2048;
+
 export const validateTopicResponseDepartmentServiceHeadDailyBusinessPercentMin = 0;
 export const validateTopicResponseDepartmentServiceHeadDailyBusinessPercentMax = 100;
 
@@ -2881,6 +2916,7 @@ export const ValidateTopicResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string(),
+  "documentationUrl": zod.string().url().max(validateTopicResponseDocumentationUrlMax).nullish(),
   "department": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -3052,6 +3088,8 @@ export const ValidateTopicBreakGlassBody = zod.object({
   "notifyResponsible": zod.boolean().default(validateTopicBreakGlassBodyNotifyResponsibleDefault)
 })
 
+export const validateTopicBreakGlassResponseDocumentationUrlMax = 2048;
+
 export const validateTopicBreakGlassResponseDepartmentServiceHeadDailyBusinessPercentMin = 0;
 export const validateTopicBreakGlassResponseDepartmentServiceHeadDailyBusinessPercentMax = 100;
 
@@ -3124,6 +3162,7 @@ export const ValidateTopicBreakGlassResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string(),
+  "documentationUrl": zod.string().url().max(validateTopicBreakGlassResponseDocumentationUrlMax).nullish(),
   "department": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -3289,6 +3328,8 @@ export const AssignTopicBody = zod.object({
   "memberId": zod.string().nullable()
 })
 
+export const assignTopicResponseDocumentationUrlMax = 2048;
+
 export const assignTopicResponseDepartmentServiceHeadDailyBusinessPercentMin = 0;
 export const assignTopicResponseDepartmentServiceHeadDailyBusinessPercentMax = 100;
 
@@ -3361,6 +3402,7 @@ export const AssignTopicResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "description": zod.string(),
+  "documentationUrl": zod.string().url().max(assignTopicResponseDocumentationUrlMax).nullish(),
   "department": zod.object({
   "id": zod.string(),
   "name": zod.string(),

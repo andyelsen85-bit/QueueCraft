@@ -81,6 +81,7 @@ import {
   Calendar,
   CheckCircle2,
   FileText,
+  ExternalLink,
   FileWarning,
   HelpCircle,
   AlertTriangle,
@@ -146,6 +147,7 @@ export function TopicDetail() {
   const [validationOpen, setValidationOpen] = React.useState(false);
   const [breakGlassOpen, setBreakGlassOpen] = React.useState(false);
   const [editTopicOpen, setEditTopicOpen] = React.useState(false);
+  const [editTopicError, setEditTopicError] = React.useState("");
   const [deleteError, setDeleteError] = React.useState("");
   const [assignmentError, setAssignmentError] = React.useState("");
   const [allocationError, setAllocationError] = React.useState("");
@@ -188,6 +190,15 @@ export function TopicDetail() {
       z.object({
         title: z.string().min(3).max(160),
         description: z.string().min(3).max(2000),
+        documentationUrl: z.string().max(2048).refine((value) => {
+          if (!value.trim()) return true;
+          try {
+            const url = new URL(value.trim());
+            return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password;
+          } catch {
+            return false;
+          }
+        }, "Enter a valid HTTP or HTTPS URL without credentials"),
         priority: z.enum(["P1", "P2", "P3", "P4"]),
         estimatedStartDate: z.string().optional().nullable(),
         estimatedFinishDate: z.string().optional().nullable(),
@@ -215,6 +226,7 @@ export function TopicDetail() {
       editTopicForm.reset({
         title: topic.title,
         description: topic.description,
+        documentationUrl: topic.documentationUrl ?? "",
         priority: topic.priority as any,
         estimatedStartDate: dateInputValue(topic.estimatedStartDate),
         estimatedFinishDate: dateInputValue(topic.estimatedFinishDate),
@@ -224,11 +236,13 @@ export function TopicDetail() {
   }, [topic, editTopicOpen, editTopicForm]);
 
   const onEditTopic = (data: any) => {
+    setEditTopicError("");
     updateTopic.mutate(
       {
         topicId: topicId!,
         data: {
           ...data,
+          documentationUrl: data.documentationUrl?.trim() || null,
           estimatedEffortHours: data.estimatedEffortHours || null,
           estimatedStartDate: data.estimatedStartDate || null,
           estimatedFinishDate: data.estimatedFinishDate || null,
@@ -239,6 +253,7 @@ export function TopicDetail() {
           setEditTopicOpen(false);
           invalidateData();
         },
+        onError: (error) => setEditTopicError(error instanceof Error ? error.message : "Could not save topic."),
       },
     );
   };
@@ -565,6 +580,18 @@ export function TopicDetail() {
             </span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight">{topic.title}</h1>
+          {topic.documentationUrl && (
+            <a
+              href={topic.documentationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex max-w-full items-center gap-2 text-sm font-medium text-primary underline underline-offset-4 hover:text-primary/80"
+            >
+              <ExternalLink className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="shrink-0">Documentation:</span>
+              <span className="min-w-0 truncate">{topic.documentationUrl}</span>
+            </a>
+          )}
           <div className="flex flex-wrap items-center gap-4 text-sm font-mono bg-muted/50 p-3 rounded-sm border inline-flex">
             <div>
               <span className="text-muted-foreground">Dept:</span>{" "}
@@ -727,7 +754,10 @@ export function TopicDetail() {
             </Button>
           )}
 
-          <Dialog open={editTopicOpen} onOpenChange={setEditTopicOpen}>
+          <Dialog open={editTopicOpen} onOpenChange={(open) => {
+            setEditTopicOpen(open);
+            if (!open) setEditTopicError("");
+          }}>
             <DialogTrigger asChild>
               <Button variant="outline" size="icon" title="Edit Topic">
                 <Pencil className="h-4 w-4" />
@@ -738,6 +768,7 @@ export function TopicDetail() {
                 <DialogTitle>Edit Topic</DialogTitle>
               </DialogHeader>
               <Form {...editTopicForm}>
+                {editTopicError && <p role="alert" className="text-sm text-destructive">{editTopicError}</p>}
                 <form
                   onSubmit={editTopicForm.handleSubmit(onEditTopic)}
                   className="space-y-4"
@@ -763,6 +794,24 @@ export function TopicDetail() {
                         <FormLabel>Description</FormLabel>
                         <FormControl>
                           <Textarea {...field} className="min-h-[150px]" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editTopicForm.control}
+                    name="documentationUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Documentation URL (optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="url"
+                            placeholder="https://example.com/documentation"
+                            {...field}
+                            value={field.value ?? ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

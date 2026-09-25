@@ -977,6 +977,7 @@ components:
         id: { type: string }
         title: { type: string }
         description: { type: string }
+        documentationUrl: { type: ["string", "null"], format: uri, maxLength: 2048 }
         department:
           $ref: "#/components/schemas/Department"
         role:
@@ -1085,6 +1086,7 @@ components:
       properties:
         title: { type: string, minLength: 3, maxLength: 160 }
         description: { type: string, minLength: 3, maxLength: 2000 }
+        documentationUrl: { type: ["string", "null"], format: uri, maxLength: 2048 }
         priority:
           $ref: "#/components/schemas/TopicPriority"
         estimatedStartDate:
