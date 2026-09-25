@@ -42,3 +42,17 @@ mtime_ms = 1790319932933
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:e2c07961-875e-4f9b-8be5-89e60317d03d/74532c91-242f-4ae8-b085-76078ba98b45/6b10d775-f62f-4024-bfba-3e909335ba16"
 storage_version_token = "1790319984613409"
 content_type = "text/html"
+
+[[outputs]]
+id = "_LWaEbqNobDCIMpvgInjM"
+uri = "file://deliverables/queuecraft-bau-intake.docx"
+type = "word_document"
+title = "QueueCraft BAU intake form (Word)"
+description = "Editable Word document for recurring BAU work and a names-only list of ongoing topics; users can add table rows in Word."
+logical_id = "c1704a65-98cd-4ece-b94d-087af906b1d9"
+content_hash = "sha256:3010f5b12b2fc942ee0d8d061461dfbf82e0e5bc515e9fa39da639a822c9d5d8"
+size = 4115
+mtime_ms = 1790320327189
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:e2c07961-875e-4f9b-8be5-89e60317d03d/c1704a65-98cd-4ece-b94d-087af906b1d9/f4313a48-d8b9-4dcf-8778-06ccf0be9dbb"
+storage_version_token = "1790320354422795"
+content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
