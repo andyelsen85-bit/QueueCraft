@@ -35,6 +35,8 @@ export * from './memberStatus';
 export * from './memberUpdate';
 export * from './memberUpdateStatus';
 export * from './milestone';
+export * from './milestoneAllocation';
+export * from './milestoneAllocationInput';
 export * from './milestoneInput';
 export * from './milestoneStatus';
 export * from './milestoneUpdate';

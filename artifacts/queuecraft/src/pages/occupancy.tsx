@@ -180,7 +180,7 @@ export function Occupancy() {
             Occupancy Overview
           </h1>
           <p className="text-muted-foreground mt-1">
-            Review team capacity, BAU commitments, and topic allocations by week
+            Review team capacity, BAU commitments, and milestone occupancy by week
             or month.
           </p>
         </div>
@@ -458,7 +458,7 @@ export function Occupancy() {
                       </div>
                       {allocations.length === 0 ? (
                         <div className="text-sm text-muted-foreground p-3 border border-dashed rounded-sm text-center bg-muted/10">
-                          No topics allocated for this {view}.
+                          No milestones allocated for this {view}.
                         </div>
                       ) : (
                         <div className="space-y-2">
@@ -479,9 +479,7 @@ export function Occupancy() {
                                 className="flex items-center justify-between p-3 rounded-sm border bg-background hover:border-primary/50 transition-colors"
                               >
                                 <span className="text-sm font-medium truncate pr-4">
-                                  {topic.allocationType === "milestone"
-                                    ? "Milestone · "
-                                    : "Topic · "}
+                                  Milestone ·{" "}
                                   {topic.title}
                                 </span>
                                  <span
@@ -503,12 +501,10 @@ export function Occupancy() {
                                  <span
                                    className="rounded-sm border px-1 font-bold"
                                    style={occupancyStyle(
-                                     overview.topicAllocationPercent +
-                                       (overview.milestoneAllocationPercent ?? 0),
+                                     overview.milestoneAllocationPercent ?? 0,
                                    )}
                                  >
-                                  {overview.topicAllocationPercent +
-                                    (overview.milestoneAllocationPercent ?? 0)}
+                                  {overview.milestoneAllocationPercent ?? 0}
                                   %
                                 </span>
                               </div>
@@ -532,13 +528,10 @@ export function Occupancy() {
                     <div
                       className="h-full transition-all"
                       style={{
-                        ...occupancyStyle(
-                          overview.topicAllocationPercent +
-                            (overview.milestoneAllocationPercent ?? 0),
-                        ),
-                        width: `${Math.max(0, Math.min(100 - overview.dailyBusinessPercent, overview.topicAllocationPercent + (overview.milestoneAllocationPercent ?? 0)))}%`,
+                        ...occupancyStyle(overview.milestoneAllocationPercent ?? 0),
+                        width: `${Math.max(0, Math.min(100 - overview.dailyBusinessPercent, overview.milestoneAllocationPercent ?? 0))}%`,
                       }}
-                      title={`Topics and milestones: ${overview.topicAllocationPercent + (overview.milestoneAllocationPercent ?? 0)}%`}
+                      title={`Milestones: ${overview.milestoneAllocationPercent ?? 0}%`}
                     />
                   </div>
                 </CardContent>}

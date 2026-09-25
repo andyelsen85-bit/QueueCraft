@@ -10,6 +10,7 @@ import {
   db,
   departmentsTable,
   membersTable,
+  milestoneAllocationsTable,
   milestonesTable,
   notificationOutboxTable,
   notificationRulesTable,
@@ -35,6 +36,7 @@ export const BACKUP_TABLES = [
   ["topics", topicsTable],
   ["topic_collaborators", topicCollaboratorsTable],
   ["milestones", milestonesTable],
+  ["milestone_allocations", milestoneAllocationsTable],
   ["collaborator_milestones", collaboratorMilestonesTable],
   ["topic_finish_date_revisions", topicFinishDateRevisionsTable],
   ["topic_allocations", topicAllocationsTable],
@@ -93,7 +95,7 @@ export function validateBackup(value: unknown): QueueCraftBackup {
   // Accept both earlier v2 shapes: the pre-digest backup, and the first
   // digest implementation before topic/actor context was added.
   const previousManifest = BACKUP_MANIFEST
-    .filter((entry) => entry.name !== "notification_settings")
+    .filter((entry) => entry.name !== "notification_settings" && entry.name !== "milestone_allocations")
     .map((entry) => ({
       ...entry,
       columns: entry.columns.filter((column) =>
@@ -101,7 +103,8 @@ export function validateBackup(value: unknown): QueueCraftBackup {
         && !(entry.name === "notification_rules" && column.key === "recipientGroups"),
       ),
     }));
-  const digestPreviousManifest = BACKUP_MANIFEST.map((entry) => ({
+  const digestPreviousManifest = BACKUP_MANIFEST.filter((entry) =>
+    entry.name !== "milestone_allocations").map((entry) => ({
     ...entry,
     columns: entry.columns.filter((column) =>
       !(entry.name === "notification_outbox" && ["topicTitle", "actorName"].includes(column.key)),
@@ -113,14 +116,17 @@ export function validateBackup(value: unknown): QueueCraftBackup {
   const previousWithSettings = JSON.stringify(inputManifest) === JSON.stringify(digestPreviousManifest)
     && typeof c.fingerprint === "string"
     && c.fingerprint === createHash("sha256").update(JSON.stringify(inputManifest)).digest("hex");
-  const previousShape = previousNoSettings || previousWithSettings;
+  const priorMilestoneManifest = BACKUP_MANIFEST.filter((entry) => entry.name !== "milestone_allocations");
+  const previousMilestoneShape =
+    JSON.stringify(inputManifest) === JSON.stringify(priorMilestoneManifest) &&
+    c.fingerprint === createHash("sha256").update(JSON.stringify(inputManifest)).digest("hex");
+  const previousShape = previousNoSettings || previousWithSettings || previousMilestoneShape;
   if (!currentManifest && !previousShape)
     throw new Error("Backup schema manifest does not match this application");
   const tables = { ...(c.tables as Record<string, unknown>) };
   if (previousShape) {
-    const previousTableNames = previousNoSettings
-      ? [...tableNames].filter((name) => name !== "notification_settings")
-      : [...tableNames];
+    const previousTableNames = [...tableNames].filter((name) =>
+      name !== "milestone_allocations" && (!previousNoSettings || name !== "notification_settings"));
     const previousKeys = Object.keys(tables);
     if (previousKeys.length !== previousTableNames.length || previousKeys.some((key) => !previousTableNames.some((name) => name === key))) {
       throw new Error("Backup table coverage does not match the previous schema");
@@ -131,6 +137,7 @@ export function validateBackup(value: unknown): QueueCraftBackup {
       )) throw new Error(`Backup table ${name} contains an invalid row`);
     }
     if (previousNoSettings) tables["notification_settings"] = [];
+    tables["milestone_allocations"] = [];
     tables["notification_rules"] = (tables["notification_rules"] as Record<string, unknown>[]).map((row) => ({
       ...row,
       recipientGroups: row.recipientGroups ?? [
@@ -225,6 +232,7 @@ const deleteOrder = [
   notificationRulesTable,
   notificationSettingsTable,
   collaboratorMilestonesTable,
+  milestoneAllocationsTable,
   topicAllocationsTable,
   topicFinishDateRevisionsTable,
   activityTable,

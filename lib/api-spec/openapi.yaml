@@ -237,32 +237,12 @@ paths:
     get:
       operationId: getTopicAllocations
       tags: [topics]
-      summary: Get member allocations for a topic
+      summary: Get historical topic-level allocations (read-only; not counted in occupancy)
       parameters:
         - $ref: "#/components/parameters/TopicId"
       responses:
         "200":
           description: Topic allocations
-          content:
-            application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/TopicAllocation" }
-    put:
-      operationId: replaceTopicAllocations
-      tags: [topics]
-      summary: Replace member allocations for a topic
-      parameters:
-        - $ref: "#/components/parameters/TopicId"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TopicAllocationReplace"
-      responses:
-        "200":
-          description: Updated weekly allocations
           content:
             application/json:
               schema:
@@ -935,7 +915,7 @@ components:
           items: { type: string }
     Milestone:
       type: object
-      required: [id, title, status]
+      required: [id, title, status, allocations]
       properties:
         id: { type: string }
         title: { type: string }
@@ -953,11 +933,27 @@ components:
             - $ref: "#/components/schemas/Member"
             - type: "null"
         workloadPercent: { type: integer, minimum: 0, maximum: 100 }
+        allocations:
+          type: array
+          items: { $ref: "#/components/schemas/MilestoneAllocation" }
         completionNote:
           type: ["string", "null"]
         completedAt:
           type: ["string", "null"]
           format: date-time
+    MilestoneAllocation:
+      type: object
+      required: [member, allocationPercent]
+      properties:
+        member:
+          $ref: "#/components/schemas/Member"
+        allocationPercent: { type: integer, minimum: 1, maximum: 100 }
+    MilestoneAllocationInput:
+      type: object
+      required: [memberId, allocationPercent]
+      properties:
+        memberId: { type: string }
+        allocationPercent: { type: integer, minimum: 1, maximum: 100 }
     Topic:
       type: object
       required:
@@ -1138,7 +1134,9 @@ components:
           format: date
         assigneeId:
           type: ["string", "null"]
-        workloadPercent: { type: integer, minimum: 0, maximum: 100, default: 0 }
+        allocations:
+          type: array
+          items: { $ref: "#/components/schemas/MilestoneAllocationInput" }
     MilestoneUpdate:
       type: object
       properties:
@@ -1154,7 +1152,9 @@ components:
           format: date
         assigneeId:
           type: ["string", "null"]
-        workloadPercent: { type: integer, minimum: 0, maximum: 100 }
+        allocations:
+          type: array
+          items: { $ref: "#/components/schemas/MilestoneAllocationInput" }
         completionNote: { type: ["string", "null"], maxLength: 1000 }
     FinishDateUpdate:
       type: object

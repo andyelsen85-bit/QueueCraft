@@ -4,3 +4,4 @@
 - [Isolated CI database checks](isolated-ci-database.md) — reproduce database-mutating CI tests on a disposable local PostgreSQL instance, never the app's development database.
 - [BAU legacy values on publish](bau-publish-backfill.md) — schema-only publish may skip data backfill; treat old scalar BAU as a named task until edited.
 - [Urgent security mail and digests](urgent-security-mail.md) — keep break-glass alerts immediate and outside user-clearable digest queues.
+- [Milestone occupancy transition](milestone-occupancy.md) — old topic-level allocations remain historical, never counted or automatically distributed to milestones.

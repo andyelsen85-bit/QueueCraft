@@ -50,7 +50,6 @@ import type {
   Session,
   Topic,
   TopicAllocation,
-  TopicAllocationReplace,
   TopicCollaborator,
   TopicDetail,
   TopicFilters,
@@ -1231,7 +1230,7 @@ export const getGetTopicAllocationsUrl = (topicId: string,) => {
 }
 
 /**
- * @summary Get member allocations for a topic
+ * @summary Get historical topic-level allocations (read-only; not counted in occupancy)
  */
 export const getTopicAllocations = async (topicId: string, options?: Parameters<typeof customFetch>[1]): Promise<TopicAllocation[]> => {
 
@@ -1278,7 +1277,7 @@ export type GetTopicAllocationsQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Get member allocations for a topic
+ * @summary Get historical topic-level allocations (read-only; not counted in occupancy)
  */
 
 export function useGetTopicAllocations<TData = Awaited<ReturnType<typeof getTopicAllocations>>, TError = ErrorType<unknown>>(
@@ -1298,95 +1297,6 @@ export function useGetTopicAllocations<TData = Awaited<ReturnType<typeof getTopi
 
 
 
-
-export const getReplaceTopicAllocationsUrl = (topicId: string,) => {
-
-
-
-
-  return `/api/topics/${topicId}/allocations`
-}
-
-/**
- * @summary Replace member allocations for a topic
- */
-export const replaceTopicAllocations = async (topicId: string,
-    topicAllocationReplace: TopicAllocationReplace, options?: Parameters<typeof customFetch>[1]): Promise<TopicAllocation[]> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<TopicAllocation[]>(getReplaceTopicAllocationsUrl(topicId),
-  {
-    ...options,
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(topicAllocationReplace)
-  }
-);}
-
-
-
-
-
-export const getReplaceTopicAllocationsMutationKey = () => ['replaceTopicAllocations'] as const;
-
-export const getReplaceTopicAllocationsMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceTopicAllocations>>, TError,ReplaceTopicAllocationsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof replaceTopicAllocations>>, TError,ReplaceTopicAllocationsMutationVariables, TContext> => {
-
-const mutationKey = getReplaceTopicAllocationsMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof replaceTopicAllocations>>, ReplaceTopicAllocationsMutationVariables> = (props) => {
-          const {topicId,data} = props ?? {};
-
-          return  replaceTopicAllocations(topicId,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type ReplaceTopicAllocationsMutationResult = NonNullable<Awaited<ReturnType<typeof replaceTopicAllocations>>>
-    export type ReplaceTopicAllocationsMutationBody = BodyType<TopicAllocationReplace>
-    export type ReplaceTopicAllocationsMutationError = ErrorType<unknown>
-    export type ReplaceTopicAllocationsMutationVariables = {topicId: string;data: BodyType<TopicAllocationReplace>}
-
-    /**
- * @summary Replace member allocations for a topic
- */
-export const useReplaceTopicAllocations = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceTopicAllocations>>, TError,ReplaceTopicAllocationsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof replaceTopicAllocations>>,
-        TError,
-        ReplaceTopicAllocationsMutationVariables,
-        TContext
-      > => {
-      return useMutation(getReplaceTopicAllocationsMutationOptions(options));
-    }
 
 export const getValidateTopicUrl = (topicId: string,) => {
 

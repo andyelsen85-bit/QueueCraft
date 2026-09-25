@@ -275,6 +275,15 @@ export interface TopicCollaborator {
   milestoneIds?: string[];
 }
 
+export interface MilestoneAllocation {
+  member: Member;
+  /**
+     * @minimum 1
+     * @maximum 100
+     */
+  allocationPercent: number;
+}
+
 export interface Milestone {
   id: string;
   title: string;
@@ -291,10 +300,20 @@ export interface Milestone {
      * @maximum 100
      */
   workloadPercent?: number;
+  allocations: MilestoneAllocation[];
   /** @nullable */
   completionNote?: string | null;
   /** @nullable */
   completedAt?: string | null;
+}
+
+export interface MilestoneAllocationInput {
+  memberId: string;
+  /**
+     * @minimum 1
+     * @maximum 100
+     */
+  allocationPercent: number;
 }
 
 export interface Topic {
@@ -483,11 +502,7 @@ export interface MilestoneInput {
   targetDate: string;
   /** @nullable */
   assigneeId?: string | null;
-  /**
-     * @minimum 0
-     * @maximum 100
-     */
-  workloadPercent?: number;
+  allocations?: MilestoneAllocationInput[];
 }
 
 export interface MilestoneUpdate {
@@ -508,11 +523,7 @@ export interface MilestoneUpdate {
   targetDate?: string | null;
   /** @nullable */
   assigneeId?: string | null;
-  /**
-     * @minimum 0
-     * @maximum 100
-     */
-  workloadPercent?: number;
+  allocations?: MilestoneAllocationInput[];
   /**
      * @maxLength 1000
      * @nullable

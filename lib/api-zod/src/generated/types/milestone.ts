@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Member } from './member';
+import type { MilestoneAllocation } from './milestoneAllocation';
 import type { MilestoneStatus } from './milestoneStatus';
 
 export interface Milestone {
@@ -24,6 +25,7 @@ export interface Milestone {
      * @maximum 100
      */
   workloadPercent?: number;
+  allocations: MilestoneAllocation[];
   /** @nullable */
   completionNote?: string | null;
   /** @nullable */

@@ -14,12 +14,9 @@ import {
   useUpdateMilestone,
   useDeleteMilestone,
   useListMembers,
-  useGetTopicAllocations,
-  useReplaceTopicAllocations,
   getGetTopicQueryKey,
   getListTopicsQueryKey,
   getGetValidationQueueQueryKey,
-  getGetTopicAllocationsQueryKey,
   getGetOccupancyOverviewQueryKey,
   getGetMyWorkQueryKey,
   getGetDashboardSummaryQueryKey,
@@ -94,13 +91,13 @@ import {
   Check,
   Pencil,
   Trash2,
-  CalendarDays,
   History,
   MoreHorizontal,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { occupancyStyle } from "@/lib/occupancy";
+import { MilestoneAllocationFields } from "@/components/milestone-allocation-fields";
 
 import {
   DropdownMenu,
@@ -111,6 +108,14 @@ import {
 
 const dateInputValue = (value?: string | null) =>
   value ? value.slice(0, 10) : "";
+
+const milestoneAllocationEntries = (values: Record<string, number>) => {
+  if (Object.values(values).some((value) =>
+    !Number.isInteger(value) || value < 0 || value > 100)) return null;
+  return Object.entries(values)
+    .filter(([, allocationPercent]) => allocationPercent > 0)
+    .map(([memberId, allocationPercent]) => ({ memberId, allocationPercent }));
+};
 
 export function TopicDetail() {
   const { topicId } = useParams();
@@ -141,7 +146,6 @@ export function TopicDetail() {
   const updateFinishDate = useUpdateTopicFinishDate();
   const addCollaborator = useAddTopicCollaborator();
   const deleteCollaborator = useDeleteTopicCollaborator();
-  const replaceAllocations = useReplaceTopicAllocations();
 
   const [milestoneOpen, setMilestoneOpen] = React.useState(false);
   const [validationOpen, setValidationOpen] = React.useState(false);
@@ -150,8 +154,9 @@ export function TopicDetail() {
   const [editTopicError, setEditTopicError] = React.useState("");
   const [deleteError, setDeleteError] = React.useState("");
   const [assignmentError, setAssignmentError] = React.useState("");
-  const [allocationError, setAllocationError] = React.useState("");
   const [milestoneError, setMilestoneError] = React.useState("");
+  const [milestoneAllocations, setMilestoneAllocations] = React.useState<Record<string, number>>({});
+  const [editMilestoneAllocations, setEditMilestoneAllocations] = React.useState<Record<string, number>>({});
   const [rescopeOpen, setRescopeOpen] = React.useState(false);
   const [addCollabOpen, setAddCollabOpen] = React.useState(false);
 
@@ -160,21 +165,11 @@ export function TopicDetail() {
     open: boolean;
   } | null>(null);
 
-  const { data: allocations } = useGetTopicAllocations(topicId!, {
-    query: {
-      enabled: !!topicId,
-      queryKey: getGetTopicAllocationsQueryKey(topicId!),
-    },
-  });
-
   const invalidateData = () => {
     queryClient.invalidateQueries({ queryKey: getGetTopicQueryKey(topicId!) });
     queryClient.invalidateQueries({ queryKey: getListTopicsQueryKey() });
     queryClient.invalidateQueries({
       queryKey: getGetValidationQueueQueryKey(),
-    });
-    queryClient.invalidateQueries({
-      queryKey: getGetTopicAllocationsQueryKey(topicId!),
     });
     queryClient.invalidateQueries({
       queryKey: getGetOccupancyOverviewQueryKey(),
@@ -316,26 +311,30 @@ export function TopicDetail() {
 
   // Milestone forms
   const milestoneForm = useForm({
+    defaultValues: {
+      title: "", description: "", beginDate: "", targetDate: "", assigneeId: "none",
+    },
     resolver: zodResolver(
       z.object({
         title: z.string().min(2).max(160),
         description: z.string().optional(),
         beginDate: z.string().min(1),
         targetDate: z.string().min(1),
-        workloadPercent: z.coerce.number().int().min(0).max(100),
         assigneeId: z.string().optional(),
       }),
     ),
   });
 
   const editMilestoneForm = useForm({
+    defaultValues: {
+      title: "", description: "", beginDate: "", targetDate: "", assigneeId: "none",
+    },
     resolver: zodResolver(
       z.object({
         title: z.string().min(2).max(160),
         description: z.string().optional(),
         beginDate: z.string().optional(),
         targetDate: z.string().optional(),
-        workloadPercent: z.coerce.number().int().min(0).max(100),
         assigneeId: z.string().optional(),
       }),
     ),
@@ -350,14 +349,29 @@ export function TopicDetail() {
           description: m.description || "",
           beginDate: dateInputValue(m.beginDate),
           targetDate: dateInputValue(m.targetDate),
-          workloadPercent: m.workloadPercent ?? 0,
           assigneeId: m.assignee?.id || "none",
         });
+        setEditMilestoneAllocations(Object.fromEntries(
+          m.allocations.map((allocation) => [allocation.member.id, allocation.allocationPercent]),
+        ));
       }
     }
   }, [editMilestone, topic, editMilestoneForm]);
 
+  const closeMilestoneForm = () => {
+    setMilestoneOpen(false);
+    milestoneForm.reset();
+    setMilestoneAllocations({});
+    setMilestoneError("");
+  };
+
   const onAddMilestone = (data: any) => {
+    setMilestoneError("");
+    const allocations = milestoneAllocationEntries(milestoneAllocations);
+    if (!allocations) {
+      setMilestoneError("Occupancy must be a whole percentage between 0 and 100.");
+      return;
+    }
     addMilestone.mutate(
       {
         topicId: topicId!,
@@ -366,15 +380,15 @@ export function TopicDetail() {
           assigneeId: data.assigneeId === "none" ? null : data.assigneeId,
           beginDate: data.beginDate,
           targetDate: data.targetDate,
-          workloadPercent: data.workloadPercent,
+          allocations,
         },
       },
       {
         onSuccess: () => {
-          setMilestoneOpen(false);
-          milestoneForm.reset();
+          closeMilestoneForm();
           invalidateData();
         },
+        onError: (error) => setMilestoneError(error instanceof Error ? error.message : "Could not add milestone."),
       },
     );
   };
@@ -382,6 +396,11 @@ export function TopicDetail() {
   const onUpdateMilestoneForm = (data: any) => {
     if (!editMilestone?.id) return;
     setMilestoneError("");
+    const allocations = milestoneAllocationEntries(editMilestoneAllocations);
+    if (!allocations) {
+      setMilestoneError("Occupancy must be a whole percentage between 0 and 100.");
+      return;
+    }
     updateMilestone.mutate(
       {
         milestoneId: editMilestone.id,
@@ -390,7 +409,7 @@ export function TopicDetail() {
           assigneeId: data.assigneeId === "none" ? null : data.assigneeId,
           beginDate: data.beginDate || null,
           targetDate: data.targetDate || null,
-          workloadPercent: data.workloadPercent,
+          allocations,
         },
       },
       {
@@ -425,11 +444,9 @@ export function TopicDetail() {
       await deleteTopic.mutateAsync({ topicId });
       navigate("/topics");
       queryClient.removeQueries({ queryKey: getGetTopicQueryKey(topicId) });
-      queryClient.removeQueries({ queryKey: getGetTopicAllocationsQueryKey(topicId) });
       void queryClient.invalidateQueries({
         predicate: ({ queryKey }) =>
-          queryKey[0] !== getGetTopicQueryKey(topicId)[0] &&
-          queryKey[0] !== getGetTopicAllocationsQueryKey(topicId)[0],
+          queryKey[0] !== getGetTopicQueryKey(topicId)[0],
       });
     } catch (error) {
       setDeleteError(error instanceof Error ? error.message : "Topic could not be deleted.");
@@ -489,49 +506,6 @@ export function TopicDetail() {
     );
   };
 
-  // Allocations state
-  const [allocState, setAllocState] = React.useState<Record<string, number>>(
-    {},
-  );
-
-  React.useEffect(() => {
-    if (allocations) {
-      const st: Record<string, number> = {};
-      allocations.forEach((a) => (st[a.member.id] = a.allocationPercent));
-      setAllocState(st);
-    } else {
-      setAllocState({});
-    }
-  }, [allocations]);
-
-  const onSaveAllocations = () => {
-    setAllocationError("");
-    const participantIds = new Set([
-      topic?.primaryAssignee?.id,
-      ...((topic?.collaborators ?? []).map((entry) => entry.member.id)),
-    ]);
-    const data = Object.entries(allocState)
-      .filter(([memberId]) => participantIds.has(memberId))
-      .filter(([, allocationPercent]) => allocationPercent > 0)
-      .map(([memberId, allocationPercent]) => ({
-        memberId,
-        allocationPercent,
-      }));
-    if (data.some(({ allocationPercent }) =>
-      !Number.isInteger(allocationPercent) || allocationPercent > 100
-    ) || Object.values(allocState).some((allocationPercent) => allocationPercent < 0)) {
-      setAllocationError("Allocations must be whole numbers between 0 and 100.");
-      return;
-    }
-    replaceAllocations.mutate(
-      { topicId: topicId!, data: { allocations: data } },
-      {
-        onSuccess: invalidateData,
-        onError: (error) => setAllocationError(error instanceof Error ? error.message : "Could not save allocations."),
-      },
-    );
-  };
-
   if (isLoading || !topic) {
     return (
       <div className="p-8 space-y-6">
@@ -546,6 +520,15 @@ export function TopicDetail() {
 
   const isPendingValidation = topic.status === "pending_validation";
   const userId = session?.user?.id;
+  const canManageMilestones = Boolean(userId && (
+    userId === topic.creator.id ||
+    userId === topic.primaryAssignee?.id ||
+    topic.collaborators?.some((entry) => entry.member.id === userId) ||
+    userId === topic.role.lead.id ||
+    userId === topic.role.deputy?.id ||
+    userId === topic.department.serviceHead.id ||
+    userId === topic.department.serviceHeadDeputy?.id
+  ));
   const canDeleteTopic = Boolean(
     session?.capabilities?.includes("topic.delete") &&
     userId &&
@@ -962,13 +945,6 @@ export function TopicDetail() {
                 {topic.milestoneCount || 0})
               </TabsTrigger>
               <TabsTrigger
-                value="allocations"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
-              >
-                <CalendarDays className="mr-2 h-4 w-4" />
-                Allocations
-              </TabsTrigger>
-              <TabsTrigger
                 value="activity"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
               >
@@ -983,17 +959,20 @@ export function TopicDetail() {
                   <CardTitle className="text-lg">
                     Tracked Deliverables
                   </CardTitle>
-                  {!isPendingValidation && (
+                  {canManageMilestones && (
                     <Dialog
                       open={milestoneOpen}
-                      onOpenChange={setMilestoneOpen}
+                      onOpenChange={(open) => {
+                        if (open) setMilestoneOpen(true);
+                        else closeMilestoneForm();
+                      }}
                     >
                       <DialogTrigger asChild>
                         <Button size="sm" variant="outline" className="gap-2">
                           <Plus className="h-4 w-4" /> Add Milestone
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>New Milestone</DialogTitle>
                         </DialogHeader>
@@ -1055,32 +1034,12 @@ export function TopicDetail() {
                               />
                               <FormField
                                 control={milestoneForm.control}
-                                name="workloadPercent"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Occupancy %</FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        type="number"
-                                        min={0}
-                                        max={100}
-                                        {...field}
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={milestoneForm.control}
                                 name="assigneeId"
                                 render={({ field }) => (
                                   <FormItem>
                                     <FormLabel>Assignee (Optional)</FormLabel>
                                     <Select
-                                      onValueChange={(value) => {
-                                        field.onChange(value);
-                                        if (value === "none") milestoneForm.setValue("workloadPercent", 0);
-                                      }}
+                                      onValueChange={field.onChange}
                                       value={field.value || "none"}
                                     >
                                       <FormControl>
@@ -1103,15 +1062,25 @@ export function TopicDetail() {
                                 )}
                               />
                             </div>
+                            <MilestoneAllocationFields
+                              participants={allocParticipants}
+                              values={milestoneAllocations}
+                              deferredUntilValidation={isPendingValidation}
+                              onChange={(memberId, value) =>
+                                setMilestoneAllocations((current) => ({ ...current, [memberId]: value }))}
+                            />
+                            {milestoneError && <p role="alert" className="text-sm text-destructive">{milestoneError}</p>}
                             <div className="flex justify-end gap-2 pt-4">
                               <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => setMilestoneOpen(false)}
+                                onClick={closeMilestoneForm}
                               >
                                 Cancel
                               </Button>
-                              <Button type="submit">Add Milestone</Button>
+                              <Button type="submit" disabled={addMilestone.isPending}>
+                                {addMilestone.isPending ? "Saving..." : "Add Milestone"}
+                              </Button>
                             </div>
                           </form>
                         </Form>
@@ -1120,6 +1089,11 @@ export function TopicDetail() {
                   )}
                 </CardHeader>
                 <CardContent className="p-0">
+                  {isPendingValidation && (
+                    <p className="border-b bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                      You can plan milestone occupancy now. It will not count toward anyone’s occupancy until this topic is validated.
+                    </p>
+                  )}
                   {topic.milestones.length === 0 ? (
                     <div className="p-8 text-center text-muted-foreground text-sm">
                       No milestones tracked for this topic.
@@ -1157,19 +1131,20 @@ export function TopicDetail() {
                                   {m.assignee.name}
                                 </span>
                               )}
-                              {(m.workloadPercent ?? 0) > 0 && (
+                              {m.allocations.map((allocation) => (
                                 <span
+                                  key={allocation.member.id}
                                   className="rounded-sm border px-1 font-semibold"
-                                  style={occupancyStyle(m.workloadPercent ?? 0)}
+                                  style={occupancyStyle(allocation.allocationPercent)}
                                 >
-                                  {m.workloadPercent}% occupancy
+                                  {allocation.member.name}: {allocation.allocationPercent}%
                                 </span>
-                              )}
+                              ))}
                             </div>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
                             <StatusBadge status={m.status} />
-                            {!isPendingValidation &&
+                            {!isPendingValidation && canManageMilestones &&
                               m.status !== "completed" && (
                                 <Button
                                   size="sm"
@@ -1182,7 +1157,7 @@ export function TopicDetail() {
                                   <Check className="h-4 w-4 mr-1" /> Mark Done
                                 </Button>
                               )}
-                            {!isPendingValidation && (
+                            {canManageMilestones && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button
@@ -1226,7 +1201,7 @@ export function TopicDetail() {
                   setEditMilestone((prev) => (prev ? { ...prev, open } : null))
                 }
               >
-                <DialogContent>
+                <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Edit Milestone</DialogTitle>
                   </DialogHeader>
@@ -1294,32 +1269,12 @@ export function TopicDetail() {
                         />
                         <FormField
                           control={editMilestoneForm.control}
-                          name="workloadPercent"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Occupancy %</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  max={100}
-                                  {...field}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={editMilestoneForm.control}
                           name="assigneeId"
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Assignee (Optional)</FormLabel>
                               <Select
-                                onValueChange={(value) => {
-                                  field.onChange(value);
-                                  if (value === "none") editMilestoneForm.setValue("workloadPercent", 0);
-                                }}
+                              onValueChange={field.onChange}
                                 value={field.value || "none"}
                               >
                                 <FormControl>
@@ -1342,6 +1297,17 @@ export function TopicDetail() {
                           )}
                         />
                       </div>
+                      <MilestoneAllocationFields
+                        participants={Array.from(new Map([
+                          ...allocParticipants,
+                          ...(topic.milestones.find((milestone) => milestone.id === editMilestone?.id)
+                            ?.allocations.map((allocation) => allocation.member) ?? []),
+                        ].map((member) => [member.id, member] as const)).values())}
+                        values={editMilestoneAllocations}
+                        deferredUntilValidation={isPendingValidation}
+                        onChange={(memberId, value) =>
+                          setEditMilestoneAllocations((current) => ({ ...current, [memberId]: value }))}
+                      />
                       {milestoneError && <p role="alert" className="text-sm text-destructive">{milestoneError}</p>}
                       <div className="flex justify-end gap-2 pt-4">
                         <Button
@@ -1359,112 +1325,24 @@ export function TopicDetail() {
               </Dialog>
             </TabsContent>
 
-            <TabsContent value="allocations">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-border/50">
-                  <div>
-                    <CardTitle className="text-lg">Topic Allocations</CardTitle>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Workload applies for the full topic period:{" "}
-                      {dateInputValue(topic.estimatedStartDate) ||
-                        "start not set"}{" "}
-                      –{" "}
-                      {dateInputValue(
-                        topic.estimatedFinishDate ?? topic.targetDate,
-                      ) || "end not set"}
-                      .
-                    </p>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                  {allocParticipants.length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground text-sm">
-                      Assign members or add collaborators to manage their weekly
-                      allocations.
-                    </div>
-                  ) : (
-                    <div className="p-4 space-y-4">
-                      {allocParticipants.map((member) => (
-                        <div
-                          key={member.id}
-                          className="flex items-center gap-4 border p-3 rounded-sm"
-                        >
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback>{member.initials}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="font-semibold text-sm">
-                              {member.name}
-                            </div>
-                            <div className="text-xs text-muted-foreground font-mono">
-                              BAU: {member.dailyBusinessPercent ?? 0}%
-                            </div>
-                            {member.dailyBusinessTasks.length > 0 && (
-                              <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
-                                {member.dailyBusinessTasks.map((task, index) => (
-                                  <span key={`${task.name}-${index}`}>{task.name}: {task.percent}%</span>
-                                ))}
-                              </div>
-                            )}
-                            {!allocations?.some((entry) => entry.member.id === member.id) && (
-                              <div className="text-xs text-muted-foreground">No allocation saved</div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              min="0"
-                              max="100"
-                              step="1"
-                              aria-label={`${member.name} allocation percent`}
-                              className="w-[80px]"
-                              value={allocState[member.id] ?? 0}
-                              onChange={(e) =>
-                                setAllocState({
-                                  ...allocState,
-                                  [member.id]: Number(e.target.value),
-                                })
-                              }
-                            />
-                            <span className="text-muted-foreground text-sm">
-                              %
-                            </span>
-                            {(allocState[member.id] ?? 0) > 0 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setAllocState((previous) => ({ ...previous, [member.id]: 0 }))}
-                              >
-                                Clear
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      <p className="text-xs text-muted-foreground">
-                        Set an allocation to 0 and save to remove it. Members stay assigned until you change their assignment.
-                      </p>
-                      {allocationError && <p role="alert" className="text-sm text-destructive">{allocationError}</p>}
-                      <div className="flex justify-end pt-2">
-                        <Button
-                          onClick={onSaveAllocations}
-                          disabled={replaceAllocations.isPending}
-                        >
-                          {replaceAllocations.isPending
-                            ? "Saving..."
-                            : "Save Allocations"}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
             <TabsContent value="activity">
               <Card>
                 <CardContent className="p-0">
+                  {(topic.allocations?.length ?? 0) > 0 && (
+                    <div className="border-b p-4 text-sm">
+                      <div className="font-medium">Previous topic-level allocations</div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Kept for reference only. These percentages no longer count toward occupancy.
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {topic.allocations?.map((allocation) => (
+                          <span key={allocation.member.id} className="rounded-sm border px-2 py-1">
+                            {allocation.member.name}: {allocation.allocationPercent}%
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="h-[400px] overflow-auto p-6 space-y-6">
                     {topic.activity.length === 0 ? (
                       <div className="text-center text-sm text-muted-foreground">
@@ -1558,7 +1436,7 @@ export function TopicDetail() {
               <div>
                 <div className="flex items-center justify-between text-xs font-mono text-muted-foreground mb-2 uppercase tracking-wide">
                   <span>Collaborators</span>
-                  {!isPendingValidation && (
+                  {canManageMilestones && (
                     <Dialog
                       open={addCollabOpen}
                       onOpenChange={setAddCollabOpen}

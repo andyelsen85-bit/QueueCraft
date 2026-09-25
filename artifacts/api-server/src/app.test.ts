@@ -445,7 +445,7 @@ describe("QueueCraft security and preference flows", () => {
 
   test("accepts the immediately previous notification backup schema", () => {
     const previousManifest = BACKUP_MANIFEST
-      .filter((entry) => entry.name !== "notification_settings")
+      .filter((entry) => entry.name !== "notification_settings" && entry.name !== "milestone_allocations")
       .map((entry) => ({
         ...entry,
         columns: entry.columns.filter((column) =>
@@ -898,7 +898,7 @@ describe("QueueCraft security and preference flows", () => {
     }
   });
 
-  test("can reassign and clear owners, allocations, and collaborators already set on a topic", async () => {
+  test("preserves historical topic allocations when owners and collaborators change", async () => {
     const manager = request.agent(app);
     const session = await manager.get("/api/session").expect(200);
     const actorId = session.body.user.id as string;
@@ -939,8 +939,6 @@ describe("QueueCraft security and preference flows", () => {
       const url = `/api/topics/${id}`;
       const assign = (memberId: string | null) =>
         manager.post(`${url}/assign`).set("x-csrf-token", csrf).send({ memberId });
-      const allocate = (allocations: { memberId: string; allocationPercent: number }[]) =>
-        manager.put(`${url}/allocations`).set("x-csrf-token", csrf).send({ allocations });
       const getAllocations = async () =>
         (await manager.get(`${url}/allocations`).expect(200)).body as { member: { id: string }; allocationPercent: number }[];
 
@@ -952,14 +950,13 @@ describe("QueueCraft security and preference flows", () => {
       await manager.post(`${url}/validate`).set("x-csrf-token", csrf).send({}).expect(200);
 
       assert.equal((await assign(actorId).expect(200)).body.status, "in_progress");
-      await allocate([{ memberId: actorId, allocationPercent: 30 }]).expect(200);
-      await allocate([{ memberId: actorId, allocationPercent: 45 }]).expect(200);
-      assert.equal((await getAllocations())[0].allocationPercent, 45);
-      await allocate([]).expect(200);
-      assert.deepEqual(await getAllocations(), []);
-      await allocate([{ memberId: actorId, allocationPercent: 20 }]).expect(200);
+      await db.insert(topicAllocationsTable).values({
+        topicId: id, memberId: actorId, allocationPercent: 20,
+      });
+      await manager.put(`${url}/allocations`).set("x-csrf-token", csrf)
+        .send({ allocations: [] }).expect(410);
       assert.equal((await assign(other.id).expect(200)).body.primaryAssignee.id, other.id);
-      assert.deepEqual(await getAllocations(), [], "the previous owner's allocation must be cleared");
+      assert.equal((await getAllocations())[0].allocationPercent, 20);
 
       const milestoneId = randomUUID();
       await db.insert(milestonesTable).values({ id: milestoneId, topicId: id, title: "Temporary milestone" });
@@ -967,18 +964,16 @@ describe("QueueCraft security and preference flows", () => {
         .set("x-csrf-token", csrf)
         .send({ memberId: actorId, milestoneIds: [milestoneId] })
         .expect(201);
-      await allocate([
-        { memberId: actorId, allocationPercent: 15 },
-        { memberId: other.id, allocationPercent: 40 },
-      ]).expect(200);
+      await db.insert(topicAllocationsTable).values({
+        topicId: id, memberId: other.id, allocationPercent: 40,
+      });
       await manager.delete(`${url}/collaborators/${collaborator.body.id}`)
         .set("x-csrf-token", csrf).expect(204);
-      assert.equal((await getAllocations()).length, 1);
-      assert.equal((await getAllocations())[0].member.id, other.id);
+      assert.equal((await getAllocations()).length, 2);
       assert.equal((await db.select().from(collaboratorMilestonesTable)
         .where(eq(collaboratorMilestonesTable.collaboratorId, collaborator.body.id))).length, 0);
       assert.equal((await assign(null).expect(200)).body.status, "open");
-      assert.deepEqual(await getAllocations(), []);
+      assert.equal((await getAllocations()).length, 2);
     } finally {
       try {
         if (topicId) await manager.delete(`/api/topics/${topicId}`)
@@ -1118,7 +1113,7 @@ describe("QueueCraft security and preference flows", () => {
     );
   });
 
-  test("applies topic and milestone workload across their date ranges", async () => {
+  test("counts milestone occupancy by date without counting historical topic allocations", async () => {
     const agent = request.agent(app);
     await agent.get("/api/session").expect(200);
     const csrf = await agent.get("/api/auth/csrf").expect(200);
@@ -1141,13 +1136,9 @@ describe("QueueCraft security and preference flows", () => {
         estimatedFinishDate: "2041-01-31",
       })
       .expect(201);
-    await agent
-      .put(`/api/topics/${created.body.id}/allocations`)
-      .set("x-csrf-token", csrf.body.csrfToken)
-      .send({
-        allocations: [{ memberId: "member-andy", allocationPercent: 20 }],
-      })
-      .expect(200);
+    await db.insert(topicAllocationsTable).values({
+      topicId: created.body.id, memberId: "member-andy", allocationPercent: 20,
+    });
     const milestone = await agent
       .post(`/api/topics/${created.body.id}/milestones`)
       .set("x-csrf-token", csrf.body.csrfToken)
@@ -1156,18 +1147,31 @@ describe("QueueCraft security and preference flows", () => {
         beginDate: "2041-01-08",
         targetDate: "2041-01-17",
         assigneeId: "member-andy",
-        workloadPercent: 15,
+        allocations: [{ memberId: "member-andy", allocationPercent: 15 }],
       })
       .expect(201);
+    assert.equal(milestone.body.allocations[0].allocationPercent, 15);
+    const pending = await agent
+      .get("/api/occupancy/overview?startDate=2041-01-13&endDate=2041-01-19")
+      .expect(200);
+    const pendingRow = pending.body.find(
+      (item: { member: { id: string } }) => item.member.id === "member-andy",
+    );
+    assert.equal(pendingRow.milestoneAllocationPercent, 0);
+    assert.equal(pendingRow.totalOccupancyPercent, pendingRow.dailyBusinessPercent);
+    assert.deepEqual(pendingRow.milestones, []);
+    await agent.post(`/api/topics/${created.body.id}/validate`)
+      .set("x-csrf-token", csrf.body.csrfToken).send({}).expect(200);
     const during = await agent
       .get("/api/occupancy/overview?startDate=2041-01-13&endDate=2041-01-19")
       .expect(200);
     const row = during.body.find(
       (item: { member: { id: string } }) => item.member.id === "member-andy",
     );
-    assert.equal(row.topicAllocationPercent, 20);
+    assert.equal(row.topicAllocationPercent, 0);
     assert.equal(row.milestoneAllocationPercent, 11);
-    assert.equal(row.totalOccupancyPercent, row.dailyBusinessPercent + 31);
+    assert.equal(row.totalOccupancyPercent, row.dailyBusinessPercent + 11);
+    assert.deepEqual(row.topics, []);
     const outside = await agent
       .get("/api/occupancy/overview?startDate=2041-02-03&endDate=2041-02-09")
       .expect(200);
@@ -1188,7 +1192,7 @@ describe("QueueCraft security and preference flows", () => {
     await db.delete(topicsTable).where(eq(topicsTable.id, created.body.id));
   });
 
-  test("counts an existing topic allocation without an estimated start date", async () => {
+  test("keeps legacy topic allocations for reference without counting them", async () => {
     const agent = request.agent(app);
     await agent.get("/api/session").expect(200);
     const csrf = await agent.get("/api/auth/csrf").expect(200);
@@ -1222,12 +1226,10 @@ describe("QueueCraft security and preference flows", () => {
       const row = during.body.find(
         (item: { member: { id: string } }) => item.member.id === "member-andy",
       );
-      assert.equal(
-        row.topics.find((item: { topicId: string }) => item.topicId === created.body.id)
-          ?.allocationPercent,
-        35,
-      );
-      assert.ok(row.topicAllocationPercent >= 35);
+      assert.equal((await agent.get(`/api/topics/${created.body.id}/allocations`).expect(200))
+        .body[0].allocationPercent, 35);
+      assert.deepEqual(row.topics, []);
+      assert.equal(row.topicAllocationPercent, 0);
       const after = await agent
         .get("/api/occupancy/overview?startDate=2041-02-03&endDate=2041-02-09")
         .expect(200);
@@ -1242,6 +1244,152 @@ describe("QueueCraft security and preference flows", () => {
       await db.delete(topicAllocationsTable).where(eq(topicAllocationsTable.topicId, created.body.id));
       await db.delete(activityTable).where(eq(activityTable.topicId, created.body.id));
       await db.delete(topicsTable).where(eq(topicsTable.id, created.body.id));
+    }
+  });
+
+  test("allocates multiple collaborators independently on each milestone", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const otherId = randomUUID();
+    const outsiderId = randomUUID();
+    await db.insert(membersTable).values({
+      id: otherId, name: "Milestone collaborator", initials: "MC",
+      email: `milestone-${otherId}@example.invalid`,
+    });
+    await db.insert(membersTable).values({
+      id: outsiderId, name: "Unrelated member", initials: "UM",
+      email: `unrelated-${outsiderId}@example.invalid`,
+    });
+    let topicId: string | undefined;
+    try {
+      const created = await agent.post("/api/topics").set("x-csrf-token", csrf)
+        .send({
+          title: `Multiple milestones ${randomUUID()}`,
+          description: "Temporary topic for per-person milestone occupancy.",
+          departmentId: "dept-platform", roleId: "role-ci-validation",
+          priority: "P3", primaryAssigneeId: "member-andy",
+        }).expect(201);
+      topicId = created.body.id;
+      const path = `/api/topics/${topicId}`;
+      const collaborator = await agent.post(`${path}/collaborators`).set("x-csrf-token", csrf)
+        .send({ memberId: otherId }).expect(201);
+      const first = await agent.post(`${path}/milestones`).set("x-csrf-token", csrf)
+        .send({
+          title: "First delivery", beginDate: "2042-02-01", targetDate: "2042-02-07",
+          allocations: [
+            { memberId: "member-andy", allocationPercent: 25 },
+            { memberId: otherId, allocationPercent: 40 },
+          ],
+        }).expect(201);
+      const second = await agent.post(`${path}/milestones`).set("x-csrf-token", csrf)
+        .send({
+          title: "Second delivery", beginDate: "2042-02-01", targetDate: "2042-02-07",
+          allocations: [{ memberId: otherId, allocationPercent: 20 }],
+        }).expect(201);
+      assert.equal(first.body.allocations.length, 2);
+      assert.equal(second.body.allocations.length, 1);
+      const detail = await agent.get(path).expect(200);
+      assert.equal(detail.body.milestones.find((m: { id: string }) => m.id === first.body.id).allocations.length, 2);
+      const getOverview = async () => (await agent
+        .get("/api/occupancy/overview?startDate=2042-02-01&endDate=2042-02-07")
+        .expect(200)).body;
+      const pending = await getOverview();
+      assert.equal(pending.find((row: { member: { id: string } }) =>
+        row.member.id === "member-andy").milestoneAllocationPercent, 0);
+      assert.equal(pending.find((row: { member: { id: string } }) =>
+        row.member.id === otherId).milestoneAllocationPercent, 0);
+      await agent.post(`${path}/validate`).set("x-csrf-token", csrf).send({}).expect(200);
+      const initial = await getOverview();
+      assert.equal(initial.find((row: { member: { id: string } }) =>
+        row.member.id === "member-andy").milestoneAllocationPercent, 25);
+      assert.equal(initial.find((row: { member: { id: string } }) =>
+        row.member.id === otherId).milestoneAllocationPercent, 60);
+      await agent.post(`${path}/milestones`).set("x-csrf-token", csrf)
+        .send({
+          title: "Duplicate assignment", beginDate: "2042-02-01", targetDate: "2042-02-07",
+          allocations: [
+            { memberId: otherId, allocationPercent: 10 },
+            { memberId: otherId, allocationPercent: 10 },
+          ],
+        }).expect(400);
+      const unallocated = await agent.post(`${path}/milestones`).set("x-csrf-token", csrf)
+        .send({
+          title: "Unrelated assignee", beginDate: "2042-02-01", targetDate: "2042-02-07",
+          assigneeId: outsiderId, allocations: [],
+        }).expect(201);
+      await agent.patch(`/api/milestones/${unallocated.body.id}`).set("x-csrf-token", csrf)
+        .send({ allocations: [{ memberId: outsiderId, allocationPercent: 50 }] })
+        .expect(400);
+      await agent.delete(`${path}/collaborators/${collaborator.body.id}`)
+        .set("x-csrf-token", csrf).expect(409);
+      await agent.patch(`/api/milestones/${first.body.id}`).set("x-csrf-token", csrf)
+        .send({ allocations: [{ memberId: "member-andy", allocationPercent: 30 }] })
+        .expect(200);
+      const changed = await getOverview();
+      assert.equal(changed.find((row: { member: { id: string } }) =>
+        row.member.id === "member-andy").milestoneAllocationPercent, 30);
+      assert.equal(changed.find((row: { member: { id: string } }) =>
+        row.member.id === otherId).milestoneAllocationPercent, 20);
+      await agent.patch(`/api/milestones/${first.body.id}`).set("x-csrf-token", csrf)
+        .send({ allocations: [] }).expect(200);
+      await agent.patch(`/api/milestones/${second.body.id}`).set("x-csrf-token", csrf)
+        .send({ allocations: [] }).expect(200);
+      assert.equal((await getOverview()).find((row: { member: { id: string } }) =>
+        row.member.id === otherId).milestoneAllocationPercent, 0);
+      await agent.delete(`${path}/collaborators/${collaborator.body.id}`)
+        .set("x-csrf-token", csrf).expect(204);
+    } finally {
+      try {
+        if (topicId) await agent.delete(`/api/topics/${topicId}`)
+          .set("x-csrf-token", csrf).expect(204);
+      } finally {
+        await db.delete(membersTable).where(eq(membersTable.id, otherId));
+        await db.delete(membersTable).where(eq(membersTable.id, outsiderId));
+      }
+    }
+  });
+
+  test("preserves legacy single-assignee milestone occupancy until replaced", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const created = await agent.post("/api/topics").set("x-csrf-token", csrf)
+      .send({
+        title: `Legacy milestone ${randomUUID()}`,
+        description: "Temporary topic for legacy milestone occupancy.",
+        departmentId: "dept-platform", roleId: "role-ci-validation",
+        priority: "P3", primaryAssigneeId: "member-andy",
+      }).expect(201);
+    try {
+      const milestoneId = randomUUID();
+      await db.insert(milestonesTable).values({
+        id: milestoneId, topicId: created.body.id, title: "Older milestone",
+        beginDate: "2042-02-01", targetDate: "2042-02-07",
+        assigneeId: "member-andy", workloadPercent: 35,
+      });
+      const detail = await agent.get(`/api/topics/${created.body.id}`).expect(200);
+      assert.equal(detail.body.milestones[0].allocations[0].allocationPercent, 35);
+      const overviewPath = "/api/occupancy/overview?startDate=2042-02-01&endDate=2042-02-07";
+      const pending = await agent.get(overviewPath).expect(200);
+      assert.equal(pending.body.find((row: { member: { id: string } }) =>
+        row.member.id === "member-andy").milestoneAllocationPercent, 0);
+      await agent.post(`/api/topics/${created.body.id}/validate`)
+        .set("x-csrf-token", csrf).send({}).expect(200);
+      const initial = await agent.get(overviewPath).expect(200);
+      assert.equal(initial.body.find((row: { member: { id: string } }) =>
+        row.member.id === "member-andy").milestoneAllocationPercent, 35);
+      await agent.patch(`/api/milestones/${milestoneId}`).set("x-csrf-token", csrf)
+        .send({ assigneeId: null }).expect(409);
+      assert.equal((await agent.get(`/api/topics/${created.body.id}`).expect(200))
+        .body.milestones[0].allocations[0].member.id, "member-andy");
+      await agent.patch(`/api/milestones/${milestoneId}`).set("x-csrf-token", csrf)
+        .send({ allocations: [] }).expect(200);
+      const cleared = await agent.get(overviewPath).expect(200);
+      assert.equal(cleared.body.find((row: { member: { id: string } }) =>
+        row.member.id === "member-andy").milestoneAllocationPercent, 0);
+    } finally {
+      await agent.delete(`/api/topics/${created.body.id}`).set("x-csrf-token", csrf).expect(204);
     }
   });
 

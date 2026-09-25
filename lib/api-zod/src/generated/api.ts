@@ -318,6 +318,16 @@ export const getMyWorkResponseMilestonesItemAssigneeOneDailyBusinessTasksItemPer
 export const getMyWorkResponseMilestonesItemWorkloadPercentMin = 0;
 export const getMyWorkResponseMilestonesItemWorkloadPercentMax = 100;
 
+export const getMyWorkResponseMilestonesItemAllocationsItemMemberDailyBusinessPercentMin = 0;
+export const getMyWorkResponseMilestonesItemAllocationsItemMemberDailyBusinessPercentMax = 100;
+
+export const getMyWorkResponseMilestonesItemAllocationsItemMemberDailyBusinessTasksItemNameMax = 120;
+
+export const getMyWorkResponseMilestonesItemAllocationsItemMemberDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseMilestonesItemAllocationsItemMemberDailyBusinessTasksItemPercentMax = 100;
+
+export const getMyWorkResponseMilestonesItemAllocationsItemAllocationPercentMax = 100;
+
 export const getMyWorkResponseCollaborationsItemDocumentationUrlMax = 2048;
 
 export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDailyBusinessPercentMin = 0;
@@ -794,6 +804,24 @@ export const GetMyWorkResponse = zod.object({
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "workloadPercent": zod.number().int().min(getMyWorkResponseMilestonesItemWorkloadPercentMin).max(getMyWorkResponseMilestonesItemWorkloadPercentMax).optional(),
+  "allocations": zod.array(zod.object({
+  "member": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().email(),
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional(),
+  "authProvider": zod.string().nullish(),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseMilestonesItemAllocationsItemMemberDailyBusinessPercentMin).max(getMyWorkResponseMilestonesItemAllocationsItemMemberDailyBusinessPercentMax).optional(),
+  "dailyBusinessTasks": zod.array(zod.object({
+  "name": zod.string().min(1).max(getMyWorkResponseMilestonesItemAllocationsItemMemberDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseMilestonesItemAllocationsItemMemberDailyBusinessTasksItemPercentMin).max(getMyWorkResponseMilestonesItemAllocationsItemMemberDailyBusinessTasksItemPercentMax)
+})).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
+}),
+  "allocationPercent": zod.number().int().min(1).max(getMyWorkResponseMilestonesItemAllocationsItemAllocationPercentMax)
+})),
   "completionNote": zod.string().nullish(),
   "completedAt": zod.coerce.date().nullish()
 })),
@@ -1935,6 +1963,16 @@ export const getTopicResponseTwoMilestonesItemAssigneeOneDailyBusinessTasksItemP
 export const getTopicResponseTwoMilestonesItemWorkloadPercentMin = 0;
 export const getTopicResponseTwoMilestonesItemWorkloadPercentMax = 100;
 
+export const getTopicResponseTwoMilestonesItemAllocationsItemMemberDailyBusinessPercentMin = 0;
+export const getTopicResponseTwoMilestonesItemAllocationsItemMemberDailyBusinessPercentMax = 100;
+
+export const getTopicResponseTwoMilestonesItemAllocationsItemMemberDailyBusinessTasksItemNameMax = 120;
+
+export const getTopicResponseTwoMilestonesItemAllocationsItemMemberDailyBusinessTasksItemPercentMin = 0;
+export const getTopicResponseTwoMilestonesItemAllocationsItemMemberDailyBusinessTasksItemPercentMax = 100;
+
+export const getTopicResponseTwoMilestonesItemAllocationsItemAllocationPercentMax = 100;
+
 export const getTopicResponseTwoAllocationsItemMemberDailyBusinessPercentMin = 0;
 export const getTopicResponseTwoAllocationsItemMemberDailyBusinessPercentMax = 100;
 
@@ -2144,6 +2182,24 @@ export const GetTopicResponse = zod.object({
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "workloadPercent": zod.number().int().min(getTopicResponseTwoMilestonesItemWorkloadPercentMin).max(getTopicResponseTwoMilestonesItemWorkloadPercentMax).optional(),
+  "allocations": zod.array(zod.object({
+  "member": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().email(),
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional(),
+  "authProvider": zod.string().nullish(),
+  "dailyBusinessPercent": zod.number().int().min(getTopicResponseTwoMilestonesItemAllocationsItemMemberDailyBusinessPercentMin).max(getTopicResponseTwoMilestonesItemAllocationsItemMemberDailyBusinessPercentMax).optional(),
+  "dailyBusinessTasks": zod.array(zod.object({
+  "name": zod.string().min(1).max(getTopicResponseTwoMilestonesItemAllocationsItemMemberDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getTopicResponseTwoMilestonesItemAllocationsItemMemberDailyBusinessTasksItemPercentMin).max(getTopicResponseTwoMilestonesItemAllocationsItemMemberDailyBusinessTasksItemPercentMax)
+})).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
+}),
+  "allocationPercent": zod.number().int().min(1).max(getTopicResponseTwoMilestonesItemAllocationsItemAllocationPercentMax)
+})),
   "completionNote": zod.string().nullish(),
   "completedAt": zod.coerce.date().nullish()
 })),
@@ -2732,7 +2788,7 @@ export const UpdateTopicFinishDateResponse = zod.object({
 
 
 /**
- * @summary Get member allocations for a topic
+ * @summary Get historical topic-level allocations (read-only; not counted in occupancy)
  */
 export const GetTopicAllocationsParams = zod.object({
   "topicId": zod.coerce.string()
@@ -2771,60 +2827,6 @@ export const GetTopicAllocationsResponseItem = zod.object({
   "allocationPercent": zod.number().int().min(getTopicAllocationsResponseAllocationPercentMin).max(getTopicAllocationsResponseAllocationPercentMax)
 })
 export const GetTopicAllocationsResponse = zod.array(GetTopicAllocationsResponseItem)
-
-
-/**
- * @summary Replace member allocations for a topic
- */
-export const ReplaceTopicAllocationsParams = zod.object({
-  "topicId": zod.coerce.string()
-})
-
-export const replaceTopicAllocationsBodyAllocationsItemAllocationPercentMin = 0;
-export const replaceTopicAllocationsBodyAllocationsItemAllocationPercentMax = 100;
-
-
-
-export const ReplaceTopicAllocationsBody = zod.object({
-  "allocations": zod.array(zod.object({
-  "memberId": zod.string(),
-  "allocationPercent": zod.number().int().min(replaceTopicAllocationsBodyAllocationsItemAllocationPercentMin).max(replaceTopicAllocationsBodyAllocationsItemAllocationPercentMax)
-}))
-})
-
-export const replaceTopicAllocationsResponseMemberDailyBusinessPercentMin = 0;
-export const replaceTopicAllocationsResponseMemberDailyBusinessPercentMax = 100;
-
-export const replaceTopicAllocationsResponseMemberDailyBusinessTasksItemNameMax = 120;
-
-export const replaceTopicAllocationsResponseMemberDailyBusinessTasksItemPercentMin = 0;
-export const replaceTopicAllocationsResponseMemberDailyBusinessTasksItemPercentMax = 100;
-
-export const replaceTopicAllocationsResponseAllocationPercentMin = 0;
-export const replaceTopicAllocationsResponseAllocationPercentMax = 100;
-
-
-
-export const ReplaceTopicAllocationsResponseItem = zod.object({
-  "topicId": zod.string(),
-  "member": zod.object({
-  "id": zod.string(),
-  "name": zod.string(),
-  "initials": zod.string(),
-  "email": zod.string().email(),
-  "title": zod.string().nullish(),
-  "status": zod.enum(['active', 'disabled']).optional(),
-  "isCio": zod.boolean().optional(),
-  "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(replaceTopicAllocationsResponseMemberDailyBusinessPercentMin).max(replaceTopicAllocationsResponseMemberDailyBusinessPercentMax).optional(),
-  "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(replaceTopicAllocationsResponseMemberDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(replaceTopicAllocationsResponseMemberDailyBusinessTasksItemPercentMin).max(replaceTopicAllocationsResponseMemberDailyBusinessTasksItemPercentMax)
-})).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
-}),
-  "allocationPercent": zod.number().int().min(replaceTopicAllocationsResponseAllocationPercentMin).max(replaceTopicAllocationsResponseAllocationPercentMax)
-})
-export const ReplaceTopicAllocationsResponse = zod.array(ReplaceTopicAllocationsResponseItem)
 
 
 /**
@@ -3624,9 +3626,7 @@ export const addTopicMilestoneBodyTitleMax = 160;
 
 export const addTopicMilestoneBodyDescriptionMax = 1000;
 
-export const addTopicMilestoneBodyWorkloadPercentDefault = 0;
-export const addTopicMilestoneBodyWorkloadPercentMin = 0;
-export const addTopicMilestoneBodyWorkloadPercentMax = 100;
+export const addTopicMilestoneBodyAllocationsItemAllocationPercentMax = 100;
 
 
 
@@ -3636,7 +3636,10 @@ export const AddTopicMilestoneBody = zod.object({
   "beginDate": zod.coerce.date(),
   "targetDate": zod.coerce.date(),
   "assigneeId": zod.string().nullish(),
-  "workloadPercent": zod.number().int().min(addTopicMilestoneBodyWorkloadPercentMin).max(addTopicMilestoneBodyWorkloadPercentMax).default(addTopicMilestoneBodyWorkloadPercentDefault)
+  "allocations": zod.array(zod.object({
+  "memberId": zod.string(),
+  "allocationPercent": zod.number().int().min(1).max(addTopicMilestoneBodyAllocationsItemAllocationPercentMax)
+})).optional()
 })
 
 export const addTopicMilestoneResponseAssigneeOneDailyBusinessPercentMin = 0;
@@ -3649,6 +3652,16 @@ export const addTopicMilestoneResponseAssigneeOneDailyBusinessTasksItemPercentMa
 
 export const addTopicMilestoneResponseWorkloadPercentMin = 0;
 export const addTopicMilestoneResponseWorkloadPercentMax = 100;
+
+export const addTopicMilestoneResponseAllocationsItemMemberDailyBusinessPercentMin = 0;
+export const addTopicMilestoneResponseAllocationsItemMemberDailyBusinessPercentMax = 100;
+
+export const addTopicMilestoneResponseAllocationsItemMemberDailyBusinessTasksItemNameMax = 120;
+
+export const addTopicMilestoneResponseAllocationsItemMemberDailyBusinessTasksItemPercentMin = 0;
+export const addTopicMilestoneResponseAllocationsItemMemberDailyBusinessTasksItemPercentMax = 100;
+
+export const addTopicMilestoneResponseAllocationsItemAllocationPercentMax = 100;
 
 
 
@@ -3675,6 +3688,24 @@ export const AddTopicMilestoneResponse = zod.object({
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "workloadPercent": zod.number().int().min(addTopicMilestoneResponseWorkloadPercentMin).max(addTopicMilestoneResponseWorkloadPercentMax).optional(),
+  "allocations": zod.array(zod.object({
+  "member": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().email(),
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional(),
+  "authProvider": zod.string().nullish(),
+  "dailyBusinessPercent": zod.number().int().min(addTopicMilestoneResponseAllocationsItemMemberDailyBusinessPercentMin).max(addTopicMilestoneResponseAllocationsItemMemberDailyBusinessPercentMax).optional(),
+  "dailyBusinessTasks": zod.array(zod.object({
+  "name": zod.string().min(1).max(addTopicMilestoneResponseAllocationsItemMemberDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(addTopicMilestoneResponseAllocationsItemMemberDailyBusinessTasksItemPercentMin).max(addTopicMilestoneResponseAllocationsItemMemberDailyBusinessTasksItemPercentMax)
+})).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
+}),
+  "allocationPercent": zod.number().int().min(1).max(addTopicMilestoneResponseAllocationsItemAllocationPercentMax)
+})),
   "completionNote": zod.string().nullish(),
   "completedAt": zod.coerce.date().nullish()
 })
@@ -3692,8 +3723,7 @@ export const updateMilestoneBodyTitleMax = 160;
 
 export const updateMilestoneBodyDescriptionMax = 1000;
 
-export const updateMilestoneBodyWorkloadPercentMin = 0;
-export const updateMilestoneBodyWorkloadPercentMax = 100;
+export const updateMilestoneBodyAllocationsItemAllocationPercentMax = 100;
 
 export const updateMilestoneBodyCompletionNoteMax = 1000;
 
@@ -3706,7 +3736,10 @@ export const UpdateMilestoneBody = zod.object({
   "beginDate": zod.coerce.date().nullish(),
   "targetDate": zod.coerce.date().nullish(),
   "assigneeId": zod.string().nullish(),
-  "workloadPercent": zod.number().int().min(updateMilestoneBodyWorkloadPercentMin).max(updateMilestoneBodyWorkloadPercentMax).optional(),
+  "allocations": zod.array(zod.object({
+  "memberId": zod.string(),
+  "allocationPercent": zod.number().int().min(1).max(updateMilestoneBodyAllocationsItemAllocationPercentMax)
+})).optional(),
   "completionNote": zod.string().max(updateMilestoneBodyCompletionNoteMax).nullish()
 })
 
@@ -3720,6 +3753,16 @@ export const updateMilestoneResponseAssigneeOneDailyBusinessTasksItemPercentMax 
 
 export const updateMilestoneResponseWorkloadPercentMin = 0;
 export const updateMilestoneResponseWorkloadPercentMax = 100;
+
+export const updateMilestoneResponseAllocationsItemMemberDailyBusinessPercentMin = 0;
+export const updateMilestoneResponseAllocationsItemMemberDailyBusinessPercentMax = 100;
+
+export const updateMilestoneResponseAllocationsItemMemberDailyBusinessTasksItemNameMax = 120;
+
+export const updateMilestoneResponseAllocationsItemMemberDailyBusinessTasksItemPercentMin = 0;
+export const updateMilestoneResponseAllocationsItemMemberDailyBusinessTasksItemPercentMax = 100;
+
+export const updateMilestoneResponseAllocationsItemAllocationPercentMax = 100;
 
 
 
@@ -3746,6 +3789,24 @@ export const UpdateMilestoneResponse = zod.object({
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "workloadPercent": zod.number().int().min(updateMilestoneResponseWorkloadPercentMin).max(updateMilestoneResponseWorkloadPercentMax).optional(),
+  "allocations": zod.array(zod.object({
+  "member": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().email(),
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional(),
+  "authProvider": zod.string().nullish(),
+  "dailyBusinessPercent": zod.number().int().min(updateMilestoneResponseAllocationsItemMemberDailyBusinessPercentMin).max(updateMilestoneResponseAllocationsItemMemberDailyBusinessPercentMax).optional(),
+  "dailyBusinessTasks": zod.array(zod.object({
+  "name": zod.string().min(1).max(updateMilestoneResponseAllocationsItemMemberDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(updateMilestoneResponseAllocationsItemMemberDailyBusinessTasksItemPercentMin).max(updateMilestoneResponseAllocationsItemMemberDailyBusinessTasksItemPercentMax)
+})).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
+}),
+  "allocationPercent": zod.number().int().min(1).max(updateMilestoneResponseAllocationsItemAllocationPercentMax)
+})),
   "completionNote": zod.string().nullish(),
   "completedAt": zod.coerce.date().nullish()
 })

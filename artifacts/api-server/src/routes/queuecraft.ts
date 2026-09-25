@@ -8,6 +8,7 @@ import {
   collaboratorMilestonesTable,
   departmentsTable,
   membersTable,
+  milestoneAllocationsTable,
   milestonesTable,
   roleMembersTable,
   roleDepartmentsTable,
@@ -85,9 +86,6 @@ import {
   UpdateTopicFinishDateResponse,
   GetTopicAllocationsParams,
   GetTopicAllocationsResponse,
-  ReplaceTopicAllocationsBody,
-  ReplaceTopicAllocationsParams,
-  ReplaceTopicAllocationsResponse,
   DeleteMilestoneParams,
   GetOccupancyOverviewQueryParams,
   GetOccupancyOverviewResponse,
@@ -219,6 +217,7 @@ async function loadSnapshot() {
     collaborators,
     collaboratorMilestones,
     milestones,
+    storedMilestoneAllocations,
     activities,
     allocations,
     finishDateRevisions,
@@ -232,6 +231,7 @@ async function loadSnapshot() {
     db.select().from(topicCollaboratorsTable),
     db.select().from(collaboratorMilestonesTable),
     db.select().from(milestonesTable),
+    db.select().from(milestoneAllocationsTable),
     db.select().from(activityTable).orderBy(desc(activityTable.createdAt)),
     db.select().from(topicAllocationsTable),
     db
@@ -257,6 +257,22 @@ async function loadSnapshot() {
   const roleById = new Map(roles.map((role) => [role.id, role]));
   const member = (id: string | null) =>
     id ? (memberById.get(id) ?? null) : null;
+  // Legacy single-assignee milestone workload remains readable where schema
+  // synchronization has not run data migrations. An edit replaces this fallback.
+  const milestoneAllocations = [
+    ...storedMilestoneAllocations,
+    ...milestones
+      .filter((milestone) =>
+        milestone.assigneeId &&
+        milestone.workloadPercent > 0 &&
+        !storedMilestoneAllocations.some((row) => row.milestoneId === milestone.id)
+      )
+      .map((milestone) => ({
+        milestoneId: milestone.id,
+        memberId: milestone.assigneeId!,
+        allocationPercent: milestone.workloadPercent,
+      })),
+  ];
 
   const buildDepartment = (id: string) => {
     const department = departmentById.get(id);
@@ -306,6 +322,12 @@ async function loadSnapshot() {
     targetDate: milestone.targetDate,
     assignee: member(milestone.assigneeId),
     workloadPercent: milestone.workloadPercent,
+    allocations: milestoneAllocations
+      .filter((allocation) => allocation.milestoneId === milestone.id)
+      .map((allocation) => ({
+        member: member(allocation.memberId),
+        allocationPercent: allocation.allocationPercent,
+      })),
     completionNote: milestone.completionNote,
     completedAt: milestone.completedAt,
   });
@@ -408,6 +430,8 @@ async function loadSnapshot() {
     roleDepartments,
     topics,
     milestones,
+    milestoneAllocations,
+    storedMilestoneAllocations,
     activities,
     collaborators,
     allocations,
@@ -1851,20 +1875,6 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
     return;
   }
   if (
-    current.allocations.some(
-      (allocation) => allocation.topicId === currentTopic.id,
-    ) &&
-    (!nextStart || !nextFinish)
-  ) {
-    res
-      .status(400)
-      .json({
-        error:
-          "Topics with allocations must retain both estimated start and finish dates",
-      });
-    return;
-  }
-  if (
     currentTopic.status === "pending_validation" &&
     body.data.status !== undefined &&
     body.data.status !== "pending_validation"
@@ -2031,97 +2041,19 @@ router.get("/topics/:topicId/allocations", async (req, res): Promise<void> => {
 });
 
 router.put("/topics/:topicId/allocations", async (req, res): Promise<void> => {
-  const params = ReplaceTopicAllocationsParams.safeParse(req.params);
-  const body = ReplaceTopicAllocationsBody.safeParse(req.body);
-  if (!params.success || !body.success) {
-    res.status(400).json({ error: "Invalid topic allocations" });
+  const params = GetTopicAllocationsParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid topic" });
     return;
   }
-  const before = await loadSnapshot();
-  const topic = before.topics.find((item) => item.id === params.data.topicId);
+  const snapshot = await loadSnapshot();
+  const topic = snapshot.topics.find((item) => item.id === params.data.topicId);
   if (!topic) {
     res.status(404).json({ error: "Topic not found" });
     return;
   }
-  if (!requireTopicManager(req, res, topic, before)) return;
-  if (body.data.allocations.length && (!topic.estimatedStartDate || !topic.estimatedFinishDate)) {
-    res
-      .status(400)
-      .json({
-        error:
-          "Topic allocation requires both estimated start and finish dates",
-      });
-    return;
-  }
-  const members = new Map(before.members.map((member) => [member.id, member]));
-  const allocationSummary = (allocations: Array<{ memberId: string; allocationPercent: number }>) => allocations.length
-    ? allocations.map((allocation) => `${members.get(allocation.memberId)?.name ?? allocation.memberId}: ${allocation.allocationPercent}%`).join(", ")
-    : "none";
-  const previousAllocations = before.allocations.filter((allocation) => allocation.topicId === topic.id);
-  const newAllocations = body.data.allocations;
-  const collaboratorIds = new Set(
-    before.collaborators
-      .filter((item) => item.topicId === topic.id)
-      .map((item) => item.memberId),
-  );
-  const seen = new Set<string>();
-  for (const allocation of body.data.allocations) {
-    if (seen.has(allocation.memberId)) {
-      res.status(400).json({ error: "Duplicate allocation member" });
-      return;
-    }
-    seen.add(allocation.memberId);
-    if (!members.has(allocation.memberId)) {
-      res.status(400).json({ error: "Allocation member not found" });
-      return;
-    }
-    if (
-      allocation.memberId !== topic.primaryAssigneeId &&
-      !collaboratorIds.has(allocation.memberId)
-    ) {
-      res
-        .status(400)
-        .json({
-          error:
-            "Allocation member must be the primary assignee or a collaborator",
-        });
-      return;
-    }
-  }
-  await db.transaction(async (tx) => {
-    await tx
-      .delete(topicAllocationsTable)
-      .where(eq(topicAllocationsTable.topicId, topic.id));
-    if (body.data.allocations.length) {
-      await tx.insert(topicAllocationsTable).values(
-        body.data.allocations.map((allocation) => ({
-          topicId: topic.id,
-          memberId: allocation.memberId,
-          allocationPercent: allocation.allocationPercent,
-        })),
-      );
-    }
-    await addActivity(
-      req,
-      topic.id,
-      "Topic allocations replaced",
-      `Allocations changed from [${allocationSummary(previousAllocations)}] to [${allocationSummary(newAllocations)}].`,
-      false,
-      tx,
-    );
-  });
-  const snapshot = await loadSnapshot();
-  res.json(
-    ReplaceTopicAllocationsResponse.parse(
-      snapshot.allocations
-        .filter((allocation) => allocation.topicId === topic.id)
-        .map((allocation) => ({
-          topicId: allocation.topicId,
-          member: snapshot.memberById.get(allocation.memberId),
-          allocationPercent: allocation.allocationPercent,
-        })),
-    ),
-  );
+  if (!requireTopicManager(req, res, topic, snapshot)) return;
+  res.status(410).json({ error: "Topic allocations are read-only history. Set occupancy on each milestone instead." });
 });
 
 router.get("/occupancy/overview", async (req, res): Promise<void> => {
@@ -2156,63 +2088,29 @@ router.get("/occupancy/overview", async (req, res): Promise<void> => {
     );
   };
   const topicById = new Map(snapshot.topics.map((topic) => [topic.id, topic]));
-  const allocationPeriod = (allocation: (typeof snapshot.allocations)[number]) => {
-    const topic = topicById.get(allocation.topicId);
-    if (!topic) return null;
-    // Older allocations may predate the requirement for estimated topic dates.
-    const start = topic.estimatedStartDate ?? dateOnly(allocation.createdAt);
-    const end = topic.estimatedFinishDate ?? topic.targetDate ??
-      (topic.status === "closed" ? dateOnly(topic.updatedAt) : endDate);
-    return start && end ? { start, end } : null;
-  };
+  const milestoneById = new Map(snapshot.milestones.map((milestone) => [milestone.id, milestone]));
   const overview = snapshot.members
     .filter((member) => member.status === "active")
     .map((member) => {
-      const topicRows = snapshot.allocations.filter((allocation) => {
-        if (allocation.memberId !== member.id) return false;
-        const period = allocationPeriod(allocation);
-        return Boolean(period && period.start <= endDate && period.end >= startDate);
+      const milestoneRows = snapshot.milestoneAllocations.flatMap((allocation) => {
+        const milestone = milestoneById.get(allocation.milestoneId);
+        return allocation.memberId === member.id &&
+          milestone?.beginDate && milestone.targetDate &&
+          topicById.get(milestone.topicId)?.status !== "pending_validation" &&
+          milestone.beginDate <= endDate && milestone.targetDate >= startDate
+          ? [{ ...milestone, allocationPercent: allocation.allocationPercent }]
+          : [];
       });
-      const uniqueTopicRows = topicRows.reduce<typeof topicRows>(
-        (latest, allocation) => {
-          const index = latest.findIndex(
-            (item) => item.topicId === allocation.topicId,
-          );
-          if (index === -1) latest.push(allocation);
-          else if (allocation.updatedAt > latest[index].updatedAt)
-            latest[index] = allocation;
-          return latest;
-        },
-        [],
-      );
-      const milestoneRows = snapshot.milestones.filter(
-        (milestone) =>
-          milestone.assigneeId === member.id &&
-          milestone.workloadPercent > 0 &&
-          Boolean(milestone.beginDate && milestone.targetDate) &&
-          milestone.beginDate! <= endDate &&
-          milestone.targetDate! >= startDate,
-      );
-      const topicPercent = uniqueTopicRows.reduce((sum, row) => {
-        const period = allocationPeriod(row)!;
-        return (
-          sum +
-          (row.allocationPercent *
-            overlapDays(period.start, period.end)) /
-            rangeDays
-        );
-      }, 0);
       const milestonePercent = milestoneRows.reduce(
         (sum, row) =>
           sum +
-          (row.workloadPercent * overlapDays(row.beginDate!, row.targetDate!)) /
+          (row.allocationPercent * overlapDays(row.beginDate!, row.targetDate!)) /
             rangeDays,
         0,
       );
-      const topicAllocationPercent = Math.round(topicPercent);
       const milestoneAllocationPercent = Math.round(milestonePercent);
       const totalOccupancyPercent = Math.round(
-        member.dailyBusinessPercent + topicPercent + milestonePercent,
+        member.dailyBusinessPercent + milestonePercent,
       );
       return {
         member,
@@ -2220,34 +2118,21 @@ router.get("/occupancy/overview", async (req, res): Promise<void> => {
         endDate,
         dailyBusinessPercent: member.dailyBusinessPercent,
         dailyBusinessTasks: member.dailyBusinessTasks,
-        topics: uniqueTopicRows.map((row) => {
-          const period = allocationPeriod(row)!;
-          return {
-            topicId: row.topicId,
-            title: topicById.get(row.topicId)?.title ?? "Unknown topic",
-            allocationPercent: Math.round(
-              (row.allocationPercent * overlapDays(period.start, period.end)) /
-                rangeDays,
-            ),
-            allocationType: "topic" as const,
-            milestoneId: null,
-          };
-        }),
+        topics: [],
         milestones: milestoneRows.map((row) => ({
           topicId: row.topicId,
           milestoneId: row.id,
-          title: snapshot.topics.find((topic) => topic.id === row.topicId)
-            ?.title
-            ? `${snapshot.topics.find((topic) => topic.id === row.topicId)?.title}: ${row.title}`
+          title: topicById.get(row.topicId)?.title
+            ? `${topicById.get(row.topicId)?.title}: ${row.title}`
             : row.title,
           allocationPercent: Math.round(
-            (row.workloadPercent *
+            (row.allocationPercent *
               overlapDays(row.beginDate!, row.targetDate!)) /
               rangeDays,
           ),
           allocationType: "milestone" as const,
         })),
-        topicAllocationPercent,
+        topicAllocationPercent: 0,
         milestoneAllocationPercent,
         totalOccupancyPercent,
         availablePercent: 100 - totalOccupancyPercent,
@@ -2446,6 +2331,13 @@ router.post("/topics/:topicId/assign", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Assignee not found" });
     return;
   }
+  if (topic.primaryAssigneeId && topic.primaryAssigneeId !== body.data.memberId &&
+    !before.collaborators.some((entry) => entry.topicId === topic.id && entry.memberId === topic.primaryAssigneeId) &&
+    before.milestoneAllocations.some((entry) => entry.memberId === topic.primaryAssigneeId &&
+      before.milestones.some((milestone) => milestone.id === entry.milestoneId && milestone.topicId === topic.id))) {
+    res.status(409).json({ error: "Clear this person's milestone occupancy before removing their topic assignment" });
+    return;
+  }
   const [updated] = await db.transaction(async (tx) => {
     const rows = await tx
       .update(topicsTable)
@@ -2461,18 +2353,6 @@ router.post("/topics/:topicId/assign", async (req, res): Promise<void> => {
       .where(eq(topicsTable.id, params.data.topicId))
       .returning();
     if (rows[0]) {
-      if (
-        topic.primaryAssigneeId &&
-        topic.primaryAssigneeId !== body.data.memberId &&
-        !before.collaborators.some(
-          (entry) => entry.topicId === topic.id && entry.memberId === topic.primaryAssigneeId,
-        )
-      ) {
-        await tx.delete(topicAllocationsTable).where(and(
-          eq(topicAllocationsTable.topicId, topic.id),
-          eq(topicAllocationsTable.memberId, topic.primaryAssigneeId),
-        ));
-      }
       await addActivity(
         req,
         rows[0].id,
@@ -2604,6 +2484,12 @@ router.delete("/topics/:topicId/collaborators/:collaboratorId", async (req, res)
     return;
   }
   if (!requireTopicManager(req, res, topic, snapshot)) return;
+  if (collaborator.memberId !== topic.primaryAssigneeId &&
+    snapshot.milestoneAllocations.some((entry) => entry.memberId === collaborator.memberId &&
+      snapshot.milestones.some((milestone) => milestone.id === entry.milestoneId && milestone.topicId === topic.id))) {
+    res.status(409).json({ error: "Clear this person's milestone occupancy before removing them as a collaborator" });
+    return;
+  }
   await db.transaction(async (tx) => {
     await tx.delete(collaboratorMilestonesTable)
       .where(eq(collaboratorMilestonesTable.collaboratorId, collaborator.id));
@@ -2612,12 +2498,6 @@ router.delete("/topics/:topicId/collaborators/:collaboratorId", async (req, res)
         eq(topicCollaboratorsTable.topicId, topic.id),
         eq(topicCollaboratorsTable.id, collaborator.id),
       ));
-    if (collaborator.memberId !== topic.primaryAssigneeId) {
-      await tx.delete(topicAllocationsTable).where(and(
-        eq(topicAllocationsTable.topicId, topic.id),
-        eq(topicAllocationsTable.memberId, collaborator.memberId),
-      ));
-    }
     await addActivity(
       req,
       topic.id,
@@ -2629,6 +2509,20 @@ router.delete("/topics/:topicId/collaborators/:collaboratorId", async (req, res)
   });
   res.status(204).end();
 });
+
+function allocationError(
+  allocations: Array<{ memberId: string; allocationPercent: number }>,
+  allowedIds: Set<string>,
+): string | null {
+  const seen = new Set<string>();
+  for (const allocation of allocations) {
+    if (seen.has(allocation.memberId)) return "Duplicate milestone allocation member";
+    if (!allowedIds.has(allocation.memberId))
+      return "Milestone allocation member must be the primary assignee or a topic collaborator";
+    seen.add(allocation.memberId);
+  }
+  return null;
+}
 
 router.post("/topics/:topicId/milestones", async (req, res): Promise<void> => {
   const params = AddTopicMilestoneParams.safeParse(req.params);
@@ -2654,8 +2548,14 @@ router.post("/topics/:topicId/milestones", async (req, res): Promise<void> => {
       });
     return;
   }
-  if ((body.data.workloadPercent ?? 0) > 0 && !body.data.assigneeId) {
-    res.status(400).json({ error: "Milestone occupancy requires an assignee" });
+  const allocations = body.data.allocations ?? [];
+  const participantIds = new Set([
+    ...(topic.primaryAssigneeId ? [topic.primaryAssigneeId] : []),
+    ...before.collaborators.filter((entry) => entry.topicId === topic.id).map((entry) => entry.memberId),
+  ]);
+  const invalid = allocationError(allocations, participantIds);
+  if (invalid) {
+    res.status(400).json({ error: invalid });
     return;
   }
   const [created] = await db.transaction(async (tx) => {
@@ -2669,9 +2569,14 @@ router.post("/topics/:topicId/milestones", async (req, res): Promise<void> => {
         beginDate,
         targetDate,
         assigneeId: body.data.assigneeId,
-        workloadPercent: body.data.workloadPercent ?? 0,
+        workloadPercent: 0,
       })
       .returning();
+    if (allocations.length) {
+      await tx.insert(milestoneAllocationsTable).values(
+        allocations.map((entry) => ({ milestoneId: rows[0].id, ...entry })),
+      );
+    }
     await addActivity(
       req,
       params.data.topicId,
@@ -2715,12 +2620,31 @@ router.patch("/milestones/:milestoneId", async (req, res): Promise<void> => {
     body.data.targetDate === undefined
       ? existingMilestone.targetDate
       : dateOnly(body.data.targetDate);
-  const nextAssigneeId =
-    body.data.assigneeId === undefined
-      ? existingMilestone.assigneeId
-      : body.data.assigneeId;
-  const nextWorkloadPercent =
-    body.data.workloadPercent ?? existingMilestone.workloadPercent;
+  const allocations = body.data.allocations;
+  if (allocations !== undefined) {
+    const participantIds = new Set([
+      ...(topic.primaryAssigneeId ? [topic.primaryAssigneeId] : []),
+      ...before.collaborators.filter((entry) => entry.topicId === topic.id).map((entry) => entry.memberId),
+      // Grandfather people already allocated on this milestone (including legacy rows),
+      // but do not let an unrelated assignee grant themselves new occupancy.
+      ...before.milestoneAllocations
+        .filter((entry) => entry.milestoneId === existingMilestone.id)
+        .map((entry) => entry.memberId),
+    ]);
+    const invalid = allocationError(allocations, participantIds);
+    if (invalid) {
+      res.status(400).json({ error: invalid });
+      return;
+    }
+  }
+  if (existingMilestone.workloadPercent > 0 &&
+    body.data.assigneeId !== undefined &&
+    body.data.assigneeId !== existingMilestone.assigneeId &&
+    allocations === undefined &&
+    !before.storedMilestoneAllocations.some((entry) => entry.milestoneId === existingMilestone.id)) {
+    res.status(409).json({ error: "Specify milestone allocations when changing a legacy milestone assignee" });
+    return;
+  }
   if (
     Boolean(nextBeginDate) !== Boolean(nextTargetDate) ||
     (nextBeginDate && nextTargetDate && nextBeginDate > nextTargetDate)
@@ -2732,16 +2656,20 @@ router.patch("/milestones/:milestoneId", async (req, res): Promise<void> => {
       });
     return;
   }
-  if (nextWorkloadPercent > 0 && !nextAssigneeId) {
-    res.status(400).json({ error: "Milestone occupancy requires an assignee" });
+  if ((allocations ?? before.milestoneAllocations.filter((entry) =>
+    entry.milestoneId === existingMilestone.id)).length > 0 &&
+    (!nextBeginDate || !nextTargetDate)) {
+    res.status(400).json({ error: "Milestone allocations require begin and target dates" });
     return;
   }
   const completedAt = body.data.status === "completed" ? new Date() : undefined;
   const [updated] = await db.transaction(async (tx) => {
+    const { allocations: _allocations, ...fields } = body.data;
     const rows = await tx
       .update(milestonesTable)
       .set({
-        ...body.data,
+        ...fields,
+        workloadPercent: allocations === undefined ? undefined : 0,
         beginDate:
           body.data.beginDate === undefined
             ? undefined
@@ -2755,6 +2683,15 @@ router.patch("/milestones/:milestoneId", async (req, res): Promise<void> => {
       .where(eq(milestonesTable.id, params.data.milestoneId))
       .returning();
     if (rows[0]) {
+      if (allocations !== undefined) {
+        await tx.delete(milestoneAllocationsTable)
+          .where(eq(milestoneAllocationsTable.milestoneId, rows[0].id));
+        if (allocations.length) {
+          await tx.insert(milestoneAllocationsTable).values(
+            allocations.map((entry) => ({ milestoneId: rows[0].id, ...entry })),
+          );
+        }
+      }
       await addActivity(
         req,
         rows[0].topicId,
@@ -2852,7 +2789,10 @@ router.get("/my-work", async (req, res): Promise<void> => {
         (topic) => topic.primaryAssignee?.id === currentUserId(req),
       ),
       milestones: snapshot.milestones
-        .filter((milestone) => milestone.assigneeId === currentUserId(req))
+        .filter((milestone) =>
+          milestone.assigneeId === currentUserId(req) ||
+          snapshot.milestoneAllocations.some((allocation) =>
+            allocation.milestoneId === milestone.id && allocation.memberId === currentUserId(req)))
         .map(snapshot.buildMilestone),
       collaborations: builtTopics.filter((topic) =>
         collaboratedTopicIds.has(topic.id),

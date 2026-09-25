@@ -241,6 +241,26 @@ export const collaboratorMilestonesTable = pgTable(
   ],
 );
 
+export const milestoneAllocationsTable = pgTable(
+  "milestone_allocations",
+  {
+    milestoneId: text("milestone_id")
+      .notNull()
+      .references(() => milestonesTable.id, { onDelete: "cascade" }),
+    memberId: text("member_id")
+      .notNull()
+      .references(() => membersTable.id),
+    allocationPercent: integer("allocation_percent").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.milestoneId, table.memberId] }),
+    check(
+      "milestone_allocations_percent_range",
+      sql`${table.allocationPercent} between 1 and 100`,
+    ),
+  ],
+);
+
 export const topicAllocationsTable = pgTable(
   "topic_allocations",
   {

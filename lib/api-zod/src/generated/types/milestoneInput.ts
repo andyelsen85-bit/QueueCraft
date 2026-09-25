@@ -5,6 +5,7 @@
  * QueueCraft operations and topic-routing API
  * OpenAPI spec version: 0.1.0
  */
+import type { MilestoneAllocationInput } from './milestoneAllocationInput';
 
 export interface MilestoneInput {
   /**
@@ -21,9 +22,5 @@ export interface MilestoneInput {
   targetDate: Date;
   /** @nullable */
   assigneeId?: string | null;
-  /**
-     * @minimum 0
-     * @maximum 100
-     */
-  workloadPercent?: number;
+  allocations?: MilestoneAllocationInput[];
 }
