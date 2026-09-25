@@ -6,5 +6,6 @@
 - [Urgent security mail and digests](urgent-security-mail.md) — keep break-glass alerts immediate and outside user-clearable digest queues.
 - [Milestone occupancy transition](milestone-occupancy.md) — old topic-level allocations remain historical, never counted or automatically distributed to milestones.
 - [OpenAPI date responses](openapi-date-responses.md) — generated date response parsing serializes date-only fields as ISO datetimes; normalize before date arithmetic or date inputs.
-- [Prerequisite edits and started work](prerequisite-edits.md) — changing links should preserve the planned period; never retroactively attach unfinished prerequisites to started work.
+- [Prerequisite scheduling](prerequisite-edits.md) — preserve planned periods, defer anchoring when a prerequisite has no finish, and protect already-started work.
+- [Milestone finish choice](milestone-finish-choice.md) — treat “last finished milestone date” as the latest planned target and offer an explicit choice about extending the topic.
 - [Legacy milestone status](legacy-milestone-status.md) — offer Returned going forward without silently reinterpreting historical Blocked milestones.

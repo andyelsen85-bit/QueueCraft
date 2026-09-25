@@ -119,6 +119,16 @@ const shiftedDate = (date: string, days: number) => {
   return value.toISOString().slice(0, 10);
 };
 
+function finishDecisionDate(error: unknown): string | null {
+  if (!error || typeof error !== "object" || !("status" in error) ||
+    error.status !== 409 || !("data" in error)) return null;
+  const data = error.data;
+  if (!data || typeof data !== "object" || !("requiresFinishDecision" in data) ||
+    data.requiresFinishDecision !== true || !("suggestedFinishDate" in data) ||
+    typeof data.suggestedFinishDate !== "string") return null;
+  return data.suggestedFinishDate;
+}
+
 const milestoneAllocationEntries = (values: Record<string, number>) => {
   if (Object.values(values).some((value) =>
     !Number.isInteger(value) || value < 0 || value > 100)) return null;
@@ -163,9 +173,19 @@ export function TopicDetail() {
   const [breakGlassOpen, setBreakGlassOpen] = React.useState(false);
   const [editTopicOpen, setEditTopicOpen] = React.useState(false);
   const [editTopicError, setEditTopicError] = React.useState("");
+  const [topicFinishChoice, setTopicFinishChoice] = React.useState<{
+    data: any;
+    suggestedFinishDate: string;
+  } | null>(null);
   const [deleteError, setDeleteError] = React.useState("");
   const [assignmentError, setAssignmentError] = React.useState("");
   const [milestoneError, setMilestoneError] = React.useState("");
+  const [finishChoice, setFinishChoice] = React.useState<{
+    kind: "add" | "edit";
+    milestoneId?: string;
+    payload: any;
+    suggestedFinishDate: string;
+  } | null>(null);
   const [milestoneStatusError, setMilestoneStatusError] = React.useState("");
   const [milestoneAllocations, setMilestoneAllocations] = React.useState<Record<string, number>>({});
   const [editMilestoneAllocations, setEditMilestoneAllocations] = React.useState<Record<string, number>>({});
@@ -212,8 +232,8 @@ export function TopicDetail() {
         estimatedFinishDate: z.string().optional().nullable(),
         dependsOnTopicId: z.string().optional().nullable(),
         estimatedEffortHours: z.coerce.number().min(0).optional().nullable(),
-      }).refine((data) => !data.dependsOnTopicId || Boolean(data.estimatedFinishDate),
-        { message: "Set an estimated finish for this topic", path: ["estimatedFinishDate"] }),
+      }).refine((data) => !data.dependsOnTopicId || !data.estimatedFinishDate || Boolean(data.estimatedStartDate),
+        { message: "Set an estimated start to preserve the planned duration", path: ["estimatedStartDate"] }),
     ),
   });
 
@@ -265,8 +285,9 @@ export function TopicDetail() {
     }
   }, [editTopicOpen, selectedEditDependency?.estimatedFinishDate, selectedEditDependencyId, editTopicForm]);
 
-  const onEditTopic = (data: any) => {
+  const saveTopic = (data: any) => {
     setEditTopicError("");
+    setTopicFinishChoice(null);
     updateTopic.mutate(
       {
         topicId: topicId!,
@@ -287,6 +308,25 @@ export function TopicDetail() {
         onError: (error) => setEditTopicError(error instanceof Error ? error.message : "Could not save topic."),
       },
     );
+  };
+  const onEditTopic = (data: any) => {
+    const proposed = data.estimatedFinishDate;
+    const previousStart = dateInputValue(topic?.estimatedStartDate);
+    const newStart = data.estimatedStartDate;
+    const movingPrerequisite = Boolean(topic && data.dependsOnTopicId &&
+      data.dependsOnTopicId !== topic.dependency?.id && previousStart && newStart);
+    const shift = movingPrerequisite ? daysBetween(previousStart, newStart) : 0;
+    const latest = topic?.milestones.reduce<string | null>((end, milestone) => {
+      const original = dateInputValue(milestone.targetDate);
+      const target = original && shift ? shiftedDate(original, shift) : original;
+      return target && (!end || target > end) ? target : end;
+    }, null);
+    if (topic && proposed && latest && latest > proposed &&
+      proposed !== dateInputValue(topic.estimatedFinishDate)) {
+      setTopicFinishChoice({ data, suggestedFinishDate: latest });
+      return;
+    }
+    saveTopic(data);
   };
 
   // Rescope Finish Date
@@ -349,6 +389,7 @@ export function TopicDetail() {
   const milestoneForm = useForm({
     defaultValues: {
       title: "", description: "", beginDate: "", targetDate: "", assigneeId: "none",
+      dependsOnMilestoneId: "none",
     },
     resolver: zodResolver(
       z.object({
@@ -357,6 +398,7 @@ export function TopicDetail() {
         beginDate: z.string().min(1),
         targetDate: z.string().min(1),
         assigneeId: z.string().optional(),
+        dependsOnMilestoneId: z.string().optional(),
       }),
     ),
   });
@@ -364,6 +406,7 @@ export function TopicDetail() {
   const editMilestoneForm = useForm({
     defaultValues: {
       title: "", description: "", beginDate: "", targetDate: "", assigneeId: "none",
+      dependsOnMilestoneId: "none",
     },
     resolver: zodResolver(
       z.object({
@@ -372,9 +415,44 @@ export function TopicDetail() {
         beginDate: z.string().optional(),
         targetDate: z.string().optional(),
         assigneeId: z.string().optional(),
+        dependsOnMilestoneId: z.string().optional(),
       }),
     ),
   });
+
+  const selectedAddMilestoneDependency = topic?.milestones.find(
+    (milestone) => milestone.id === milestoneForm.watch("dependsOnMilestoneId"));
+  const selectedEditMilestoneDependency = topic?.milestones.find(
+    (milestone) => milestone.id === editMilestoneForm.watch("dependsOnMilestoneId"));
+  const unavailableEditMilestones = new Set<string>();
+  if (editMilestone?.id && topic) {
+    unavailableEditMilestones.add(editMilestone.id);
+    let size = -1;
+    while (size !== unavailableEditMilestones.size) {
+      size = unavailableEditMilestones.size;
+      for (const milestone of topic.milestones) {
+        if (milestone.dependsOnMilestoneId &&
+          unavailableEditMilestones.has(milestone.dependsOnMilestoneId)) {
+          unavailableEditMilestones.add(milestone.id);
+        }
+      }
+    }
+  }
+  const anchorMilestoneForm = (form: typeof milestoneForm, prerequisiteId: string) => {
+    const anchor = dateInputValue(topic?.milestones.find(
+      (milestone) => milestone.id === prerequisiteId)?.targetDate);
+    if (!anchor) return;
+    const begin = form.getValues("beginDate");
+    const target = form.getValues("targetDate");
+    if (begin === anchor) return;
+    const duration = begin && target ? daysBetween(begin, target) : null;
+    form.setValue("beginDate", anchor, { shouldValidate: true });
+    if (duration !== null && duration >= 0) {
+      form.setValue("targetDate", shiftedDate(anchor, duration), { shouldValidate: true });
+    } else if (target && target < anchor) {
+      form.setValue("targetDate", "", { shouldValidate: true });
+    }
+  };
 
   React.useEffect(() => {
     if (editMilestone?.open && editMilestone.id) {
@@ -386,6 +464,7 @@ export function TopicDetail() {
           beginDate: dateInputValue(m.beginDate),
           targetDate: dateInputValue(m.targetDate),
           assigneeId: m.assignee?.id || "none",
+          dependsOnMilestoneId: m.dependsOnMilestoneId || "none",
         });
         setEditMilestoneAllocations(Object.fromEntries(
           m.allocations.map((allocation) => [allocation.member.id, allocation.allocationPercent]),
@@ -399,6 +478,40 @@ export function TopicDetail() {
     milestoneForm.reset();
     setMilestoneAllocations({});
     setMilestoneError("");
+    setFinishChoice(null);
+  };
+
+  const saveMilestoneWithChoice = (
+    kind: "add" | "edit", payload: any, milestoneId?: string,
+    extendTopicEstimatedFinish?: boolean,
+  ) => {
+    setFinishChoice(null);
+    setMilestoneError("");
+    const onError = (error: unknown) => {
+      const suggestedFinishDate = finishDecisionDate(error);
+      if (suggestedFinishDate) {
+        setFinishChoice({ kind, milestoneId, payload, suggestedFinishDate });
+        return;
+      }
+      setMilestoneError(error instanceof Error ? error.message : "Could not save milestone.");
+    };
+    if (kind === "add") {
+      addMilestone.mutate({
+        topicId: topicId!,
+        data: { ...payload, extendTopicEstimatedFinish },
+      }, {
+        onSuccess: () => { closeMilestoneForm(); invalidateData(); },
+        onError,
+      });
+    } else if (milestoneId) {
+      updateMilestone.mutate({
+        milestoneId,
+        data: { ...payload, extendTopicEstimatedFinish },
+      }, {
+        onSuccess: () => { setEditMilestone(null); setFinishChoice(null); invalidateData(); },
+        onError,
+      });
+    }
   };
 
   const onAddMilestone = (data: any) => {
@@ -408,25 +521,14 @@ export function TopicDetail() {
       setMilestoneError("Occupancy must be a whole percentage between 0 and 100.");
       return;
     }
-    addMilestone.mutate(
-      {
-        topicId: topicId!,
-        data: {
-          ...data,
-          assigneeId: data.assigneeId === "none" ? null : data.assigneeId,
-          beginDate: data.beginDate,
-          targetDate: data.targetDate,
-          allocations,
-        },
-      },
-      {
-        onSuccess: () => {
-          closeMilestoneForm();
-          invalidateData();
-        },
-        onError: (error) => setMilestoneError(error instanceof Error ? error.message : "Could not add milestone."),
-      },
-    );
+    saveMilestoneWithChoice("add", {
+      ...data,
+      assigneeId: data.assigneeId === "none" ? null : data.assigneeId,
+      dependsOnMilestoneId: data.dependsOnMilestoneId === "none" ? null : data.dependsOnMilestoneId,
+      beginDate: data.beginDate,
+      targetDate: data.targetDate,
+      allocations,
+    });
   };
 
   const onUpdateMilestoneForm = (data: any) => {
@@ -437,25 +539,14 @@ export function TopicDetail() {
       setMilestoneError("Occupancy must be a whole percentage between 0 and 100.");
       return;
     }
-    updateMilestone.mutate(
-      {
-        milestoneId: editMilestone.id,
-        data: {
-          ...data,
-          assigneeId: data.assigneeId === "none" ? null : data.assigneeId,
-          beginDate: data.beginDate || null,
-          targetDate: data.targetDate || null,
-          allocations,
-        },
-      },
-      {
-        onSuccess: () => {
-          setEditMilestone(null);
-          invalidateData();
-        },
-        onError: (error) => setMilestoneError(error instanceof Error ? error.message : "Could not update milestone."),
-      },
-    );
+    saveMilestoneWithChoice("edit", {
+      ...data,
+      assigneeId: data.assigneeId === "none" ? null : data.assigneeId,
+      dependsOnMilestoneId: data.dependsOnMilestoneId === "none" ? null : data.dependsOnMilestoneId,
+      beginDate: data.beginDate || null,
+      targetDate: data.targetDate || null,
+      allocations,
+    }, editMilestone.id);
   };
 
   const onUpdateMilestoneStatus = (
@@ -475,7 +566,12 @@ export function TopicDetail() {
   };
 
   const onDeleteMilestone = (milestoneId: string) => {
-    if (confirm("Are you sure you want to delete this milestone?")) {
+    const dependents = topic?.milestones.filter((milestone) =>
+      milestone.dependsOnMilestoneId === milestoneId).length ?? 0;
+    const warning = dependents
+      ? `Delete this milestone? ${dependents} dependent milestone${dependents === 1 ? "" : "s"} will lose the prerequisite link, but keep their planned dates.`
+      : "Are you sure you want to delete this milestone?";
+    if (confirm(warning)) {
       deleteMilestone.mutate({ milestoneId }, { onSuccess: invalidateData });
     }
   };
@@ -786,7 +882,10 @@ export function TopicDetail() {
 
           <Dialog open={editTopicOpen} onOpenChange={(open) => {
             setEditTopicOpen(open);
-            if (!open) setEditTopicError("");
+            if (!open) {
+              setEditTopicError("");
+              setTopicFinishChoice(null);
+            }
           }}>
             <DialogTrigger asChild>
               <Button variant="outline" size="icon" title="Edit Topic">
@@ -803,6 +902,7 @@ export function TopicDetail() {
                   onSubmit={editTopicForm.handleSubmit(onEditTopic)}
                   className="space-y-4"
                 >
+                  <fieldset disabled={Boolean(topicFinishChoice)} className="space-y-4">
                   <FormField
                     control={editTopicForm.control}
                     name="title"
@@ -909,7 +1009,11 @@ export function TopicDetail() {
                               return;
                             }
                             const next = dependencyCandidates?.find((candidate) => candidate.id === value);
-                            if (!next?.estimatedFinishDate) return;
+                            if (!next) return;
+                            if (!next.estimatedFinishDate) {
+                              field.onChange(value);
+                              return;
+                            }
                             const anchor = dateInputValue(next.estimatedFinishDate);
                             const start = editTopicForm.getValues("estimatedStartDate");
                             const finish = editTopicForm.getValues("estimatedFinishDate");
@@ -938,14 +1042,16 @@ export function TopicDetail() {
                               !topic.milestones.some((milestone) => ["in_progress", "completed"].includes(milestone.status)) &&
                               dependencyCandidates?.filter((candidate) => candidate.id !== topic.dependency?.id).map((candidate) => (
                                 <SelectItem key={candidate.id} value={candidate.id}>
-                                  {candidate.title} · {candidate.status.replaceAll("_", " ")} · {formatDate(candidate.estimatedFinishDate)}
+                                  {candidate.title} · {candidate.status.replaceAll("_", " ")} · {candidate.estimatedFinishDate
+                                    ? formatDate(candidate.estimatedFinishDate) : "Finish not estimated"}
                                 </SelectItem>
                               ))}
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-muted-foreground">
                           Changing the prerequisite keeps the planned duration and moves milestone dates.
-                          Work remains blocked until the prerequisite is completed.
+                          If its finish is not estimated yet, these dates are tentative and will
+                          move when a finish estimate is added. Work remains blocked until completion.
                         </p>
                         <FormMessage />
                       </FormItem>
@@ -959,7 +1065,7 @@ export function TopicDetail() {
                         <FormItem>
                           <FormLabel>Est. Start Date</FormLabel>
                           <FormControl>
-                            <DateField {...field} value={field.value || ""} disabled={Boolean(selectedEditDependencyId)} />
+                            <DateField {...field} value={field.value || ""} disabled={Boolean(selectedEditDependency?.estimatedFinishDate)} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -979,6 +1085,27 @@ export function TopicDetail() {
                       )}
                     />
                   </div>
+                  </fieldset>
+                  {topicFinishChoice && (
+                    <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-4 space-y-3 text-sm">
+                      <p>
+                        The latest milestone target is {formatDate(topicFinishChoice.suggestedFinishDate)},
+                        after the proposed topic finish. Use the latest milestone date as the topic&apos;s
+                        estimated finish instead?
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" size="sm" disabled={updateTopic.isPending}
+                          onClick={() => saveTopic({
+                            ...topicFinishChoice.data,
+                            estimatedFinishDate: topicFinishChoice.suggestedFinishDate,
+                          })}>Use latest milestone date</Button>
+                        <Button type="button" size="sm" variant="outline" disabled={updateTopic.isPending}
+                          onClick={() => saveTopic(topicFinishChoice.data)}>Keep proposed topic finish</Button>
+                        <Button type="button" size="sm" variant="ghost"
+                          onClick={() => setTopicFinishChoice(null)}>Cancel change</Button>
+                      </div>
+                    </div>
+                  )}
                   <DialogFooter>
                     <Button
                       type="button"
@@ -987,7 +1114,9 @@ export function TopicDetail() {
                     >
                       Cancel
                     </Button>
-                    <Button type="submit">Save Changes</Button>
+                    <Button type="submit" disabled={updateTopic.isPending || Boolean(topicFinishChoice)}>
+                      {updateTopic.isPending ? "Saving..." : "Save Changes"}
+                    </Button>
                   </DialogFooter>
                 </form>
               </Form>
@@ -1052,7 +1181,9 @@ export function TopicDetail() {
                   <StatusBadge status={topic.dependency.status} />
                 </div>
                 <p className="mt-2 text-muted-foreground">
-                  Planned start follows its estimated finish ({formatDate(topic.dependency.estimatedFinishDate)}).
+                  {topic.dependency.estimatedFinishDate
+                    ? `Planned start follows its estimated finish (${formatDate(topic.dependency.estimatedFinishDate)}).`
+                    : "The prerequisite has no estimated finish yet. This topic’s dates will update when one is added."}
                   {!prerequisiteReady && " Work cannot start until the prerequisite is completed."}
                   {" "}Changes to its estimated finish move this topic’s estimates and milestone dates by the same number of days.
                 </p>
@@ -1094,7 +1225,8 @@ export function TopicDetail() {
                       }}
                     >
                       <DialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="gap-2">
+                        <Button size="sm" variant="outline" className="gap-2"
+                          disabled={Boolean(topic.dependency && !topic.estimatedStartDate)}>
                           <Plus className="h-4 w-4" /> Add Milestone
                         </Button>
                       </DialogTrigger>
@@ -1109,6 +1241,7 @@ export function TopicDetail() {
                             )}
                             className="space-y-4"
                           >
+                            <fieldset disabled={finishChoice?.kind === "add"} className="space-y-4">
                             <FormField
                               control={milestoneForm.control}
                               name="title"
@@ -1133,6 +1266,34 @@ export function TopicDetail() {
                                 </FormItem>
                               )}
                             />
+                            <FormField
+                              control={milestoneForm.control}
+                              name="dependsOnMilestoneId"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Starts after milestone (optional)</FormLabel>
+                                  <Select value={field.value || "none"} onValueChange={(value) => {
+                                    anchorMilestoneForm(milestoneForm, value);
+                                    field.onChange(value);
+                                  }}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="No prerequisite" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="none">No prerequisite</SelectItem>
+                                      {topic.milestones.map((candidate) => (
+                                        <SelectItem key={candidate.id} value={candidate.id}>
+                                          {candidate.title} · {candidate.targetDate
+                                            ? formatDate(candidate.targetDate) : "Target not estimated"}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <p className="text-xs text-muted-foreground">
+                                    Its target date sets this milestone&apos;s begin date. Later changes move dependent milestones.
+                                  </p>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                             <div className="grid grid-cols-2 gap-4">
                               <FormField
                                 control={milestoneForm.control}
@@ -1141,7 +1302,8 @@ export function TopicDetail() {
                                   <FormItem>
                                     <FormLabel>Begin Date</FormLabel>
                                     <FormControl>
-                                      <DateField {...field} required />
+                                      <DateField {...field} required
+                                        disabled={Boolean(selectedAddMilestoneDependency?.targetDate)} />
                                     </FormControl>
                                   </FormItem>
                                 )}
@@ -1195,7 +1357,29 @@ export function TopicDetail() {
                               onChange={(memberId, value) =>
                                 setMilestoneAllocations((current) => ({ ...current, [memberId]: value }))}
                             />
+                            </fieldset>
                             {milestoneError && <p role="alert" className="text-sm text-destructive">{milestoneError}</p>}
+                            {finishChoice?.kind === "add" && (
+                              <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-4 space-y-3 text-sm">
+                                <p>
+                                  The latest milestone would end on {formatDate(finishChoice.suggestedFinishDate)},
+                                  after this topic&apos;s estimated finish ({formatDate(topic.estimatedFinishDate)}).
+                                  Update the topic&apos;s estimated finish to the latest milestone date?
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  <Button type="button" size="sm" disabled={addMilestone.isPending}
+                                    onClick={() => saveMilestoneWithChoice("add", finishChoice.payload, undefined, true)}>
+                                    Update topic finish
+                                  </Button>
+                                  <Button type="button" size="sm" variant="outline" disabled={addMilestone.isPending}
+                                    onClick={() => saveMilestoneWithChoice("add", finishChoice.payload, undefined, false)}>
+                                    Keep topic finish
+                                  </Button>
+                                  <Button type="button" size="sm" variant="ghost"
+                                    onClick={() => setFinishChoice(null)}>Cancel change</Button>
+                                </div>
+                              </div>
+                            )}
                             <div className="flex justify-end gap-2 pt-4">
                               <Button
                                 type="button"
@@ -1204,7 +1388,7 @@ export function TopicDetail() {
                               >
                                 Cancel
                               </Button>
-                              <Button type="submit" disabled={addMilestone.isPending}>
+                              <Button type="submit" disabled={addMilestone.isPending || finishChoice?.kind === "add"}>
                                 {addMilestone.isPending ? "Saving..." : "Add Milestone"}
                               </Button>
                             </div>
@@ -1215,6 +1399,12 @@ export function TopicDetail() {
                   )}
                 </CardHeader>
                 <CardContent className="p-0">
+                  {topic.dependency && !topic.estimatedStartDate && (
+                    <p className="px-6 pt-4 text-sm text-muted-foreground">
+                      Set a tentative estimated start in Topic edit before adding milestones.
+                      Their dates can then move when the prerequisite gets a finish estimate.
+                    </p>
+                  )}
                   {milestoneStatusError && (
                     <p role="alert" className="px-6 pt-4 text-sm text-destructive">
                       {milestoneStatusError}
@@ -1242,6 +1432,12 @@ export function TopicDetail() {
                               <div className="text-sm text-muted-foreground mt-1">
                                 {m.description}
                               </div>
+                            )}
+                            {m.dependsOnMilestoneId && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Starts after {topic.milestones.find((entry) => entry.id === m.dependsOnMilestoneId)?.title
+                                  ?? "another milestone"}
+                              </p>
                             )}
                             <div className="flex gap-4 mt-2 text-xs font-mono text-muted-foreground">
                               {m.beginDate && (
@@ -1289,9 +1485,17 @@ export function TopicDetail() {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="not_started">Not Started</SelectItem>
-                                  <SelectItem value="in_progress" disabled={!prerequisiteReady}>In Progress</SelectItem>
+                                  <SelectItem value="in_progress" disabled={!prerequisiteReady ||
+                                    Boolean(m.dependsOnMilestoneId && topic.milestones.find(
+                                      (entry) => entry.id === m.dependsOnMilestoneId)?.status !== "completed")}>
+                                    In Progress
+                                  </SelectItem>
                                   <SelectItem value="returned">Returned</SelectItem>
-                                  <SelectItem value="completed" disabled={!prerequisiteReady}>Done</SelectItem>
+                                  <SelectItem value="completed" disabled={!prerequisiteReady ||
+                                    Boolean(m.dependsOnMilestoneId && topic.milestones.find(
+                                      (entry) => entry.id === m.dependsOnMilestoneId)?.status !== "completed")}>
+                                    Done
+                                  </SelectItem>
                                   {m.status === "blocked" && (
                                     <SelectItem value="blocked" disabled>Blocked (legacy)</SelectItem>
                                   )}
@@ -1337,10 +1541,14 @@ export function TopicDetail() {
               </Card>
 
               <Dialog
-                open={editMilestone?.open}
-                onOpenChange={(open) =>
-                  setEditMilestone((prev) => (prev ? { ...prev, open } : null))
-                }
+                open={Boolean(editMilestone?.open)}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setEditMilestone(null);
+                    setFinishChoice(null);
+                    setMilestoneError("");
+                  }
+                }}
               >
                 <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
                   <DialogHeader>
@@ -1353,6 +1561,7 @@ export function TopicDetail() {
                       )}
                       className="space-y-4"
                     >
+                      <fieldset disabled={finishChoice?.kind === "edit"} className="space-y-4">
                       <FormField
                         control={editMilestoneForm.control}
                         name="title"
@@ -1377,6 +1586,39 @@ export function TopicDetail() {
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={editMilestoneForm.control}
+                        name="dependsOnMilestoneId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Starts after milestone (optional)</FormLabel>
+                            <Select value={field.value || "none"} onValueChange={(value) => {
+                              anchorMilestoneForm(editMilestoneForm, value);
+                              field.onChange(value);
+                            }}>
+                              <FormControl><SelectTrigger><SelectValue placeholder="No prerequisite" /></SelectTrigger></FormControl>
+                              <SelectContent>
+                                <SelectItem value="none">No prerequisite</SelectItem>
+                                {topic.milestones.filter((candidate) =>
+                                  !unavailableEditMilestones.has(candidate.id)).map((candidate) => (
+                                    <SelectItem key={candidate.id} value={candidate.id}
+                                      disabled={topic.milestones.find((entry) => entry.id === editMilestone?.id)
+                                        ?.status !== "not_started" && candidate.id !==
+                                        topic.milestones.find((entry) => entry.id === editMilestone?.id)
+                                          ?.dependsOnMilestoneId}>
+                                      {candidate.title} · {candidate.targetDate
+                                        ? formatDate(candidate.targetDate) : "Target not estimated"}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                              Changing the prerequisite preserves this milestone&apos;s duration and moves successors.
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <div className="grid grid-cols-2 gap-4">
                         <FormField
                           control={editMilestoneForm.control}
@@ -1388,6 +1630,7 @@ export function TopicDetail() {
                                 <DateField
                                   {...field}
                                   value={field.value || ""}
+                                  disabled={Boolean(selectedEditMilestoneDependency?.targetDate)}
                                 />
                               </FormControl>
                             </FormItem>
@@ -1449,7 +1692,27 @@ export function TopicDetail() {
                         onChange={(memberId, value) =>
                           setEditMilestoneAllocations((current) => ({ ...current, [memberId]: value }))}
                       />
+                      </fieldset>
                       {milestoneError && <p role="alert" className="text-sm text-destructive">{milestoneError}</p>}
+                      {finishChoice?.kind === "edit" && (
+                        <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-4 space-y-3 text-sm">
+                          <p>
+                            The latest milestone would end on {formatDate(finishChoice.suggestedFinishDate)},
+                            after this topic&apos;s estimated finish ({formatDate(topic.estimatedFinishDate)}).
+                            Update the topic&apos;s estimated finish to the latest milestone date?
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <Button type="button" size="sm" disabled={updateMilestone.isPending}
+                              onClick={() => saveMilestoneWithChoice("edit", finishChoice.payload,
+                                finishChoice.milestoneId, true)}>Update topic finish</Button>
+                            <Button type="button" size="sm" variant="outline" disabled={updateMilestone.isPending}
+                              onClick={() => saveMilestoneWithChoice("edit", finishChoice.payload,
+                                finishChoice.milestoneId, false)}>Keep topic finish</Button>
+                            <Button type="button" size="sm" variant="ghost"
+                              onClick={() => setFinishChoice(null)}>Cancel change</Button>
+                          </div>
+                        </div>
+                      )}
                       <div className="flex justify-end gap-2 pt-4">
                         <Button
                           type="button"
@@ -1458,7 +1721,9 @@ export function TopicDetail() {
                         >
                           Cancel
                         </Button>
-                        <Button type="submit">Save</Button>
+                        <Button type="submit" disabled={updateMilestone.isPending || finishChoice?.kind === "edit"}>
+                          {updateMilestone.isPending ? "Saving..." : "Save"}
+                        </Button>
                       </div>
                     </form>
                   </Form>

@@ -21,6 +21,9 @@ export interface MilestoneInput {
   beginDate: Date;
   targetDate: Date;
   /** @nullable */
+  dependsOnMilestoneId?: string | null;
+  extendTopicEstimatedFinish?: boolean;
+  /** @nullable */
   assigneeId?: string | null;
   allocations?: MilestoneAllocationInput[];
 }

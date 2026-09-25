@@ -295,6 +295,8 @@ export interface Milestone {
   beginDate?: string | null;
   /** @nullable */
   targetDate?: string | null;
+  /** @nullable */
+  dependsOnMilestoneId: string | null;
   assignee?: Member | null;
   /**
      * @minimum 0
@@ -520,6 +522,9 @@ export interface MilestoneInput {
   beginDate: string;
   targetDate: string;
   /** @nullable */
+  dependsOnMilestoneId?: string | null;
+  extendTopicEstimatedFinish?: boolean;
+  /** @nullable */
   assigneeId?: string | null;
   allocations?: MilestoneAllocationInput[];
 }
@@ -540,6 +545,9 @@ export interface MilestoneUpdate {
   beginDate?: string | null;
   /** @nullable */
   targetDate?: string | null;
+  /** @nullable */
+  dependsOnMilestoneId?: string | null;
+  extendTopicEstimatedFinish?: boolean;
   /** @nullable */
   assigneeId?: string | null;
   allocations?: MilestoneAllocationInput[];

@@ -25,6 +25,9 @@ export interface MilestoneUpdate {
   /** @nullable */
   targetDate?: Date | null;
   /** @nullable */
+  dependsOnMilestoneId?: string | null;
+  extendTopicEstimatedFinish?: boolean;
+  /** @nullable */
   assigneeId?: string | null;
   allocations?: MilestoneAllocationInput[];
   /**

@@ -19,6 +19,8 @@ export interface Milestone {
   beginDate?: Date | null;
   /** @nullable */
   targetDate?: Date | null;
+  /** @nullable */
+  dependsOnMilestoneId: string | null;
   assignee?: Member | null;
   /**
      * @minimum 0

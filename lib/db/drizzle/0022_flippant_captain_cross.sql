@@ -1,0 +1,2 @@
+ALTER TABLE "milestones" ADD COLUMN "depends_on_milestone_id" text;--> statement-breakpoint
+ALTER TABLE "milestones" ADD CONSTRAINT "milestones_depends_on_milestone_id_milestones_id_fk" FOREIGN KEY ("depends_on_milestone_id") REFERENCES "public"."milestones"("id") ON DELETE set null ON UPDATE no action;

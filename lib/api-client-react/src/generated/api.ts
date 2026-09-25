@@ -910,7 +910,7 @@ export const getListDependencyCandidatesUrl = (params?: ListDependencyCandidates
 }
 
 /**
- * @summary List eligible prerequisite topics with estimated finish dates
+ * @summary List eligible prerequisite topics, including those awaiting a finish estimate
  */
 export const listDependencyCandidates = async (params?: ListDependencyCandidatesParams, options?: Parameters<typeof customFetch>[1]): Promise<TopicDependency[]> => {
 
@@ -957,7 +957,7 @@ export type ListDependencyCandidatesQueryError = ErrorType<unknown>
 
 
 /**
- * @summary List eligible prerequisite topics with estimated finish dates
+ * @summary List eligible prerequisite topics, including those awaiting a finish estimate
  */
 
 export function useListDependencyCandidates<TData = Awaited<ReturnType<typeof listDependencyCandidates>>, TError = ErrorType<unknown>>(
@@ -1825,7 +1825,7 @@ export const getAddTopicMilestoneUrl = (topicId: string,) => {
 }
 
 /**
- * @summary Add a parallel milestone
+ * @summary Add a milestone, optionally after another milestone in the same topic
  */
 export const addTopicMilestone = async (topicId: string,
     milestoneInput: MilestoneInput, options?: Parameters<typeof customFetch>[1]): Promise<Milestone> => {
@@ -1892,7 +1892,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type AddTopicMilestoneMutationVariables = {topicId: string;data: BodyType<MilestoneInput>}
 
     /**
- * @summary Add a parallel milestone
+ * @summary Add a milestone, optionally after another milestone in the same topic
  */
 export const useAddTopicMilestone = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addTopicMilestone>>, TError,AddTopicMilestoneMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

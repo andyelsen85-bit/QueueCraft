@@ -85,8 +85,8 @@ const createSchema = z
     },
   )
   .refine(
-    (data) => !data.dependsOnTopicId || Boolean(data.estimatedStartDate && data.estimatedFinishDate),
-    { message: "Set an estimated finish for the dependent topic", path: ["estimatedFinishDate"] },
+    (data) => !data.dependsOnTopicId || !data.estimatedFinishDate || Boolean(data.estimatedStartDate),
+    { message: "Set an estimated start to preserve the planned duration", path: ["estimatedStartDate"] },
   );
 
 const daysBetween = (from: string, to: string) =>
@@ -541,14 +541,17 @@ export function Topics() {
                             <SelectItem value="none">No prerequisite</SelectItem>
                             {dependencyCandidates?.map((candidate) => (
                               <SelectItem key={candidate.id} value={candidate.id}>
-                                {candidate.title} · {candidate.status.replaceAll("_", " ")} · {formatDate(candidate.estimatedFinishDate)}
+                                {candidate.title} · {candidate.status.replaceAll("_", " ")} · {candidate.estimatedFinishDate
+                                  ? formatDate(candidate.estimatedFinishDate) : "Finish not estimated"}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-muted-foreground">
-                          Available: pending validation, open, and running topics with an estimated finish.
-                          Work cannot start until the prerequisite is completed. Its finish date sets this topic’s start.
+                          Available: pending validation, open, and running topics.
+                          Work cannot start until the prerequisite is completed. If its finish is
+                          not estimated yet, leave dates blank or enter a tentative period;
+                          this topic will move when the prerequisite gets a finish estimate.
                         </p>
                         <FormMessage />
                       </FormItem>
@@ -562,7 +565,7 @@ export function Topics() {
                         <FormItem>
                           <FormLabel>Estimated Start</FormLabel>
                           <FormControl>
-                             <DateField {...field} value={field.value || ""} disabled={Boolean(selectedDependencyId)} />
+                              <DateField {...field} value={field.value || ""} disabled={Boolean(selectedDependency?.estimatedFinishDate)} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

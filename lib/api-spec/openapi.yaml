@@ -169,7 +169,7 @@ paths:
     get:
       operationId: listDependencyCandidates
       tags: [topics]
-      summary: List eligible prerequisite topics with estimated finish dates
+      summary: List eligible prerequisite topics, including those awaiting a finish estimate
       parameters:
         - name: topicId
           in: query
@@ -369,7 +369,7 @@ paths:
     post:
       operationId: addTopicMilestone
       tags: [topics]
-      summary: Add a parallel milestone
+      summary: Add a milestone, optionally after another milestone in the same topic
       parameters:
         - $ref: "#/components/parameters/TopicId"
       requestBody:
@@ -934,7 +934,7 @@ components:
           items: { type: string }
     Milestone:
       type: object
-      required: [id, title, status, allocations]
+      required: [id, title, status, allocations, dependsOnMilestoneId]
       properties:
         id: { type: string }
         title: { type: string }
@@ -947,6 +947,7 @@ components:
         targetDate:
           type: ["string", "null"]
           format: date
+        dependsOnMilestoneId: { type: ["string", "null"] }
         assignee:
           anyOf:
             - $ref: "#/components/schemas/Member"
@@ -1171,6 +1172,8 @@ components:
         targetDate:
           type: string
           format: date
+        dependsOnMilestoneId: { type: ["string", "null"] }
+        extendTopicEstimatedFinish: { type: boolean }
         assigneeId:
           type: ["string", "null"]
         allocations:
@@ -1189,6 +1192,8 @@ components:
         targetDate:
           type: ["string", "null"]
           format: date
+        dependsOnMilestoneId: { type: ["string", "null"] }
+        extendTopicEstimatedFinish: { type: boolean }
         assigneeId:
           type: ["string", "null"]
         allocations:

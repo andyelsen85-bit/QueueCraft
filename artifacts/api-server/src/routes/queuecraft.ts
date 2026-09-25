@@ -10,6 +10,7 @@ import {
   membersTable,
   milestoneAllocationsTable,
   milestonesTable,
+  type MilestoneRecord,
   roleMembersTable,
   roleDepartmentsTable,
   rolesTable,
@@ -220,6 +221,56 @@ function moveDate(value: string, days: number) {
   return result.toISOString().slice(0, 10);
 }
 
+type ScheduledMilestone = Pick<
+  MilestoneRecord,
+  "id" | "dependsOnMilestoneId" | "beginDate" | "targetDate"
+>;
+
+function projectMilestoneDates(
+  rows: ScheduledMilestone[], changedId: string, previousTargetDate?: string | null,
+) {
+  const projected = new Map(rows.map((row) => [row.id, { ...row }]));
+  const changed = projected.get(changedId);
+  if (!changed) throw new Error("Changed milestone is missing");
+  const prerequisite = changed.dependsOnMilestoneId
+    ? projected.get(changed.dependsOnMilestoneId) : null;
+  if (prerequisite?.targetDate) {
+    const days = changed.beginDate
+      ? dateDistance(changed.beginDate, prerequisite.targetDate) : 0;
+    changed.beginDate = prerequisite.targetDate;
+    changed.targetDate = changed.targetDate
+      ? moveDate(changed.targetDate, days) : null;
+  }
+  const visited = new Set([changedId]);
+  const moveChildren = (parent: ScheduledMilestone) => {
+    if (!parent.targetDate) return;
+    for (const child of projected.values()) {
+      if (child.dependsOnMilestoneId !== parent.id) continue;
+      if (visited.has(child.id) || (!child.beginDate && child.targetDate)) {
+        throw new Error("Invalid milestone dependency schedule");
+      }
+      visited.add(child.id);
+      const days = child.beginDate ? dateDistance(child.beginDate, parent.targetDate) : 0;
+      const previousTarget = child.targetDate;
+      child.beginDate = parent.targetDate;
+      child.targetDate = child.targetDate ? moveDate(child.targetDate, days) : null;
+      if (child.targetDate && child.targetDate !== previousTarget) moveChildren(child);
+    }
+  };
+  if (previousTargetDate === undefined || changed.targetDate !== previousTargetDate) {
+    moveChildren(changed);
+  }
+  return projected;
+}
+
+function latestMilestoneTarget(rows: Iterable<ScheduledMilestone>) {
+  let latest: string | null = null;
+  for (const row of rows) {
+    if (row.targetDate && (!latest || row.targetDate > latest)) latest = row.targetDate;
+  }
+  return latest;
+}
+
 function prerequisiteComplete(
   topic: { dependsOnTopicId: string | null },
   topics: Array<{ id: string; status: string }>,
@@ -233,35 +284,39 @@ async function shiftDependentSchedules(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   req: Request,
   predecessorId: string,
-  days: number,
+  estimatedFinishDate: string,
 ) {
-  if (days === 0) return;
   const visited = new Set([predecessorId]);
-  const shiftChildren = async (parentId: string): Promise<void> => {
+  const shiftChildren = async (parentId: string, anchor: string): Promise<void> => {
     const dependents = await tx.select().from(topicsTable)
       .where(eq(topicsTable.dependsOnTopicId, parentId)).for("update");
     for (const dependent of dependents) {
-      if (visited.has(dependent.id) || !dependent.estimatedStartDate || !dependent.estimatedFinishDate) {
+      if (visited.has(dependent.id) || (!dependent.estimatedStartDate && dependent.estimatedFinishDate)) {
         throw new Error("Invalid dependent topic schedule");
       }
       visited.add(dependent.id);
-      const start = moveDate(dependent.estimatedStartDate, days);
-      const finish = moveDate(dependent.estimatedFinishDate, days);
-      await tx.update(topicsTable).set({
-        estimatedStartDate: start,
-        estimatedFinishDate: finish,
-        updatedAt: new Date(),
-      }).where(eq(topicsTable.id, dependent.id));
-      await tx.update(milestonesTable).set({
-        beginDate: sql`${milestonesTable.beginDate} + ${days}::integer`,
-        targetDate: sql`${milestonesTable.targetDate} + ${days}::integer`,
-      }).where(eq(milestonesTable.topicId, dependent.id));
-      await addActivity(req, dependent.id, "Dependency schedule shifted",
-        `Estimated start and finish, and milestone dates, moved ${days} day(s) because a prerequisite's estimated finish changed.`, false, tx);
-      await shiftChildren(dependent.id);
+      const days = dependent.estimatedStartDate ? dateDistance(dependent.estimatedStartDate, anchor) : 0;
+      const finish = dependent.estimatedFinishDate
+        ? moveDate(dependent.estimatedFinishDate, days) : null;
+      if (dependent.estimatedStartDate !== anchor || dependent.estimatedFinishDate !== finish) {
+        await tx.update(topicsTable).set({
+          estimatedStartDate: anchor,
+          estimatedFinishDate: finish,
+          updatedAt: new Date(),
+        }).where(eq(topicsTable.id, dependent.id));
+        if (days) {
+          await tx.update(milestonesTable).set({
+            beginDate: sql`${milestonesTable.beginDate} + ${days}::integer`,
+            targetDate: sql`${milestonesTable.targetDate} + ${days}::integer`,
+          }).where(eq(milestonesTable.topicId, dependent.id));
+        }
+        await addActivity(req, dependent.id, "Dependency schedule shifted",
+          `Estimated start anchored to the prerequisite's finish; estimated finish and milestone dates moved ${days} day(s).`, false, tx);
+      }
+      if (finish && finish !== dependent.estimatedFinishDate) await shiftChildren(dependent.id, finish);
     }
   };
-  await shiftChildren(predecessorId);
+  await shiftChildren(predecessorId, estimatedFinishDate);
 }
 
 async function loadSnapshot() {
@@ -378,6 +433,7 @@ async function loadSnapshot() {
     status: milestone.status,
     beginDate: milestone.beginDate,
     targetDate: milestone.targetDate,
+    dependsOnMilestoneId: milestone.dependsOnMilestoneId,
     assignee: member(milestone.assigneeId),
     workloadPercent: milestone.workloadPercent,
     allocations: milestoneAllocations
@@ -1762,7 +1818,7 @@ router.get("/topics/dependency-candidates", async (req, res): Promise<void> => {
     snapshot.topics
       .filter((topic) =>
         ["pending_validation", "open", "in_progress"].includes(topic.status) &&
-        topic.estimatedFinishDate && !excluded.has(topic.id))
+        !excluded.has(topic.id))
       .map((topic) => ({
         id: topic.id,
         title: topic.title,
@@ -1809,13 +1865,12 @@ router.post("/topics", async (req, res): Promise<void> => {
     ? snapshot.topics.find((topic) => topic.id === dependsOnTopicId)
     : null;
   if (dependsOnTopicId && (!prerequisite ||
-    !["pending_validation", "open", "in_progress"].includes(prerequisite.status) ||
-    !prerequisite.estimatedFinishDate)) {
-    res.status(400).json({ error: "Select an active or pending prerequisite with an estimated finish date" });
+    !["pending_validation", "open", "in_progress"].includes(prerequisite.status))) {
+    res.status(400).json({ error: "Select an active or pending prerequisite" });
     return;
   }
-  if (dependsOnTopicId && (!estimatedStartDate || !estimatedFinishDate)) {
-    res.status(400).json({ error: "Dependent topics require estimated start and finish dates" });
+  if (dependsOnTopicId && estimatedFinishDate && !estimatedStartDate) {
+    res.status(400).json({ error: "Set an estimated start to preserve the dependent topic's planned duration" });
     return;
   }
   if (
@@ -1837,8 +1892,7 @@ router.post("/topics", async (req, res): Promise<void> => {
       ? await tx.select().from(topicsTable).where(eq(topicsTable.id, dependsOnTopicId)).for("update")
       : [null];
     if (dependsOnTopicId && (!currentPrerequisite ||
-      !["pending_validation", "open", "in_progress"].includes(currentPrerequisite.status) ||
-      !currentPrerequisite.estimatedFinishDate)) return [];
+      !["pending_validation", "open", "in_progress"].includes(currentPrerequisite.status))) return [];
     const plannedStart = currentPrerequisite?.estimatedFinishDate ?? estimatedStartDate;
     const plannedFinish = currentPrerequisite?.estimatedFinishDate && estimatedStartDate && estimatedFinishDate
       ? moveDate(currentPrerequisite.estimatedFinishDate, dateDistance(estimatedStartDate, estimatedFinishDate))
@@ -2013,9 +2067,8 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
     : null;
   if (dependencyChanged && dependencyId) {
     if (!prerequisite ||
-      !["pending_validation", "open", "in_progress"].includes(prerequisite.status) ||
-      !prerequisite.estimatedFinishDate) {
-      res.status(400).json({ error: "Select an active or pending prerequisite with an estimated finish date" });
+      !["pending_validation", "open", "in_progress"].includes(prerequisite.status)) {
+      res.status(400).json({ error: "Select an active or pending prerequisite" });
       return;
     }
     const seen = new Set<string>();
@@ -2049,22 +2102,31 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
       ? currentTopic.estimatedFinishDate
       : dateOnly(body.data.estimatedFinishDate);
   const nextStart = dependencyChanged && dependencyId
-    ? prerequisite!.estimatedFinishDate!
+    ? prerequisite!.estimatedFinishDate ?? proposedStart
     : proposedStart;
-  const nextFinish = dependencyChanged && dependencyId && proposedStart && proposedFinish
-    ? moveDate(nextStart!, dateDistance(proposedStart, proposedFinish))
+  const nextFinish = dependencyChanged && prerequisite?.estimatedFinishDate && proposedStart && proposedFinish
+    ? moveDate(prerequisite.estimatedFinishDate, dateDistance(proposedStart, proposedFinish))
     : proposedFinish;
-  if (currentTopic.dependsOnTopicId && !dependencyChanged &&
+  if (currentTopic.dependsOnTopicId && prerequisite?.estimatedFinishDate && !dependencyChanged &&
     body.data.estimatedStartDate !== undefined &&
     nextStart !== currentTopic.estimatedStartDate) {
     res.status(409).json({ error: "The estimated start is set by the prerequisite's estimated finish" });
     return;
   }
-  if (dependencyChanged && dependencyId && !nextFinish) {
-    res.status(400).json({ error: "Set an estimated finish date before adding a prerequisite" });
+  if (dependencyId && nextFinish && !nextStart) {
+    res.status(400).json({ error: "Set an estimated start to preserve the dependent topic's planned duration" });
     return;
   }
-  if (!nextFinish && current.topics.some((topic) => topic.dependsOnTopicId === currentTopic.id)) {
+  if (dependencyId && !nextStart &&
+    current.milestones.some((milestone) => milestone.topicId === currentTopic.id &&
+      (milestone.beginDate || milestone.targetDate))) {
+    res.status(409).json({
+      error: "Keep a tentative estimated start while this dependent topic has dated milestones",
+    });
+    return;
+  }
+  if (!nextFinish && currentTopic.estimatedFinishDate &&
+    current.topics.some((topic) => topic.dependsOnTopicId === currentTopic.id)) {
     res.status(409).json({ error: "Set an estimated finish before updating topics that depend on this one" });
     return;
   }
@@ -2155,16 +2217,12 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
       : [null];
     if (dependencyChanged && dependencyId && (!lockedPrerequisite ||
       !["pending_validation", "open", "in_progress"].includes(lockedPrerequisite.status) ||
-      !lockedPrerequisite.estimatedFinishDate ||
       lockedPrerequisite.estimatedFinishDate !== prerequisite?.estimatedFinishDate)) return [];
-    const savedStart = lockedPrerequisite?.estimatedFinishDate && proposedStart && proposedFinish
+    const savedStart = lockedPrerequisite?.estimatedFinishDate
       ? lockedPrerequisite.estimatedFinishDate : nextStart;
     const savedFinish = lockedPrerequisite?.estimatedFinishDate && proposedStart && proposedFinish
       ? moveDate(lockedPrerequisite.estimatedFinishDate, dateDistance(proposedStart, proposedFinish))
       : nextFinish;
-    const days = locked.estimatedFinishDate && savedFinish
-      ? dateDistance(locked.estimatedFinishDate, savedFinish)
-      : 0;
     const milestoneDays = dependencyChanged && dependencyId && locked.estimatedStartDate && savedStart
       ? dateDistance(locked.estimatedStartDate, savedStart) : 0;
     const rows = await tx
@@ -2189,7 +2247,9 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
           targetDate: sql`${milestonesTable.targetDate} + ${milestoneDays}::integer`,
         }).where(eq(milestonesTable.topicId, rows[0].id));
       }
-      await shiftDependentSchedules(tx, req, rows[0].id, days);
+      if (savedFinish && savedFinish !== locked.estimatedFinishDate) {
+        await shiftDependentSchedules(tx, req, rows[0].id, savedFinish);
+      }
       await addActivity(
         req,
         rows[0].id,
@@ -2790,6 +2850,10 @@ router.post("/topics/:topicId/milestones", async (req, res): Promise<void> => {
     return;
   }
   if (!requireTopicManager(req, res, topic, before)) return;
+  if (topic.dependsOnTopicId && !topic.estimatedStartDate) {
+    res.status(409).json({ error: "Set a tentative estimated start on this topic before adding dated milestones" });
+    return;
+  }
   const beginDate = dateOnly(body.data.beginDate);
   const targetDate = dateOnly(body.data.targetDate);
   if (!beginDate || !targetDate || beginDate > targetDate) {
@@ -2810,20 +2874,49 @@ router.post("/topics/:topicId/milestones", async (req, res): Promise<void> => {
     res.status(400).json({ error: invalid });
     return;
   }
-  const [created] = await db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
+    const [lockedTopic] = await tx.select().from(topicsTable)
+      .where(eq(topicsTable.id, topic.id)).for("update");
+    if (!lockedTopic) return { type: "error" as const, status: 404, error: "Topic not found" };
+    const existing = await tx.select().from(milestonesTable)
+      .where(eq(milestonesTable.topicId, topic.id)).orderBy(milestonesTable.id).for("update");
+    const prerequisite = body.data.dependsOnMilestoneId
+      ? existing.find((row) => row.id === body.data.dependsOnMilestoneId) : null;
+    if (body.data.dependsOnMilestoneId && !prerequisite) {
+      return { type: "error" as const, status: 400, error: "Select a milestone from this topic" };
+    }
+    const id = randomUUID();
+    const projected = projectMilestoneDates([
+      ...existing,
+      { id, dependsOnMilestoneId: prerequisite?.id ?? null, beginDate, targetDate },
+    ], id);
+    const planned = projected.get(id)!;
+    const latest = latestMilestoneTarget(projected.values());
+    const exceedsTopicFinish = Boolean(lockedTopic.estimatedFinishDate &&
+      planned.targetDate && planned.targetDate > lockedTopic.estimatedFinishDate);
+    if (exceedsTopicFinish && body.data.extendTopicEstimatedFinish === undefined) {
+      return { type: "decision" as const, date: latest! };
+    }
+    const extendFinish = exceedsTopicFinish && body.data.extendTopicEstimatedFinish === true;
     const rows = await tx
       .insert(milestonesTable)
       .values({
-        id: randomUUID(),
+        id,
         topicId: params.data.topicId,
         title: body.data.title,
         description: body.data.description,
-        beginDate,
-        targetDate,
+        beginDate: planned.beginDate,
+        targetDate: planned.targetDate,
+        dependsOnMilestoneId: planned.dependsOnMilestoneId,
         assigneeId: body.data.assigneeId,
         workloadPercent: 0,
       })
       .returning();
+    if (extendFinish) {
+      await tx.update(topicsTable).set({ estimatedFinishDate: latest, updatedAt: new Date() })
+        .where(eq(topicsTable.id, topic.id));
+      await shiftDependentSchedules(tx, req, topic.id, latest!);
+    }
     if (allocations.length) {
       await tx.insert(milestoneAllocationsTable).values(
         allocations.map((entry) => ({ milestoneId: rows[0].id, ...entry })),
@@ -2837,12 +2930,24 @@ router.post("/topics/:topicId/milestones", async (req, res): Promise<void> => {
       false,
       tx,
     );
-    return rows;
+    return { type: "ok" as const, milestone: rows[0] };
   });
+  if (result.type === "error") {
+    res.status(result.status).json({ error: result.error });
+    return;
+  }
+  if (result.type === "decision") {
+    res.status(409).json({
+      error: "A milestone would finish after the topic's estimated finish. Choose whether to extend the topic estimate.",
+      requiresFinishDecision: true,
+      suggestedFinishDate: result.date,
+    });
+    return;
+  }
   const snapshot = await loadSnapshot();
   res
     .status(201)
-    .json(AddTopicMilestoneResponse.parse(snapshot.buildMilestone(created)));
+    .json(AddTopicMilestoneResponse.parse(snapshot.buildMilestone(result.milestone)));
 });
 
 router.patch("/milestones/:milestoneId", async (req, res): Promise<void> => {
@@ -2867,6 +2972,37 @@ router.patch("/milestones/:milestoneId", async (req, res): Promise<void> => {
   if (body.data.status && ["in_progress", "completed"].includes(body.data.status) &&
     !prerequisiteComplete(topic, before.topics)) {
     res.status(409).json({ error: "The prerequisite must be completed before milestone work can start" });
+    return;
+  }
+  const nextDependencyId = body.data.dependsOnMilestoneId === undefined
+    ? existingMilestone.dependsOnMilestoneId : body.data.dependsOnMilestoneId || null;
+  const dependencyChanged = nextDependencyId !== existingMilestone.dependsOnMilestoneId;
+  const newPrerequisite = nextDependencyId
+    ? before.milestones.find((milestone) => milestone.id === nextDependencyId) : null;
+  if (nextDependencyId && (!newPrerequisite || newPrerequisite.topicId !== topic.id)) {
+    res.status(400).json({ error: "Select a milestone from this topic" });
+    return;
+  }
+  if (dependencyChanged && nextDependencyId) {
+    if (existingMilestone.status !== "not_started") {
+      res.status(409).json({ error: "A milestone with started work cannot be given a new prerequisite" });
+      return;
+    }
+    const seen = new Set<string>();
+    let ancestorId: string | null = nextDependencyId;
+    while (ancestorId) {
+      if (seen.has(ancestorId) || ancestorId === existingMilestone.id) {
+        res.status(409).json({ error: "A milestone cannot depend on itself or its successors" });
+        return;
+      }
+      seen.add(ancestorId);
+      ancestorId = before.milestones.find((milestone) => milestone.id === ancestorId)
+        ?.dependsOnMilestoneId ?? null;
+    }
+  }
+  if (body.data.status && ["in_progress", "completed"].includes(body.data.status) &&
+    newPrerequisite && newPrerequisite.status !== "completed") {
+    res.status(409).json({ error: "The prerequisite milestone must be completed before work can start" });
     return;
   }
   const nextBeginDate =
@@ -2903,7 +3039,8 @@ router.patch("/milestones/:milestoneId", async (req, res): Promise<void> => {
     return;
   }
   if (
-    Boolean(nextBeginDate) !== Boolean(nextTargetDate) ||
+    (Boolean(nextBeginDate) !== Boolean(nextTargetDate) &&
+      !(nextDependencyId && nextBeginDate && !nextTargetDate)) ||
     (nextBeginDate && nextTargetDate && nextBeginDate > nextTargetDate)
   ) {
     res
@@ -2919,31 +3056,106 @@ router.patch("/milestones/:milestoneId", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Milestone allocations require begin and target dates" });
     return;
   }
+  if (nextDependencyId && nextTargetDate && !nextBeginDate) {
+    res.status(400).json({ error: "Set a begin date to preserve the milestone's planned duration" });
+    return;
+  }
+  if (!nextTargetDate && existingMilestone.targetDate &&
+    before.milestones.some((milestone) => milestone.dependsOnMilestoneId === existingMilestone.id)) {
+    res.status(409).json({ error: "A milestone with dependents must keep its target date" });
+    return;
+  }
+  if (!dependencyChanged && newPrerequisite?.targetDate &&
+    body.data.beginDate !== undefined && nextBeginDate !== newPrerequisite.targetDate) {
+    res.status(409).json({ error: "The begin date is set by the prerequisite milestone's target date" });
+    return;
+  }
   const completedAt = body.data.status === undefined
     ? undefined
     : body.data.status === "completed"
       ? existingMilestone.status === "completed" ? existingMilestone.completedAt ?? new Date() : new Date()
       : null;
-  const [updated] = await db.transaction(async (tx) => {
-    const { allocations: _allocations, ...fields } = body.data;
+  const result = await db.transaction(async (tx) => {
+    const [lockedTopic] = await tx.select().from(topicsTable)
+      .where(eq(topicsTable.id, topic.id)).for("update");
+    if (!lockedTopic) return { type: "error" as const, status: 404, error: "Topic not found" };
+    const currentRows = await tx.select().from(milestonesTable)
+      .where(eq(milestonesTable.topicId, topic.id)).orderBy(milestonesTable.id).for("update");
+    const locked = currentRows.find((row) => row.id === existingMilestone.id);
+    if (!locked || locked.beginDate !== existingMilestone.beginDate ||
+      locked.targetDate !== existingMilestone.targetDate ||
+      locked.dependsOnMilestoneId !== existingMilestone.dependsOnMilestoneId) {
+      return { type: "error" as const, status: 409, error: "Milestone schedule changed; reload and try again" };
+    }
+    const lockedPrerequisite = nextDependencyId
+      ? currentRows.find((row) => row.id === nextDependencyId) : null;
+    if (nextDependencyId && (!lockedPrerequisite ||
+      lockedPrerequisite.status !== newPrerequisite?.status ||
+      lockedPrerequisite.targetDate !== newPrerequisite?.targetDate)) {
+      return { type: "error" as const, status: 409, error: "Prerequisite changed; reload and try again" };
+    }
+    if (dependencyChanged && nextDependencyId) {
+      const seen = new Set<string>();
+      let ancestorId: string | null = nextDependencyId;
+      while (ancestorId) {
+        if (ancestorId === locked.id || seen.has(ancestorId)) {
+          return { type: "error" as const, status: 409,
+            error: "A milestone cannot depend on itself or its successors" };
+        }
+        seen.add(ancestorId);
+        ancestorId = currentRows.find((row) => row.id === ancestorId)?.dependsOnMilestoneId ?? null;
+      }
+    }
+    const changedDates = dependencyChanged || nextBeginDate !== locked.beginDate ||
+      nextTargetDate !== locked.targetDate;
+    const proposed = {
+      ...locked,
+      dependsOnMilestoneId: nextDependencyId,
+      beginDate: nextBeginDate,
+      targetDate: nextTargetDate,
+    };
+    const projected = changedDates
+      ? projectMilestoneDates(currentRows.map((row) => row.id === locked.id ? proposed : row),
+        locked.id, locked.targetDate)
+      : new Map(currentRows.map((row) => [row.id, row]));
+    const planned = projected.get(locked.id)!;
+    const latest = latestMilestoneTarget(projected.values());
+    const exceedsTopicFinish = Boolean(lockedTopic.estimatedFinishDate &&
+      [...projected.values()].some((row) =>
+        row.targetDate && row.targetDate > lockedTopic.estimatedFinishDate! &&
+        row.targetDate !== currentRows.find((current) => current.id === row.id)?.targetDate));
+    if (exceedsTopicFinish && body.data.extendTopicEstimatedFinish === undefined) {
+      return { type: "decision" as const, date: latest! };
+    }
+    const extendFinish = exceedsTopicFinish && body.data.extendTopicEstimatedFinish === true;
+    const { allocations: _allocations, dependsOnMilestoneId: _dependency,
+      extendTopicEstimatedFinish: _extend, ...fields } = body.data;
     const rows = await tx
       .update(milestonesTable)
       .set({
         ...fields,
         workloadPercent: allocations === undefined ? undefined : 0,
-        beginDate:
-          body.data.beginDate === undefined
-            ? undefined
-            : dateOnly(body.data.beginDate),
-        targetDate:
-          body.data.targetDate === undefined
-            ? undefined
-            : dateOnly(body.data.targetDate),
+        dependsOnMilestoneId: dependencyChanged ? nextDependencyId : undefined,
+        beginDate: changedDates ? planned.beginDate : undefined,
+        targetDate: changedDates ? planned.targetDate : undefined,
         completedAt,
       })
       .where(eq(milestonesTable.id, params.data.milestoneId))
       .returning();
     if (rows[0]) {
+      for (const original of currentRows) {
+        const shifted = projected.get(original.id)!;
+        if (original.id === locked.id ||
+          (original.beginDate === shifted.beginDate && original.targetDate === shifted.targetDate)) continue;
+        await tx.update(milestonesTable).set({
+          beginDate: shifted.beginDate, targetDate: shifted.targetDate,
+        }).where(eq(milestonesTable.id, original.id));
+      }
+      if (extendFinish) {
+        await tx.update(topicsTable).set({ estimatedFinishDate: latest, updatedAt: new Date() })
+          .where(eq(topicsTable.id, topic.id));
+        await shiftDependentSchedules(tx, req, topic.id, latest!);
+      }
       if (allocations !== undefined) {
         await tx.delete(milestoneAllocationsTable)
           .where(eq(milestoneAllocationsTable.milestoneId, rows[0].id));
@@ -2962,14 +3174,22 @@ router.patch("/milestones/:milestoneId", async (req, res): Promise<void> => {
         tx,
       );
     }
-    return rows;
+    return { type: "ok" as const, milestone: rows[0] };
   });
-  if (!updated) {
-    res.status(404).json({ error: "Milestone not found" });
+  if (result.type === "error") {
+    res.status(result.status).json({ error: result.error });
+    return;
+  }
+  if (result.type === "decision") {
+    res.status(409).json({
+      error: "A milestone would finish after the topic's estimated finish. Choose whether to extend the topic estimate.",
+      requiresFinishDecision: true,
+      suggestedFinishDate: result.date,
+    });
     return;
   }
   const snapshot = await loadSnapshot();
-  res.json(UpdateMilestoneResponse.parse(snapshot.buildMilestone(updated)));
+  res.json(UpdateMilestoneResponse.parse(snapshot.buildMilestone(result.milestone)));
 });
 
 router.delete("/milestones/:milestoneId", async (req, res): Promise<void> => {

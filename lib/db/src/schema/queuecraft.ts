@@ -213,6 +213,8 @@ export const milestonesTable = pgTable(
     status: milestoneStatusEnum("status").notNull().default("not_started"),
     beginDate: date("begin_date", { mode: "string" }),
     targetDate: date("target_date", { mode: "string" }),
+    dependsOnMilestoneId: text("depends_on_milestone_id")
+      .references((): AnyPgColumn => milestonesTable.id, { onDelete: "set null" }),
     assigneeId: text("assignee_id").references(() => membersTable.id),
     workloadPercent: integer("workload_percent").notNull().default(0),
     completionNote: text("completion_note"),

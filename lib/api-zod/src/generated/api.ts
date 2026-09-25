@@ -800,6 +800,7 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']),
   "beginDate": zod.coerce.date().nullish(),
   "targetDate": zod.coerce.date().nullish(),
+  "dependsOnMilestoneId": zod.string().nullable(),
   "assignee": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1924,7 +1925,7 @@ export const CreateTopicResponse = zod.object({
 
 
 /**
- * @summary List eligible prerequisite topics with estimated finish dates
+ * @summary List eligible prerequisite topics, including those awaiting a finish estimate
  */
 export const ListDependencyCandidatesQueryParams = zod.object({
   "topicId": zod.coerce.string().optional().describe('Exclude this topic and its dependents when editing')
@@ -2234,6 +2235,7 @@ export const GetTopicResponse = zod.object({
   "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']),
   "beginDate": zod.coerce.date().nullish(),
   "targetDate": zod.coerce.date().nullish(),
+  "dependsOnMilestoneId": zod.string().nullable(),
   "assignee": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -3714,7 +3716,7 @@ export const DeleteTopicCollaboratorResponse = zod.void()
 
 
 /**
- * @summary Add a parallel milestone
+ * @summary Add a milestone, optionally after another milestone in the same topic
  */
 export const AddTopicMilestoneParams = zod.object({
   "topicId": zod.coerce.string()
@@ -3734,6 +3736,8 @@ export const AddTopicMilestoneBody = zod.object({
   "description": zod.string().max(addTopicMilestoneBodyDescriptionMax).nullish(),
   "beginDate": zod.coerce.date(),
   "targetDate": zod.coerce.date(),
+  "dependsOnMilestoneId": zod.string().nullish(),
+  "extendTopicEstimatedFinish": zod.boolean().optional(),
   "assigneeId": zod.string().nullish(),
   "allocations": zod.array(zod.object({
   "memberId": zod.string(),
@@ -3771,6 +3775,7 @@ export const AddTopicMilestoneResponse = zod.object({
   "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']),
   "beginDate": zod.coerce.date().nullish(),
   "targetDate": zod.coerce.date().nullish(),
+  "dependsOnMilestoneId": zod.string().nullable(),
   "assignee": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -3834,6 +3839,8 @@ export const UpdateMilestoneBody = zod.object({
   "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']).optional(),
   "beginDate": zod.coerce.date().nullish(),
   "targetDate": zod.coerce.date().nullish(),
+  "dependsOnMilestoneId": zod.string().nullish(),
+  "extendTopicEstimatedFinish": zod.boolean().optional(),
   "assigneeId": zod.string().nullish(),
   "allocations": zod.array(zod.object({
   "memberId": zod.string(),
@@ -3872,6 +3879,7 @@ export const UpdateMilestoneResponse = zod.object({
   "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']),
   "beginDate": zod.coerce.date().nullish(),
   "targetDate": zod.coerce.date().nullish(),
+  "dependsOnMilestoneId": zod.string().nullable(),
   "assignee": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
