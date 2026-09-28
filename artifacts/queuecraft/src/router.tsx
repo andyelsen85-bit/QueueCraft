@@ -9,6 +9,7 @@ import { TopicDetail } from "./pages/topic-detail"
 import { Validation } from "./pages/validation"
 import { Directory } from "./pages/directory"
 import { Occupancy } from "./pages/occupancy"
+import { RoleOccupancy } from "./pages/role-occupancy"
 import { Calendar } from "./pages/calendar"
 import { SettingsPage } from "./pages/settings"
 import NotFound from "./pages/not-found"
@@ -52,6 +53,7 @@ export function AppRouter() {
         <Route path="/validation" component={Validation} />
         <Route path="/directory">{session?.capabilities?.includes("directory.manage") ? <Directory /> : <AccessDenied />}</Route>
         <Route path="/occupancy" component={Occupancy} />
+        <Route path="/role-occupancy" component={RoleOccupancy} />
         <Route path="/calendar" component={Calendar} />
         <Route path="/settings">{session?.capabilities?.includes("settings.manage") ? <SettingsPage /> : <AccessDenied />}</Route>
         <Route component={NotFound} />

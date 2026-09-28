@@ -93,7 +93,10 @@ import {
   DeleteMilestoneParams,
   GetOccupancyOverviewQueryParams,
   GetOccupancyOverviewResponse,
+  GetOccupancyForecastQueryParams,
+  GetOccupancyForecastResponse,
 } from "@workspace/api-zod";
+import { calculateOccupancy, type ScheduledAllocation } from "../lib/occupancy";
 import { authLimiter, breakGlassLimiter } from "../middleware/security";
 import { queueMail, sendTestMail } from "../services/mailer";
 import {
@@ -2390,6 +2393,30 @@ router.put("/topics/:topicId/allocations", async (req, res): Promise<void> => {
   res.status(410).json({ error: "Topic allocations are read-only history. Set occupancy on each milestone instead." });
 });
 
+function occupancyAllocationsByMember(snapshot: Awaited<ReturnType<typeof loadSnapshot>>) {
+  const topicById = new Map(snapshot.topics.map((topic) => [topic.id, topic]));
+  const milestoneById = new Map(snapshot.milestones.map((milestone) => [milestone.id, milestone]));
+  const result = new Map<string, ScheduledAllocation[]>();
+  for (const allocation of snapshot.milestoneAllocations) {
+    const milestone = milestoneById.get(allocation.milestoneId);
+    const topic = milestone && topicById.get(milestone.topicId);
+    if (!milestone?.beginDate || !milestone.targetDate || !topic ||
+      topic.status === "pending_validation" || !prerequisiteComplete(topic, snapshot.topics)) continue;
+    const rows = result.get(allocation.memberId) ?? [];
+    rows.push({
+      memberId: allocation.memberId,
+      milestoneId: milestone.id,
+      topicId: milestone.topicId,
+      title: topic.title ? `${topic.title}: ${milestone.title}` : milestone.title,
+      beginDate: milestone.beginDate,
+      targetDate: milestone.targetDate,
+      allocationPercent: allocation.allocationPercent,
+    });
+    result.set(allocation.memberId, rows);
+  }
+  return result;
+}
+
 router.get("/occupancy/overview", async (req, res): Promise<void> => {
   const parsed = GetOccupancyOverviewQueryParams.safeParse({
     ...req.query,
@@ -2409,43 +2436,12 @@ router.get("/occupancy/overview", async (req, res): Promise<void> => {
     return;
   }
   const snapshot = await loadSnapshot();
-  const rangeStart = new Date(`${startDate}T00:00:00Z`);
-  const rangeEnd = new Date(`${endDate}T00:00:00Z`);
-  const rangeDays =
-    Math.floor((rangeEnd.getTime() - rangeStart.getTime()) / 86400000) + 1;
-  const overlapDays = (start: string, end: string) => {
-    const from = new Date(`${start > startDate ? start : startDate}T00:00:00Z`);
-    const to = new Date(`${end < endDate ? end : endDate}T00:00:00Z`);
-    return Math.max(
-      0,
-      Math.floor((to.getTime() - from.getTime()) / 86400000) + 1,
-    );
-  };
-  const topicById = new Map(snapshot.topics.map((topic) => [topic.id, topic]));
-  const milestoneById = new Map(snapshot.milestones.map((milestone) => [milestone.id, milestone]));
+  const allocations = occupancyAllocationsByMember(snapshot);
   const overview = snapshot.members
     .filter((member) => member.status === "active")
     .map((member) => {
-      const milestoneRows = snapshot.milestoneAllocations.flatMap((allocation) => {
-        const milestone = milestoneById.get(allocation.milestoneId);
-        return allocation.memberId === member.id &&
-          milestone?.beginDate && milestone.targetDate &&
-          topicById.get(milestone.topicId)?.status !== "pending_validation" &&
-          prerequisiteComplete(topicById.get(milestone.topicId)!, snapshot.topics) &&
-          milestone.beginDate <= endDate && milestone.targetDate >= startDate
-          ? [{ ...milestone, allocationPercent: allocation.allocationPercent }]
-          : [];
-      });
-      const milestonePercent = milestoneRows.reduce(
-        (sum, row) =>
-          sum +
-          (row.allocationPercent * overlapDays(row.beginDate!, row.targetDate!)) /
-            rangeDays,
-        0,
-      );
-      const milestoneAllocationPercent = Math.round(milestonePercent);
-      const totalOccupancyPercent = Math.round(
-        member.dailyBusinessPercent + milestonePercent,
+      const calculated = calculateOccupancy(
+        member.dailyBusinessPercent, allocations.get(member.id) ?? [], startDate, endDate,
       );
       return {
         member,
@@ -2454,27 +2450,72 @@ router.get("/occupancy/overview", async (req, res): Promise<void> => {
         dailyBusinessPercent: member.dailyBusinessPercent,
         dailyBusinessTasks: member.dailyBusinessTasks,
         topics: [],
-        milestones: milestoneRows.map((row) => ({
+        milestones: calculated.milestones.map((row) => ({
           topicId: row.topicId,
-          milestoneId: row.id,
-          title: topicById.get(row.topicId)?.title
-            ? `${topicById.get(row.topicId)?.title}: ${row.title}`
-            : row.title,
-          allocationPercent: Math.round(
-            (row.allocationPercent *
-              overlapDays(row.beginDate!, row.targetDate!)) /
-              rangeDays,
-          ),
+          milestoneId: row.milestoneId,
+          title: row.title,
+          allocationPercent: Math.round(row.weightedPercent),
           allocationType: "milestone" as const,
         })),
         topicAllocationPercent: 0,
-        milestoneAllocationPercent,
-        totalOccupancyPercent,
-        availablePercent: 100 - totalOccupancyPercent,
-        overAllocated: totalOccupancyPercent > 100,
+        milestoneAllocationPercent: calculated.milestoneAllocationPercent,
+        totalOccupancyPercent: calculated.totalOccupancyPercent,
+        availablePercent: calculated.availablePercent,
+        overAllocated: calculated.overAllocated,
       };
     });
   res.json(GetOccupancyOverviewResponse.parse(overview));
+});
+
+router.get("/occupancy/forecast", async (req, res): Promise<void> => {
+  const parsed = GetOccupancyForecastQueryParams.safeParse({
+    ...req.query,
+    startDate: new Date(String(req.query.startDate ?? "")),
+    endDate: new Date(String(req.query.endDate ?? "")),
+  });
+  if (!parsed.success) {
+    res.status(400).json({ error: "A valid startDate and endDate are required" });
+    return;
+  }
+  const startDate = dateOnly(parsed.data.startDate);
+  const endDate = dateOnly(parsed.data.endDate);
+  const requestedDays = (Date.parse(`${endDate}T00:00:00Z`) -
+    Date.parse(`${startDate}T00:00:00Z`)) / 86400000;
+  if (!startDate || !endDate || startDate > endDate || requestedDays > 220) {
+    res.status(400).json({ error: "A valid ordered date range of at most 221 days is required" });
+    return;
+  }
+  const weekStart = new Date(`${startDate}T00:00:00Z`);
+  weekStart.setUTCDate(weekStart.getUTCDate() - (weekStart.getUTCDay() + 6) % 7);
+  const weeks: { startDate: string; endDate: string }[] = [];
+  while (weekStart.toISOString().slice(0, 10) <= endDate) {
+    const weekEnd = new Date(weekStart);
+    weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+    weeks.push({
+      startDate: weekStart.toISOString().slice(0, 10),
+      endDate: weekEnd.toISOString().slice(0, 10),
+    });
+    weekStart.setUTCDate(weekStart.getUTCDate() + 7);
+  }
+  const snapshot = await loadSnapshot();
+  const allocations = occupancyAllocationsByMember(snapshot);
+  const members = snapshot.members
+    .filter((member) => member.status === "active")
+    .map((member) => ({
+      member,
+      weeks: weeks.map((week) => {
+        const {
+          milestones: _milestones, ...totals
+        } = calculateOccupancy(
+          member.dailyBusinessPercent,
+          allocations.get(member.id) ?? [],
+          week.startDate,
+          week.endDate,
+        );
+        return { ...week, ...totals };
+      }),
+    }));
+  res.json(GetOccupancyForecastResponse.parse({ weeks, members }));
 });
 
 router.post("/topics/:topicId/validate", async (req, res): Promise<void> => {

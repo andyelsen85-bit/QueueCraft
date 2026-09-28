@@ -638,6 +638,31 @@ export interface OccupancyOverview {
   overAllocated: boolean;
 }
 
+export interface OccupancyForecastWeek {
+  startDate: string;
+  endDate: string;
+}
+
+export interface OccupancyForecastMemberWeek {
+  startDate: string;
+  endDate: string;
+  dailyBusinessPercent: number;
+  milestoneAllocationPercent: number;
+  totalOccupancyPercent: number;
+  availablePercent: number;
+  overAllocated: boolean;
+}
+
+export interface OccupancyForecastMember {
+  member: Member;
+  weeks: OccupancyForecastMemberWeek[];
+}
+
+export interface OccupancyForecast {
+  weeks: OccupancyForecastWeek[];
+  members: OccupancyForecastMember[];
+}
+
 export type DashboardSummaryKpis = {
   total: number;
   pendingValidation: number;
@@ -720,6 +745,11 @@ topicId?: string;
 };
 
 export type GetOccupancyOverviewParams = {
+startDate: StartDateParameter;
+endDate: EndDateParameter;
+};
+
+export type GetOccupancyForecastParams = {
 startDate: StartDateParameter;
 endDate: EndDateParameter;
 };

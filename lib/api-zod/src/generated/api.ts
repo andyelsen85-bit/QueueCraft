@@ -4022,6 +4022,58 @@ export const GetOccupancyOverviewResponse = zod.array(GetOccupancyOverviewRespon
 
 
 /**
+ * @summary Get weekly occupancy for active members in a planning range
+ */
+export const GetOccupancyForecastQueryParams = zod.object({
+  "startDate": zod.date(),
+  "endDate": zod.date()
+})
+
+export const getOccupancyForecastResponseMembersItemMemberDailyBusinessPercentMin = 0;
+export const getOccupancyForecastResponseMembersItemMemberDailyBusinessPercentMax = 100;
+
+export const getOccupancyForecastResponseMembersItemMemberDailyBusinessTasksItemNameMax = 120;
+
+export const getOccupancyForecastResponseMembersItemMemberDailyBusinessTasksItemPercentMin = 0;
+export const getOccupancyForecastResponseMembersItemMemberDailyBusinessTasksItemPercentMax = 100;
+
+
+
+export const GetOccupancyForecastResponse = zod.object({
+  "weeks": zod.array(zod.object({
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date()
+})),
+  "members": zod.array(zod.object({
+  "member": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "initials": zod.string(),
+  "email": zod.string().email(),
+  "title": zod.string().nullish(),
+  "status": zod.enum(['active', 'disabled']).optional(),
+  "isCio": zod.boolean().optional(),
+  "authProvider": zod.string().nullish(),
+  "dailyBusinessPercent": zod.number().int().min(getOccupancyForecastResponseMembersItemMemberDailyBusinessPercentMin).max(getOccupancyForecastResponseMembersItemMemberDailyBusinessPercentMax).optional(),
+  "dailyBusinessTasks": zod.array(zod.object({
+  "name": zod.string().min(1).max(getOccupancyForecastResponseMembersItemMemberDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getOccupancyForecastResponseMembersItemMemberDailyBusinessTasksItemPercentMin).max(getOccupancyForecastResponseMembersItemMemberDailyBusinessTasksItemPercentMax)
+})).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
+}),
+  "weeks": zod.array(zod.object({
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "dailyBusinessPercent": zod.number().int(),
+  "milestoneAllocationPercent": zod.number().int(),
+  "totalOccupancyPercent": zod.number().int(),
+  "availablePercent": zod.number().int(),
+  "overAllocated": zod.boolean()
+}))
+}))
+})
+
+
+/**
  * @summary List departments and validation authorities
  */
 export const listDepartmentsResponseServiceHeadDailyBusinessPercentMin = 0;

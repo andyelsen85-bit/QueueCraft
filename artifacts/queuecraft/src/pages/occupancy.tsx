@@ -4,6 +4,8 @@ import {
   getGetOccupancyOverviewQueryKey,
   useListDepartments,
   useListRoles,
+  useGetOccupancyForecast,
+  getGetOccupancyForecastQueryKey,
 } from "@workspace/api-client-react";
 import {
   format,
@@ -41,6 +43,8 @@ import {
   Briefcase,
 } from "lucide-react";
 import { availableStyle, occupancyStyle } from "@/lib/occupancy";
+import { forecastRange, MemberForecast } from "@/components/occupancy-forecast";
+import { Link } from "wouter";
 
 type OccupancySort = "name" | "available" | "load";
 export function Occupancy() {
@@ -57,6 +61,19 @@ export function Occupancy() {
   );
   const { data: departments } = useListDepartments();
   const { data: roles } = useListRoles();
+  const forecastParams = React.useMemo(forecastRange, []);
+  const {
+    data: forecast,
+    isLoading: forecastLoading,
+    isError: forecastError,
+    refetch: retryForecast,
+  } = useGetOccupancyForecast(forecastParams, {
+    query: { queryKey: getGetOccupancyForecastQueryKey(forecastParams) },
+  });
+  const forecastMembers = React.useMemo(
+    () => new Map(forecast?.members.map((entry) => [entry.member.id, entry.weeks]) ?? []),
+    [forecast],
+  );
   const sortedDepartments = React.useMemo(
     () =>
       [...(departments ?? [])].sort((left, right) =>
@@ -88,7 +105,7 @@ export function Occupancy() {
     startDate: format(startDate, "yyyy-MM-dd"),
     endDate: format(endDate, "yyyy-MM-dd"),
   };
-  const { data: occupancyOverviews, isLoading } = useGetOccupancyOverview(
+  const { data: occupancyOverviews, isLoading, isError, refetch } = useGetOccupancyOverview(
     occupancyParams,
     { query: { queryKey: getGetOccupancyOverviewQueryKey(occupancyParams) } },
   );
@@ -170,7 +187,7 @@ export function Occupancy() {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-8">
+    <div className="flex-1 space-y-6 p-4 sm:p-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">
@@ -183,6 +200,9 @@ export function Occupancy() {
             Review team capacity, BAU commitments, and milestone occupancy by week
             or month.
           </p>
+          <Link href="/role-occupancy" className="mt-3 inline-flex text-sm font-semibold text-primary underline-offset-4 hover:underline" data-testid="link-role-occupancy">
+            Plan by role <ChevronRight className="ml-1 h-4 w-4" />
+          </Link>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/30 p-1">
@@ -324,6 +344,10 @@ export function Occupancy() {
           <Skeleton className="h-[200px] w-full" />
           <Skeleton className="h-[200px] w-full" />
         </div>
+      ) : isError ? (
+        <div role="alert" className="rounded-sm border border-destructive/40 bg-destructive/5 p-6 text-sm">
+          Could not load occupancy. <Button variant="outline" size="sm" className="ml-3" onClick={() => refetch()}>Retry</Button>
+        </div>
       ) : !overviews || overviews.length === 0 ? (
         <div className="p-12 text-center text-sm text-muted-foreground border-2 border-dashed border-muted rounded-sm">
           No active members found.
@@ -419,7 +443,23 @@ export function Occupancy() {
                   </div>
                 </CardHeader>
 
-                {isExpanded && <CardContent className="p-0">
+                 {isExpanded && <CardContent className="p-0">
+                   {forecastLoading ? (
+                     <div className="space-y-2 border-b p-4" aria-label="Loading weekly forecast">
+                       <Skeleton className="h-4 w-48" /><Skeleton className="h-20 w-full" />
+                     </div>
+                   ) : forecastError ? (
+                     <div role="alert" className="border-b p-4 text-sm text-muted-foreground">
+                       Weekly forecast unavailable. <Button size="sm" variant="outline" className="ml-2" onClick={() => retryForecast()}>Retry</Button>
+                     </div>
+                   ) : forecast ? (
+                     <MemberForecast
+                       name={overview.member.name}
+                       memberId={overview.member.id}
+                       weeks={forecast.weeks}
+                       memberWeeks={forecastMembers.get(overview.member.id) ?? []}
+                     />
+                   ) : null}
                   <div className="flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-border">
                     {/* BAU Section */}
                     <div className="sm:w-1/3 p-4 bg-muted/5">

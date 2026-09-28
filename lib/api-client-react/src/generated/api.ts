@@ -31,6 +31,7 @@ import type {
   DepartmentUpdate,
   FinishDateUpdate,
   GetDashboardActivityParams,
+  GetOccupancyForecastParams,
   GetOccupancyOverviewParams,
   HealthStatus,
   ListDependencyCandidatesParams,
@@ -45,6 +46,7 @@ import type {
   MilestoneUpdate,
   MyWork,
   NotFoundResponse,
+  OccupancyForecast,
   OccupancyOverview,
   Role,
   RoleInput,
@@ -2218,6 +2220,90 @@ export function useGetOccupancyOverview<TData = Awaited<ReturnType<typeof getOcc
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetOccupancyOverviewQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOccupancyForecastUrl = (params: GetOccupancyForecastParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/occupancy/forecast?${stringifiedParams}` : `/api/occupancy/forecast`
+}
+
+/**
+ * @summary Get weekly occupancy for active members in a planning range
+ */
+export const getOccupancyForecast = async (params: GetOccupancyForecastParams, options?: Parameters<typeof customFetch>[1]): Promise<OccupancyForecast> => {
+
+  return customFetch<OccupancyForecast>(getGetOccupancyForecastUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOccupancyForecastQueryKey = (params?: GetOccupancyForecastParams,) => {
+    return [
+    `/api/occupancy/forecast`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOccupancyForecastQueryOptions = <TData = Awaited<ReturnType<typeof getOccupancyForecast>>, TError = ErrorType<unknown>>(params: GetOccupancyForecastParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOccupancyForecast>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOccupancyForecastQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOccupancyForecast>>> = ({ signal }) => getOccupancyForecast(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOccupancyForecast>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOccupancyForecastQueryResult = NonNullable<Awaited<ReturnType<typeof getOccupancyForecast>>>
+export type GetOccupancyForecastQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get weekly occupancy for active members in a planning range
+ */
+
+export function useGetOccupancyForecast<TData = Awaited<ReturnType<typeof getOccupancyForecast>>, TError = ErrorType<unknown>>(
+ params: GetOccupancyForecastParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOccupancyForecast>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOccupancyForecastQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

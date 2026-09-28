@@ -443,6 +443,21 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/OccupancyOverview" }
+  /occupancy/forecast:
+    get:
+      operationId: getOccupancyForecast
+      tags: [dashboard]
+      summary: Get weekly occupancy for active members in a planning range
+      parameters:
+        - $ref: "#/components/parameters/StartDate"
+        - $ref: "#/components/parameters/EndDate"
+      responses:
+        "200":
+          description: Full Monday-to-Sunday weeks intersecting the range
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OccupancyForecast"
   /directory/departments:
     get:
       operationId: listDepartments
@@ -1322,6 +1337,41 @@ components:
           type: array
           items: { $ref: "#/components/schemas/OccupancyTopic" }
         topicAllocationPercent: { type: integer }
+        milestoneAllocationPercent: { type: integer }
+        totalOccupancyPercent: { type: integer }
+        availablePercent: { type: integer }
+        overAllocated: { type: boolean }
+    OccupancyForecast:
+      type: object
+      required: [weeks, members]
+      properties:
+        weeks:
+          type: array
+          items: { $ref: "#/components/schemas/OccupancyForecastWeek" }
+        members:
+          type: array
+          items: { $ref: "#/components/schemas/OccupancyForecastMember" }
+    OccupancyForecastWeek:
+      type: object
+      required: [startDate, endDate]
+      properties:
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+    OccupancyForecastMember:
+      type: object
+      required: [member, weeks]
+      properties:
+        member: { $ref: "#/components/schemas/Member" }
+        weeks:
+          type: array
+          items: { $ref: "#/components/schemas/OccupancyForecastMemberWeek" }
+    OccupancyForecastMemberWeek:
+      type: object
+      required: [startDate, endDate, dailyBusinessPercent, milestoneAllocationPercent, totalOccupancyPercent, availablePercent, overAllocated]
+      properties:
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        dailyBusinessPercent: { type: integer }
         milestoneAllocationPercent: { type: integer }
         totalOccupancyPercent: { type: integer }
         availablePercent: { type: integer }

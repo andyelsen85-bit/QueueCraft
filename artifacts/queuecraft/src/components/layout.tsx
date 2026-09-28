@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Link, useLocation } from "wouter"
 import { cn } from "@/lib/utils"
-import { Home, FolderKanban, ListTodo, ShieldAlert, Users, CalendarDays, Settings, ChevronRight } from "lucide-react"
+import { Home, FolderKanban, ListTodo, ShieldAlert, Users, CalendarDays, Settings, ChevronRight, ChartNoAxesCombined, Menu, X } from "lucide-react"
 import { useGetSession, useListDepartments } from "@workspace/api-client-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: departments, isLoading: departmentsLoading, isError: departmentsError } = useListDepartments()
   const [profileOpen, setProfileOpen] = React.useState(false)
   const [passwordOpen, setPasswordOpen] = React.useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = React.useState(false)
   const isLocal = session?.authProvider === "local"
   const headOf = departments?.filter((department) => department.serviceHead.id === session?.user?.id).map((department) => department.name) ?? []
   const deputyOf = departments?.filter((department) => department.serviceHeadDeputy?.id === session?.user?.id).map((department) => department.name) ?? []
@@ -36,6 +37,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { label: "My Work", href: "/my-work", icon: FolderKanban },
     { label: "Topics", href: "/topics", icon: ListTodo },
     { label: "Occupancy", href: "/occupancy", icon: CalendarDays },
+    { label: "Role capacity", href: "/role-occupancy", icon: ChartNoAxesCombined },
     { label: "Calendar", href: "/calendar", icon: CalendarDays },
     { label: "Validation", href: "/validation", icon: ShieldAlert },
     ...(session?.capabilities?.includes("directory.manage") ? [{ label: "Directory", href: "/directory", icon: Users }] : []),
@@ -110,6 +112,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile Header */}
         <header className="flex h-14 items-center border-b bg-background px-4 md:hidden">
+          <button type="button" className="mr-3 rounded-sm border p-1.5" aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(!mobileNavOpen)} data-testid="button-mobile-navigation">
+            {mobileNavOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
           <div className="flex items-center gap-2 font-bold tracking-tight">
             <div className="h-6 w-6 rounded-sm bg-primary flex items-center justify-center text-primary-foreground">
               <span className="font-mono text-xs font-bold leading-none">QC</span>
@@ -117,6 +122,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             QueueCraft
           </div>
         </header>
+        {mobileNavOpen && (
+          <nav className="max-h-[60dvh] overflow-auto border-b bg-sidebar p-3 text-sidebar-foreground md:hidden" aria-label="Mobile navigation">
+            {navItems.map((item) => (
+              <Link key={item.href} href={item.href} onClick={() => setMobileNavOpen(false)} className={cn("flex items-center gap-3 rounded-sm px-3 py-2 text-sm", location === item.href ? "bg-sidebar-accent font-semibold" : "text-sidebar-foreground/75")} data-testid={`link-mobile-${item.href.slice(1) || "dashboard"}`}>
+                <item.icon className="h-4 w-4" />{item.label}
+              </Link>
+            ))}
+          </nav>
+        )}
 
         <main className="flex-1 overflow-auto">
           {children}

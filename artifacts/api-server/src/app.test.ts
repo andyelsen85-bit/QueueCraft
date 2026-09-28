@@ -1179,6 +1179,14 @@ describe("QueueCraft security and preference flows", () => {
     assert.equal(pendingRow.milestoneAllocationPercent, 0);
     assert.equal(pendingRow.totalOccupancyPercent, pendingRow.dailyBusinessPercent);
     assert.deepEqual(pendingRow.milestones, []);
+    const pendingForecast = await agent
+      .get("/api/occupancy/forecast?startDate=2041-01-13&endDate=2041-01-31")
+      .expect(200);
+    assert.equal(pendingForecast.body.weeks.length, 4);
+    const pendingMember = pendingForecast.body.members.find(
+      (item: { member: { id: string } }) => item.member.id === "member-andy",
+    );
+    assert.equal(pendingMember.weeks[0].totalOccupancyPercent, pendingRow.dailyBusinessPercent);
     await agent.post(`/api/topics/${created.body.id}/validate`)
       .set("x-csrf-token", csrf.body.csrfToken).send({}).expect(200);
     const during = await agent
@@ -1191,6 +1199,24 @@ describe("QueueCraft security and preference flows", () => {
     assert.equal(row.milestoneAllocationPercent, 11);
     assert.equal(row.totalOccupancyPercent, row.dailyBusinessPercent + 11);
     assert.deepEqual(row.topics, []);
+    const forecast = await agent
+      .get("/api/occupancy/forecast?startDate=2041-01-13&endDate=2041-01-31")
+      .expect(200);
+    const forecastMember = forecast.body.members.find(
+      (item: { member: { id: string } }) => item.member.id === "member-andy",
+    );
+    assert.equal(forecastMember.weeks[0].startDate.slice(0, 10), "2041-01-07");
+    assert.equal(forecastMember.weeks[0].endDate.slice(0, 10), "2041-01-13");
+    assert.equal(forecastMember.weeks[1].startDate.slice(0, 10), "2041-01-14");
+    const secondWeek = await agent
+      .get("/api/occupancy/overview?startDate=2041-01-14&endDate=2041-01-20")
+      .expect(200);
+    const secondWeekMember = secondWeek.body.find(
+      (item: { member: { id: string } }) => item.member.id === "member-andy",
+    );
+    assert.equal(forecastMember.weeks[1].totalOccupancyPercent, secondWeekMember.totalOccupancyPercent);
+    assert.equal(forecastMember.weeks[2].milestoneAllocationPercent, 0);
+    await agent.get("/api/occupancy/forecast?startDate=2041-01-31&endDate=2041-01-13").expect(400);
     const outside = await agent
       .get("/api/occupancy/overview?startDate=2041-02-03&endDate=2041-02-09")
       .expect(200);
