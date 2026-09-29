@@ -111,9 +111,16 @@ export function Calendar() {
       .map(topic => {
         const schedule = dateRange(topic.estimatedStartDate, topic.estimatedFinishDate ?? topic.targetDate);
         const topicRange = schedule && overlapsMonth(schedule, rangeStart, rangeEnd) ? schedule : null;
-        const milestones = topic.milestones.map(milestone => ({
-          ...milestone, range: dateRange(milestone.beginDate, milestone.targetDate),
-        }));
+        const milestones = topic.milestones
+          .map(milestone => ({
+            ...milestone, range: dateRange(milestone.beginDate, milestone.targetDate),
+          }))
+          .sort((a, b) => {
+            const aStart = a.beginDate?.slice(0, 10);
+            const bStart = b.beginDate?.slice(0, 10);
+            if (!aStart || !bStart) return aStart ? -1 : bStart ? 1 : 0;
+            return aStart.localeCompare(bStart);
+          });
         const milestonesInView = milestones.filter(milestone =>
           milestone.range && overlapsMonth(milestone.range, rangeStart, rangeEnd));
         if (!topicRange && milestonesInView.length === 0) return null;
