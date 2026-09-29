@@ -9,4 +9,5 @@
 - [Prerequisite scheduling](prerequisite-edits.md) — preserve planned periods, defer anchoring when a prerequisite has no finish, and protect already-started work.
 - [Milestone finish choice](milestone-finish-choice.md) — treat “last finished milestone date” as the latest planned target and offer an explicit choice about extending the topic.
 - [Legacy milestone status](legacy-milestone-status.md) — offer Returned going forward without silently reinterpreting historical Blocked milestones.
+- [Milestone starts and validation](milestone-start-validation.md) — first planned milestone can start an open topic; pending validation remains an approval boundary.
 - [Additive role capacity](additive-role-capacity.md) — sum full member occupancy across a role, including shared members and leads; do not average percentages.

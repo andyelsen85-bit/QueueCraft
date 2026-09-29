@@ -3040,6 +3040,11 @@ router.patch("/milestones/:milestoneId", async (req, res): Promise<void> => {
   }
   if (!requireTopicManager(req, res, topic, before)) return;
   if (body.data.status && ["in_progress", "completed"].includes(body.data.status) &&
+    topic.status === "pending_validation") {
+    res.status(409).json({ error: "Validate the topic before starting milestone work" });
+    return;
+  }
+  if (body.data.status && ["in_progress", "completed"].includes(body.data.status) &&
     !prerequisiteComplete(topic, before.topics)) {
     res.status(409).json({ error: "The prerequisite must be completed before milestone work can start" });
     return;
@@ -3213,6 +3218,22 @@ router.patch("/milestones/:milestoneId", async (req, res): Promise<void> => {
       .where(eq(milestonesTable.id, params.data.milestoneId))
       .returning();
     if (rows[0]) {
+      const firstMilestone = [...projected.values()].reduce((first, row) => {
+        if (!first) return row;
+        const firstStart = first.beginDate ?? "9999-12-31";
+        const rowStart = row.beginDate ?? "9999-12-31";
+        return rowStart < firstStart ? row : first;
+      }, currentRows[0]);
+      if (lockedTopic.status === "open" &&
+        firstMilestone.id === rows[0].id &&
+        (body.data.status === "in_progress" || body.data.status === "completed")) {
+        await tx.update(topicsTable)
+          .set({ status: "in_progress", updatedAt: new Date() })
+          .where(eq(topicsTable.id, topic.id));
+        await addActivity(req, topic.id, "Topic started",
+          `The first milestone, ${rows[0].title}, is ${body.data.status.replaceAll("_", " ")}.`,
+          false, tx);
+      }
       for (const original of currentRows) {
         const shifted = projected.get(original.id)!;
         if (original.id === locked.id ||

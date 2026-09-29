@@ -18,6 +18,7 @@ import {
   getListDependencyCandidatesQueryKey,
   getGetTopicQueryKey,
   getListTopicsQueryKey,
+  getListCalendarTopicsQueryKey,
   getGetValidationQueueQueryKey,
   getGetOccupancyOverviewQueryKey,
   getGetMyWorkQueryKey,
@@ -200,6 +201,7 @@ export function TopicDetail() {
   const invalidateData = () => {
     queryClient.invalidateQueries({ queryKey: getGetTopicQueryKey(topicId!) });
     queryClient.invalidateQueries({ queryKey: getListTopicsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListCalendarTopicsQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListDependencyCandidatesQueryKey() });
     queryClient.invalidateQueries({
       queryKey: getGetValidationQueueQueryKey(),

@@ -1454,16 +1454,56 @@ describe("QueueCraft security and preference flows", () => {
         .send({ title: "Track status", beginDate: "2044-01-01", targetDate: "2044-01-07" })
         .expect(201);
       assert.equal(milestone.body.status, "not_started");
+      await agent.patch(`/api/milestones/${milestone.body.id}`)
+        .set("x-csrf-token", csrf).send({ status: "in_progress" }).expect(409);
+      assert.equal((await agent.get(`/api/topics/${created.body.id}`).expect(200)).body.status, "pending_validation");
+      await agent.post(`/api/topics/${created.body.id}/validate`)
+        .set("x-csrf-token", csrf).send({}).expect(200);
       for (const status of ["in_progress", "completed", "returned", "not_started"] as const) {
         const updated = await agent.patch(`/api/milestones/${milestone.body.id}`)
           .set("x-csrf-token", csrf).send({ status }).expect(200);
         assert.equal(updated.body.status, status);
         if (status === "completed") assert.ok(updated.body.completedAt);
         else assert.equal(updated.body.completedAt, null);
+        assert.equal((await agent.get(`/api/topics/${created.body.id}`).expect(200)).body.status, "in_progress");
       }
       const detail = await agent.get(`/api/topics/${created.body.id}`).expect(200);
       assert.equal(detail.body.milestones[0].status, "not_started");
       assert.equal(detail.body.milestones[0].completedAt, null);
+    } finally {
+      await agent.delete(`/api/topics/${created.body.id}`).set("x-csrf-token", csrf).expect(204);
+    }
+  });
+
+  test("starts an open topic only when its earliest milestone starts or finishes", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const created = await agent.post("/api/topics").set("x-csrf-token", csrf)
+      .send({
+        title: `Automatic topic start ${randomUUID()}`,
+        description: "Verify chronological milestone status controls topic start.",
+        departmentId: "dept-platform", roleId: "role-ci-validation", priority: "P3",
+      }).expect(201);
+    try {
+      const later = await agent.post(`/api/topics/${created.body.id}/milestones`)
+        .set("x-csrf-token", csrf)
+        .send({ title: "Later", beginDate: "2044-02-01", targetDate: "2044-02-05" })
+        .expect(201);
+      const first = await agent.post(`/api/topics/${created.body.id}/milestones`)
+        .set("x-csrf-token", csrf)
+        .send({ title: "First", beginDate: "2044-01-01", targetDate: "2044-01-05" })
+        .expect(201);
+      await agent.post(`/api/topics/${created.body.id}/validate`)
+        .set("x-csrf-token", csrf).send({}).expect(200);
+      await agent.patch(`/api/milestones/${later.body.id}`)
+        .set("x-csrf-token", csrf).send({ status: "in_progress" }).expect(200);
+      assert.equal((await agent.get(`/api/topics/${created.body.id}`).expect(200)).body.status, "open");
+      await agent.patch(`/api/milestones/${first.body.id}`)
+        .set("x-csrf-token", csrf).send({ status: "completed" }).expect(200);
+      assert.equal((await agent.get(`/api/topics/${created.body.id}`).expect(200)).body.status, "in_progress");
+      const calendar = await agent.get("/api/calendar/topics").expect(200);
+      assert.equal(calendar.body.find((topic: { id: string }) => topic.id === created.body.id).status, "in_progress");
     } finally {
       await agent.delete(`/api/topics/${created.body.id}`).set("x-csrf-token", csrf).expect(204);
     }

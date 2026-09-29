@@ -31,15 +31,18 @@ const DAY_WIDTH = 28;
 const LABEL_WIDTH = 192;
 const MONTH_COUNT = 13; // Selected month plus the following 12 months.
 
-const getBarColors = (status: string, milestone: boolean) => {
+const getBarColors = (status: string) => {
   switch (status) {
     case 'completed': return 'bg-emerald-100 border-emerald-300 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-950 dark:border-emerald-700 dark:text-emerald-200';
     case 'blocked': return 'bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20';
+    case 'rejected': return 'bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20';
     case 'returned': return 'bg-amber-100 border-amber-300 text-amber-900 hover:bg-amber-200 dark:bg-amber-950 dark:border-amber-700 dark:text-amber-200';
+    case 'pending_validation': return 'bg-yellow-100 border-yellow-300 text-yellow-900 hover:bg-yellow-200 dark:bg-yellow-950 dark:border-yellow-700 dark:text-yellow-200';
     case 'closed': return 'bg-muted border-border text-muted-foreground hover:bg-muted/80';
-    default: return milestone
-      ? 'bg-sky-100 border-sky-300 text-sky-900 hover:bg-sky-200 dark:bg-sky-950 dark:border-sky-700 dark:text-sky-200'
-      : 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20';
+    case 'in_progress': return 'bg-orange-100 border-orange-300 text-orange-900 hover:bg-orange-200 dark:bg-orange-950 dark:border-orange-700 dark:text-orange-200';
+    case 'open': return 'bg-blue-100 border-blue-300 text-blue-900 hover:bg-blue-200 dark:bg-blue-950 dark:border-blue-700 dark:text-blue-200';
+    case 'not_started': return 'bg-sky-100 border-sky-300 text-sky-900 hover:bg-sky-200 dark:bg-sky-950 dark:border-sky-700 dark:text-sky-200';
+    default: return 'bg-muted border-border text-muted-foreground hover:bg-muted/80';
   }
 };
 
@@ -70,7 +73,7 @@ function TimelineCells({
             className={`flex h-full items-center overflow-hidden border px-2 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-background
               ${isBefore(range.start, rangeStart) ? 'rounded-l-none border-l-0' : 'rounded-l-md'}
               ${isAfter(range.end, rangeEnd) ? 'rounded-r-none border-r-0' : 'rounded-r-md'}
-              ${getBarColors(status, milestone)}`}
+              ${getBarColors(status)}`}
             title={`${title}\n${format(range.start, "MMM d, yyyy")} - ${format(range.end, "MMM d, yyyy")}`}
           >
             <span className="truncate text-[11px] font-semibold leading-none">{title}</span>
