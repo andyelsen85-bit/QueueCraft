@@ -1,6 +1,6 @@
 import * as React from "react"
-import { addMonths, differenceInCalendarDays, eachDayOfInterval, endOfMonth, format, isBefore, isAfter, isSameDay, isSameMonth, isWeekend, startOfMonth } from "date-fns"
-import { ChevronLeft, ChevronRight, Target } from "lucide-react"
+import { addMonths, differenceInCalendarDays, eachDayOfInterval, endOfMonth, format, isBefore, isAfter, isSameDay, isWeekend, startOfMonth } from "date-fns"
+import { ChevronRight, Target } from "lucide-react"
 import { Link } from "wouter"
 import { useListCalendarTopics } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
@@ -27,6 +27,10 @@ const dateRange = (begin?: string | null, target?: string | null): DateRange | n
 const overlapsMonth = (range: DateRange, start: Date, end: Date) =>
   !isBefore(range.end, start) && !isAfter(range.start, end);
 
+const DAY_WIDTH = 28;
+const LABEL_WIDTH = 192;
+const MONTH_COUNT = 13; // Selected month plus the following 12 months.
+
 const getBarColors = (status: string, milestone: boolean) => {
   switch (status) {
     case 'completed': return 'bg-emerald-100 border-emerald-300 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-950 dark:border-emerald-700 dark:text-emerald-200';
@@ -40,31 +44,32 @@ const getBarColors = (status: string, milestone: boolean) => {
 };
 
 function TimelineCells({
-  days, monthStart, monthEnd, range, status, title, href, milestone = false,
+  days, rangeStart, rangeEnd, range, status, title, href, milestone = false,
 }: {
-  days: Date[]; monthStart: Date; monthEnd: Date; range: DateRange | null;
+  days: Date[]; rangeStart: Date; rangeEnd: Date; range: DateRange | null;
   status: string; title: string; href: string; milestone?: boolean;
 }) {
-  const visible = range && overlapsMonth(range, monthStart, monthEnd);
+  const visible = range && overlapsMonth(range, rangeStart, rangeEnd);
   const startIdx = visible ? differenceInCalendarDays(
-    isBefore(range.start, monthStart) ? monthStart : range.start, monthStart) : 0;
+    isBefore(range.start, rangeStart) ? rangeStart : range.start, rangeStart) : 0;
   const endIdx = visible ? differenceInCalendarDays(
-    isAfter(range.end, monthEnd) ? monthEnd : range.end, monthStart) : 0;
+    isAfter(range.end, rangeEnd) ? rangeEnd : range.end, rangeStart) : 0;
   return (
-    <div className="flex-1 min-w-0 relative flex">
+    <div className="relative flex shrink-0" style={{ width: days.length * DAY_WIDTH }}>
       {days.map((day) => (
-        <div key={day.toISOString()} className={`min-w-6 flex-1 border-r ${isWeekend(day) ? 'bg-muted/30' : ''}`} />
+        <div key={day.toISOString()} className={`shrink-0 border-r ${isWeekend(day) ? 'bg-muted/30' : ''}`}
+          style={{ width: DAY_WIDTH }} />
       ))}
       {visible && (
         <div
           className={`absolute z-10 py-[2px] ${milestone ? 'top-2 bottom-2' : 'top-2.5 bottom-2.5'}`}
-          style={{ left: `${startIdx / days.length * 100}%`, width: `${(endIdx - startIdx + 1) / days.length * 100}%` }}
+          style={{ left: startIdx * DAY_WIDTH, width: (endIdx - startIdx + 1) * DAY_WIDTH }}
         >
           <Link
             href={href}
             className={`flex h-full items-center overflow-hidden border px-2 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-background
-              ${isBefore(range.start, monthStart) ? 'rounded-l-none border-l-0' : 'rounded-l-md'}
-              ${isAfter(range.end, monthEnd) ? 'rounded-r-none border-r-0' : 'rounded-r-md'}
+              ${isBefore(range.start, rangeStart) ? 'rounded-l-none border-l-0' : 'rounded-l-md'}
+              ${isAfter(range.end, rangeEnd) ? 'rounded-r-none border-r-0' : 'rounded-r-md'}
               ${getBarColors(status, milestone)}`}
             title={`${title}\n${format(range.start, "MMM d, yyyy")} - ${format(range.end, "MMM d, yyyy")}`}
           >
@@ -82,26 +87,34 @@ export function Calendar() {
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const { data: topics, isLoading, isError, refetch } = useListCalendarTopics();
 
-  const monthStart = React.useMemo(() => startOfMonth(month), [month]);
-  const monthEnd = React.useMemo(() => endOfMonth(month), [month]);
-  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  const months = React.useMemo(() => Array.from({ length: MONTH_COUNT }, (_, index) => {
+    const start = addMonths(month, index);
+    return { start, days: eachDayOfInterval({ start, end: endOfMonth(start) }) };
+  }), [month]);
+  const rangeStart = months[0].start;
+  const rangeEnd = months[months.length - 1].days.at(-1)!;
+  const days = React.useMemo(() => months.flatMap((entry) => entry.days), [months]);
+  const today = new Date();
+  const todayIndex = differenceInCalendarDays(today, rangeStart);
+  const todayLeft = todayIndex >= 0 && todayIndex < days.length
+    ? LABEL_WIDTH + todayIndex * DAY_WIDTH + DAY_WIDTH / 2 : null;
 
   const visibleTopics = React.useMemo(() => {
     return (topics ?? [])
       .map(topic => {
         const schedule = dateRange(topic.estimatedStartDate, topic.estimatedFinishDate ?? topic.targetDate);
-        const topicRange = schedule && overlapsMonth(schedule, monthStart, monthEnd) ? schedule : null;
+        const topicRange = schedule && overlapsMonth(schedule, rangeStart, rangeEnd) ? schedule : null;
         const milestones = topic.milestones.map(milestone => ({
           ...milestone, range: dateRange(milestone.beginDate, milestone.targetDate),
         }));
-        const milestonesThisMonth = milestones.filter(milestone =>
-          milestone.range && overlapsMonth(milestone.range, monthStart, monthEnd));
-        if (!topicRange && milestonesThisMonth.length === 0) return null;
-        const firstMilestone = milestonesThisMonth.reduce<Date | null>(
+        const milestonesInView = milestones.filter(milestone =>
+          milestone.range && overlapsMonth(milestone.range, rangeStart, rangeEnd));
+        if (!topicRange && milestonesInView.length === 0) return null;
+        const firstMilestone = milestonesInView.reduce<Date | null>(
           (first, milestone) => !first || isBefore(milestone.range!.start, first)
             ? milestone.range!.start : first, null);
         const focusD = topicRange?.start ?? firstMilestone!;
-        return { ...topic, topicRange, milestones, milestonesThisMonth: milestonesThisMonth.length, focusD };
+        return { ...topic, topicRange, milestones, milestonesInView: milestonesInView.length, focusD };
       })
       .filter((topic): topic is NonNullable<typeof topic> => topic !== null)
       .sort((a, b) => {
@@ -109,31 +122,22 @@ export function Calendar() {
         if (startDiff !== 0) return startDiff;
         return a.title.localeCompare(b.title);
       });
-  }, [topics, monthStart, monthEnd]);
+  }, [topics, rangeStart, rangeEnd]);
 
-  React.useEffect(() => {
-    if (!scrollRef.current || isLoading || isError) return;
-    if (scrollRef.current.scrollWidth <= scrollRef.current.clientWidth) {
-      scrollRef.current.scrollLeft = 0;
-      return;
-    }
-    const today = new Date();
-    const activeToday = isSameMonth(today, month) && visibleTopics.some(
-      (topic) =>
-        (topic.topicRange && differenceInCalendarDays(today, topic.topicRange.start) >= 0 &&
-          differenceInCalendarDays(topic.topicRange.end, today) >= 0) ||
-        topic.milestones.some(milestone => milestone.range &&
-          differenceInCalendarDays(today, milestone.range.start) >= 0 &&
-          differenceInCalendarDays(milestone.range.end, today) >= 0),
-    );
-    const focus = activeToday
-      ? today
-      : visibleTopics[0]
-        ? isBefore(visibleTopics[0].focusD, monthStart) ? monthStart : visibleTopics[0].focusD
-        : monthStart;
-    const dayWidth = scrollRef.current.querySelector<HTMLElement>("[data-calendar-day]")?.getBoundingClientRect().width ?? 24;
-    scrollRef.current.scrollLeft = Math.max(0, differenceInCalendarDays(focus, monthStart) - 3) * dayWidth;
-  }, [month, monthStart, visibleTopics, isLoading, isError]);
+  React.useLayoutEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollLeft = 0;
+  }, [month]);
+
+  const topicsWithMilestones = visibleTopics.filter((topic) => topic.milestones.length > 0);
+  const allExpanded = topicsWithMilestones.length > 0 && topicsWithMilestones.every((topic) =>
+    expandedTopics[topic.id] ?? (!topic.topicRange && topic.milestonesInView > 0));
+  const toggleAll = () => {
+    setExpandedTopics((current) => {
+      const next = { ...current };
+      for (const topic of topicsWithMilestones) next[topic.id] = !allExpanded;
+      return next;
+    });
+  };
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 flex flex-col min-h-0">
@@ -141,64 +145,101 @@ export function Calendar() {
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Planning calendar</p>
           <h1 className="text-3xl font-bold tracking-tight">Topic Calendar</h1>
-          <p className="mt-1 text-muted-foreground">Expand a topic to see its milestones. Dated milestones appear even when the topic has no dates.</p>
+          <p className="mt-1 text-muted-foreground">Scroll from the selected month through the following 12 months. Expand topics to see their milestones.</p>
         </div>
-        <div className="flex items-center gap-2 rounded-md border bg-card p-1 shadow-sm">
-          <Button variant="ghost" size="icon" aria-label="Previous month" onClick={() => setMonth((value) => addMonths(value, -1))}><ChevronLeft className="h-4 w-4" /></Button>
-          <div className="w-40 text-center text-sm font-semibold">{format(month, "MMMM yyyy")}</div>
-          <Button variant="ghost" size="icon" aria-label="Next month" onClick={() => setMonth((value) => addMonths(value, 1))}><ChevronRight className="h-4 w-4" /></Button>
+        <div className="flex flex-wrap items-end gap-3">
+          <Button variant="outline" size="sm" onClick={toggleAll} disabled={isLoading || isError || topicsWithMilestones.length === 0}
+            aria-label={allExpanded ? "Collapse all topic milestones" : "Expand all topic milestones"}>
+            {allExpanded ? "Collapse all" : "Expand all milestones"}
+          </Button>
+          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            Start month
+            <input type="month" value={format(month, "yyyy-MM")}
+              onChange={(event) => {
+                if (/^\d{4}-(0[1-9]|1[0-2])$/.test(event.target.value)) {
+                  const [year, monthNumber] = event.target.value.split("-").map(Number);
+                  setMonth(new Date(year, monthNumber - 1, 1));
+                }
+              }}
+              className="h-9 rounded-md border bg-card px-3 text-sm font-medium text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Select start month" />
+          </label>
         </div>
       </div>
 
       <Card className="flex-1 min-w-0 overflow-hidden flex flex-col">
         <CardContent className="p-0 min-w-0 flex flex-col flex-1 overflow-hidden">
            <div ref={scrollRef} className="flex-1 overflow-auto bg-muted/5 max-h-[calc(100vh-16rem)] min-h-[400px]">
-             <div className="w-full min-w-[936px] flex flex-col">
+              <div className="relative flex flex-col" style={{ width: LABEL_WIDTH + days.length * DAY_WIDTH }}>
+               {todayLeft !== null && (
+                 <div className="pointer-events-none absolute inset-y-0 z-[15] w-1 bg-black dark:bg-white"
+                   style={{ left: todayLeft - 2 }} aria-hidden="true" />
+               )}
               {/* Header Row */}
-              <div className="flex border-b bg-card h-14 sticky top-0 z-30 shadow-sm">
-                <div className="w-48 sticky left-0 bg-card border-r flex-shrink-0 flex items-center px-4 font-mono text-xs font-semibold uppercase text-muted-foreground z-40 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]">
+               <div className="sticky top-0 z-30 flex h-[68px] border-b bg-card shadow-sm">
+                 <div className="sticky left-0 z-50 flex shrink-0 items-center border-r bg-card px-4 font-mono text-xs font-semibold uppercase text-muted-foreground shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]"
+                   style={{ width: LABEL_WIDTH }}>
                   Topic / milestone
                 </div>
-                <div className="flex flex-1 min-w-0">
-                  {days.map(d => (
-                    <div key={d.toISOString()} data-calendar-day className={`min-w-6 flex-1 border-r flex flex-col items-center justify-center text-xs ${isWeekend(d) ? 'bg-muted/30' : ''}`}>
-                      <span className="text-muted-foreground font-mono text-[10px] uppercase">{format(d, "E").charAt(0)}</span>
-                      <span className={`font-medium mt-0.5 ${isSameDay(d, new Date()) ? 'bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center' : ''}`}>{format(d, "d")}</span>
-                    </div>
-                  ))}
+                 <div className="flex shrink-0 flex-col">
+                   <div className="flex h-7 border-b">
+                     {months.map((entry) => (
+                       <div key={entry.start.toISOString()} className="shrink-0 border-r bg-muted/30 px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-wider"
+                         style={{ width: entry.days.length * DAY_WIDTH }}>
+                         {format(entry.start, "MMMM yyyy")}
+                       </div>
+                     ))}
+                   </div>
+                   <div className="flex h-10">
+                     {days.map(d => (
+                       <div key={d.toISOString()} className={`flex shrink-0 flex-col items-center justify-center border-r text-xs ${isWeekend(d) ? 'bg-muted/30' : ''}`}
+                         style={{ width: DAY_WIDTH }}>
+                         <span className="font-mono text-[10px] uppercase text-muted-foreground">{format(d, "E").charAt(0)}</span>
+                         <span className={`mt-0.5 font-medium ${isSameDay(d, today) ? 'rounded-full bg-black text-white dark:bg-white dark:text-black' : ''}`}>{format(d, "d")}</span>
+                       </div>
+                     ))}
+                   </div>
                 </div>
+                 {todayLeft !== null && (
+                   <div className="pointer-events-none absolute inset-y-0 z-40 w-1 bg-black dark:bg-white"
+                     style={{ left: todayLeft - 2 }} aria-label={`Today: ${format(today, "MMMM d, yyyy")}`}>
+                     <span className="absolute -left-5 top-0 rounded-b bg-black px-1 text-[10px] font-bold text-white dark:bg-white dark:text-black">Today</span>
+                   </div>
+                 )}
               </div>
 
               {/* Rows */}
                {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="flex h-16 border-b">
-                     <div className="w-48 sticky left-0 bg-card border-r p-4 flex flex-col justify-center gap-2 z-20">
+                     <div className="sticky left-0 z-20 flex shrink-0 flex-col justify-center gap-2 border-r bg-card p-4"
+                       style={{ width: LABEL_WIDTH }}>
                       <div className="h-3 w-32 bg-muted rounded animate-pulse" />
                       <div className="h-2 w-24 bg-muted rounded animate-pulse" />
                     </div>
-                    <div className="flex-1 flex items-center px-4">
+                    <div className="flex items-center px-4">
                       <div className="h-6 w-64 bg-muted rounded animate-pulse opacity-50" />
                     </div>
                   </div>
                 ))
                ) : isError ? (
-                 <div className="h-48 flex flex-col gap-3 items-center justify-center text-sm text-destructive sticky left-0 w-full">
+                  <div className="sticky left-0 flex h-48 w-[min(100vw,40rem)] flex-col items-center justify-center gap-3 text-sm text-destructive">
                    <span>Could not load topics for the calendar.</span>
                    <Button variant="outline" size="sm" onClick={() => void refetch()}>Try again</Button>
                  </div>
                ) : visibleTopics.length === 0 ? (
-                <div className="h-48 flex items-center justify-center text-sm text-muted-foreground sticky left-0 w-full">
+                 <div className="sticky left-0 flex h-48 w-[min(100vw,40rem)] items-center justify-center text-sm text-muted-foreground">
                    No topics or milestones scheduled for this period.
                 </div>
               ) : (
                  visibleTopics.map((topic) => {
-                   const expanded = expandedTopics[topic.id] ??
-                     (!topic.topicRange && topic.milestonesThisMonth > 0);
+                    const expanded = expandedTopics[topic.id] ??
+                      (!topic.topicRange && topic.milestonesInView > 0);
                    return (
                      <React.Fragment key={topic.id}>
                        <div className="flex h-16 border-b hover:bg-muted/30 group">
-                          <div className="w-48 sticky left-0 bg-card group-hover:bg-muted/50 border-r flex-shrink-0 flex flex-col justify-center px-3 overflow-hidden z-20 transition-colors shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]">
+                           <div className="sticky left-0 z-20 flex shrink-0 flex-col justify-center overflow-hidden border-r bg-card px-3 transition-colors group-hover:bg-muted/50 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]"
+                             style={{ width: LABEL_WIDTH }}>
                            <div className="flex min-w-0 items-center gap-1">
                              {topic.milestones.length ? (
                                <button type="button" aria-expanded={expanded}
@@ -221,17 +262,18 @@ export function Calendar() {
                              <div className="scale-[0.8] origin-left"><PriorityBadge priority={topic.priority} /></div>
                              <div className="scale-[0.8] origin-left -ml-2"><StatusBadge status={topic.status} /></div>
                              <span className="truncate text-[10px] text-muted-foreground">
-                               {topic.topicRange ? topic.departmentName : "Milestones this month"}
+                                {topic.topicRange ? topic.departmentName : "Dated milestones"}
                              </span>
                            </div>
                          </div>
-                         <TimelineCells days={days} monthStart={monthStart} monthEnd={monthEnd}
+                          <TimelineCells days={days} rangeStart={rangeStart} rangeEnd={rangeEnd}
                            range={topic.topicRange} status={topic.status}
                            title={topic.title} href={`/topics/${topic.id}`} />
                        </div>
                        {expanded && topic.milestones.map((milestone) => (
                          <div key={milestone.id} className="flex h-12 border-b bg-muted/10">
-                            <div className="w-48 sticky left-0 z-20 flex shrink-0 items-center gap-2 overflow-hidden border-r bg-card/95 pl-10 pr-2 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]">
+                             <div className="sticky left-0 z-20 flex shrink-0 items-center gap-2 overflow-hidden border-r bg-card/95 pl-10 pr-2 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]"
+                               style={{ width: LABEL_WIDTH }}>
                              <Target className="h-3.5 w-3.5 shrink-0 text-sky-700 dark:text-sky-300" />
                              <div className="min-w-0">
                                <Link href={`/topics/${topic.id}`}
@@ -245,7 +287,7 @@ export function Calendar() {
                                </div>
                              </div>
                            </div>
-                           <TimelineCells days={days} monthStart={monthStart} monthEnd={monthEnd}
+                            <TimelineCells days={days} rangeStart={rangeStart} rangeEnd={rangeEnd}
                              range={milestone.range} status={milestone.status}
                              title={milestone.title} href={`/topics/${topic.id}`} milestone />
                          </div>
