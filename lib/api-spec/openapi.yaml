@@ -1026,7 +1026,7 @@ components:
         targetDate: { type: ["string", "null"], format: date }
     CalendarTopic:
       type: object
-      required: [id, title, priority, status, departmentName, targetDate, estimatedStartDate, estimatedFinishDate, milestones]
+      required: [id, title, priority, status, departmentName, roleId, targetDate, estimatedStartDate, estimatedFinishDate, milestones]
       properties:
         id: { type: string }
         title: { type: string }
@@ -1035,6 +1035,7 @@ components:
         status:
           $ref: "#/components/schemas/TopicStatus"
         departmentName: { type: string }
+        roleId: { type: string }
         targetDate: { type: ["string", "null"], format: date }
         estimatedStartDate: { type: ["string", "null"], format: date }
         estimatedFinishDate: { type: ["string", "null"], format: date }

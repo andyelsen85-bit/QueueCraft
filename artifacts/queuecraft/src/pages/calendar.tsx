@@ -2,7 +2,7 @@ import * as React from "react"
 import { addMonths, differenceInCalendarDays, eachDayOfInterval, endOfMonth, format, isBefore, isAfter, isSameDay, isWeekend, startOfMonth } from "date-fns"
 import { ChevronRight, Target } from "lucide-react"
 import { Link } from "wouter"
-import { useListCalendarTopics } from "@workspace/api-client-react"
+import { useListCalendarTopics, useListRoles } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { PriorityBadge, StatusBadge } from "@/components/badges"
@@ -83,9 +83,15 @@ function TimelineCells({
 
 export function Calendar() {
   const [month, setMonth] = React.useState(() => startOfMonth(new Date()));
+  const [roleId, setRoleId] = React.useState("");
   const [expandedTopics, setExpandedTopics] = React.useState<Record<string, boolean>>({});
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const { data: topics, isLoading, isError, refetch } = useListCalendarTopics();
+  const { data: roles, isLoading: rolesLoading, isError: rolesError, refetch: refetchRoles } = useListRoles();
+  const sortedRoles = React.useMemo(
+    () => [...(roles ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
+    [roles],
+  );
 
   const months = React.useMemo(() => Array.from({ length: MONTH_COUNT }, (_, index) => {
     const start = addMonths(month, index);
@@ -101,6 +107,7 @@ export function Calendar() {
 
   const visibleTopics = React.useMemo(() => {
     return (topics ?? [])
+      .filter((topic) => !roleId || topic.roleId === roleId)
       .map(topic => {
         const schedule = dateRange(topic.estimatedStartDate, topic.estimatedFinishDate ?? topic.targetDate);
         const topicRange = schedule && overlapsMonth(schedule, rangeStart, rangeEnd) ? schedule : null;
@@ -122,7 +129,7 @@ export function Calendar() {
         if (startDiff !== 0) return startDiff;
         return a.title.localeCompare(b.title);
       });
-  }, [topics, rangeStart, rangeEnd]);
+  }, [topics, roleId, rangeStart, rangeEnd]);
 
   React.useLayoutEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollLeft = 0;
@@ -152,6 +159,17 @@ export function Calendar() {
             aria-label={allExpanded ? "Collapse all topic milestones" : "Expand all topic milestones"}>
             {allExpanded ? "Collapse all" : "Expand all milestones"}
           </Button>
+          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            Role filter
+            <select value={roleId} onChange={(event) => setRoleId(event.target.value)}
+              disabled={rolesLoading || rolesError}
+              className="h-9 w-44 rounded-md border bg-card px-3 text-sm font-medium text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              aria-label="Filter calendar by role">
+              <option value="">All roles</option>
+              {sortedRoles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+            </select>
+          </label>
+          {rolesError && <Button variant="outline" size="sm" onClick={() => void refetchRoles()}>Retry roles</Button>}
           <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
             Start month
             <input type="month" value={format(month, "yyyy-MM")}
@@ -229,7 +247,9 @@ export function Calendar() {
                  </div>
                ) : visibleTopics.length === 0 ? (
                  <div className="sticky left-0 flex h-48 w-[min(100vw,40rem)] items-center justify-center text-sm text-muted-foreground">
-                   No topics or milestones scheduled for this period.
+                    {roleId
+                      ? `No topics or milestones scheduled for ${sortedRoles.find((role) => role.id === roleId)?.name ?? "this role"} in this period.`
+                      : "No topics or milestones scheduled for this period."}
                 </div>
               ) : (
                  visibleTopics.map((topic) => {

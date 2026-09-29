@@ -1933,6 +1933,7 @@ export const ListCalendarTopicsResponseItem = zod.object({
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "departmentName": zod.string(),
+  "roleId": zod.string(),
   "targetDate": zod.coerce.date().nullable(),
   "estimatedStartDate": zod.coerce.date().nullable(),
   "estimatedFinishDate": zod.coerce.date().nullable(),

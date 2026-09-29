@@ -1786,6 +1786,7 @@ router.get("/calendar/topics", async (_req, res): Promise<void> => {
     priority: topic.priority,
     status: topic.status,
     departmentName: snapshot.buildTopic(topic).department.name,
+    roleId: topic.roleId,
     targetDate: topic.targetDate,
     estimatedStartDate: topic.estimatedStartDate,
     estimatedFinishDate: topic.estimatedFinishDate,

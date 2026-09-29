@@ -1842,6 +1842,7 @@ describe("QueueCraft security and preference flows", () => {
       const calendar = await agent.get("/api/calendar/topics").expect(200);
       const row = calendar.body.find((topic: { id: string }) => topic.id === created.body.id);
       assert.equal(row.title, title);
+      assert.equal(row.roleId, "role-ci-validation");
       assert.equal(row.estimatedStartDate, null);
       assert.equal(row.estimatedFinishDate, null);
       assert.equal(row.milestones.length, 1);
