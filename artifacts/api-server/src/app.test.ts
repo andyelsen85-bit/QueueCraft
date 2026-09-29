@@ -16,6 +16,8 @@ import {
   notificationOutboxTable,
   notificationSettingsTable,
   pool,
+  roleDepartmentsTable,
+  roleMembersTable,
   rolesTable,
   topicFinishDateRevisionsTable,
   topicAllocationsTable,
@@ -1436,6 +1438,80 @@ describe("QueueCraft security and preference flows", () => {
     } finally {
       await agent.delete(`/api/topics/${created.body.id}`).set("x-csrf-token", csrf).expect(204);
     }
+  });
+
+  test("deletes a role after unfinished topics move while retaining completed and closed history", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const role = await agent.post("/api/directory/roles").set("x-csrf-token", csrf)
+      .send({ name: `Retired role ${randomUUID()}`, departmentId: "dept-platform",
+        leadId: "member-andy" }).expect(201);
+    const topicIds: string[] = [];
+    try {
+      for (const status of ["open", "in_progress", "completed", "closed"] as const) {
+        const topic = await agent.post("/api/topics").set("x-csrf-token", csrf)
+          .send({ title: `${status} role history ${randomUUID()}`,
+            description: "Role deletion history and reassignment test.",
+            departmentId: "dept-platform", roleId: role.body.id, priority: "P3" }).expect(201);
+        topicIds.push(topic.body.id);
+        await agent.post(`/api/topics/${topic.body.id}/validate`)
+          .set("x-csrf-token", csrf).send({}).expect(200);
+        if (status !== "open") {
+          await agent.patch(`/api/topics/${topic.body.id}`).set("x-csrf-token", csrf)
+            .send({ status }).expect(200);
+        }
+      }
+      const blocked = await agent.delete(`/api/directory/roles/${role.body.id}`)
+        .set("x-csrf-token", csrf).expect(409);
+      assert.match(blocked.body.error, /Move 2 unfinished topics/);
+      for (const topicId of topicIds.slice(0, 2)) {
+        const moved = await agent.patch(`/api/topics/${topicId}`).set("x-csrf-token", csrf)
+          .send({ roleId: "role-ci-validation" }).expect(200);
+        assert.equal(moved.body.role.id, "role-ci-validation");
+      }
+      await agent.delete(`/api/directory/roles/${role.body.id}`)
+        .set("x-csrf-token", csrf).expect(204);
+      const activeRoles = await agent.get("/api/directory/roles").expect(200);
+      assert.ok(!activeRoles.body.some((item: { id: string }) => item.id === role.body.id));
+      for (const topicId of topicIds.slice(2)) {
+        const historical = await agent.get(`/api/topics/${topicId}`).expect(200);
+        assert.equal(historical.body.role.id, role.body.id);
+        assert.equal(historical.body.role.name, role.body.name);
+      }
+      await agent.post("/api/topics").set("x-csrf-token", csrf)
+        .send({ title: "Cannot assign retired role", description: "Retired roles are not selectable.",
+          departmentId: "dept-platform", roleId: role.body.id, priority: "P3" }).expect(400);
+      await agent.patch(`/api/topics/${topicIds[0]}`).set("x-csrf-token", csrf)
+        .send({ roleId: role.body.id }).expect(409);
+    } finally {
+      for (const topicId of topicIds) {
+        await agent.delete(`/api/topics/${topicId}`).set("x-csrf-token", csrf);
+      }
+      await db.delete(roleMembersTable).where(eq(roleMembersTable.roleId, role.body.id));
+      await db.delete(roleDepartmentsTable).where(eq(roleDepartmentsTable.roleId, role.body.id));
+      await db.delete(rolesTable).where(eq(rolesTable.id, role.body.id));
+    }
+  });
+
+  test("keeps the built-in administrator out of role assignments", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const roleData = {
+      name: `Admin exclusion ${randomUUID()}`,
+      departmentId: "dept-platform",
+      leadId: "member-andy",
+    };
+    await agent.post("/api/directory/roles").set("x-csrf-token", csrf)
+      .send({ ...roleData, leadId: "local-admin" }).expect(400);
+    await agent.post("/api/directory/roles").set("x-csrf-token", csrf)
+      .send({ ...roleData, memberIds: ["local-admin"] }).expect(400);
+    await agent.patch("/api/directory/roles/role-ci-validation")
+      .set("x-csrf-token", csrf).send({ memberIds: ["local-admin"] }).expect(400);
+    const unchanged = await agent.get("/api/directory/roles").expect(200);
+    assert.ok(!unchanged.body.find((role: { id: string }) => role.id === "role-ci-validation")
+      .memberIds.includes("local-admin"));
   });
 
   test("persists milestone status changes and clears completion when work is reopened", async () => {

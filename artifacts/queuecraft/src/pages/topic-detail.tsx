@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   useGetTopic,
   useGetSession,
+  useListRoles,
   useDeleteTopic,
   useUpdateTopic,
   useUpdateTopicFinishDate,
@@ -144,11 +145,12 @@ export function TopicDetail() {
   const queryClient = useQueryClient();
   const { data: topic, isLoading } = useGetTopic(topicId!);
   const { data: session } = useGetSession();
+  const { data: roles } = useListRoles();
   const { data: members } = useListMembers();
   const { data: dependencyCandidates } = useListDependencyCandidates({ topicId: topicId! });
   const sortedMembers = React.useMemo(
     () =>
-      [...(members ?? [])].sort((left, right) =>
+      [...(members ?? [])].filter((member) => member.id !== "local-admin").sort((left, right) =>
         left.name.localeCompare(right.name, undefined, {
           numeric: true,
           sensitivity: "base",
@@ -230,6 +232,7 @@ export function TopicDetail() {
           }
         }, "Enter a valid HTTP or HTTPS URL without credentials"),
         priority: z.enum(["P1", "P2", "P3", "P4"]),
+        roleId: z.string().min(1),
         estimatedStartDate: z.string().optional().nullable(),
         estimatedFinishDate: z.string().optional().nullable(),
         dependsOnTopicId: z.string().optional().nullable(),
@@ -260,6 +263,7 @@ export function TopicDetail() {
         description: topic.description,
         documentationUrl: topic.documentationUrl ?? "",
         priority: topic.priority as any,
+        roleId: topic.role.id,
         estimatedStartDate: dateInputValue(topic.estimatedStartDate),
         estimatedFinishDate: dateInputValue(topic.estimatedFinishDate),
         dependsOnTopicId: topic.dependency?.id ?? null,
@@ -700,10 +704,10 @@ export function TopicDetail() {
       {/* Header Area */}
       <div className="flex flex-col lg:flex-row gap-6 justify-between items-start">
         <div className="space-y-3 flex-1 min-w-0">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <PriorityBadge priority={topic.priority} />
             <StatusBadge status={topic.status} />
-            <span className="text-sm font-mono text-muted-foreground">
+            <span className="min-w-0 break-all text-sm font-mono text-muted-foreground">
               {topic.id}
             </span>
           </div>
@@ -713,30 +717,27 @@ export function TopicDetail() {
               href={topic.documentationUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex max-w-full items-center gap-2 text-sm font-medium text-primary underline underline-offset-4 hover:text-primary/80"
+              className="flex w-fit max-w-full items-center gap-2 text-sm font-medium text-primary underline underline-offset-4 hover:text-primary/80"
             >
               <ExternalLink className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="shrink-0">Documentation:</span>
               <span className="min-w-0 truncate">{topic.documentationUrl}</span>
             </a>
           )}
-          <div className="flex flex-wrap items-center gap-4 text-sm font-mono bg-muted/50 p-3 rounded-sm border inline-flex">
-            <div>
+          <div className="flex w-fit max-w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-sm border bg-muted/50 p-3 text-sm font-mono">
+            <div className="min-w-0 break-words">
               <span className="text-muted-foreground">Dept:</span>{" "}
               <span className="font-semibold">{topic.department.name}</span>
             </div>
-            <div className="w-px h-4 bg-border" />
-            <div>
+            <div className="min-w-0 break-words">
               <span className="text-muted-foreground">Role:</span>{" "}
               {topic.role.name}
             </div>
-            <div className="w-px h-4 bg-border" />
-            <div>
+            <div className="min-w-0 break-words">
               <span className="text-muted-foreground">Created by:</span>{" "}
               {topic.creator.name}
             </div>
-            <div className="w-px h-4 bg-border" />
-            <div>
+            <div className="min-w-0 break-words">
               <span className="text-muted-foreground">Date:</span>{" "}
               {formatDate(topic.createdAt)}
             </div>
@@ -931,6 +932,31 @@ export function TopicDetail() {
                       </FormItem>
                     )}
                   />
+                  {!["completed", "closed", "rejected"].includes(topic.status) && (
+                    <FormField
+                      control={editTopicForm.control}
+                      name="roleId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Role</FormLabel>
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger><SelectValue placeholder="Select an active role" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {(roles ?? [])
+                                .filter((role) => role.departmentId === topic.department.id ||
+                                  role.departmentIds?.includes(topic.department.id))
+                                .map((role) => (
+                                  <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                   <FormField
                     control={editTopicForm.control}
                     name="documentationUrl"

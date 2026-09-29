@@ -11,3 +11,4 @@
 - [Legacy milestone status](legacy-milestone-status.md) — offer Returned going forward without silently reinterpreting historical Blocked milestones.
 - [Milestone starts and validation](milestone-start-validation.md) — first planned milestone can start an open topic; pending validation remains an approval boundary.
 - [Additive role capacity](additive-role-capacity.md) — sum full member occupancy across a role, including shared members and leads; do not average percentages.
+- [Role retirement and topic history](role-retirement-history.md) — move unfinished topics before deleting a role; historical topics retain their original role.

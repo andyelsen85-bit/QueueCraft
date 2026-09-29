@@ -69,6 +69,7 @@ import {
   UpdateDepartmentResponse,
   CreateRoleBody,
   CreateRoleResponse,
+  DeleteRoleParams,
   UpdateRoleBody,
   UpdateRoleParams,
   UpdateRoleResponse,
@@ -625,7 +626,7 @@ export function getCapabilities(
     [department.serviceHeadId, department.serviceHeadDeputyId].includes(userId),
   );
   const isRoleAuthority = snapshot.roles.some((role) =>
-    [role.leadId, role.deputyId].includes(userId),
+    !role.archivedAt && [role.leadId, role.deputyId].includes(userId),
   );
   const isLocalAdmin = userId === "local-admin" && authProvider === "local";
   const canAssignAuthorities = isLocalAdmin || isServiceAuthority || Boolean(user?.isCio);
@@ -1622,7 +1623,7 @@ router.get("/directory/roles", async (_req, res): Promise<void> => {
   const snapshot = await loadSnapshot();
   res.json(
     ListRolesResponse.parse(
-      snapshot.roles.map((role) => snapshot.buildRole(role.id)),
+      snapshot.roles.filter((role) => !role.archivedAt).map((role) => snapshot.buildRole(role.id)),
     ),
   );
 });
@@ -1633,6 +1634,10 @@ router.post("/directory/roles", async (req, res): Promise<void> => {
   if (!requireCapability(req, res, snapshot, "directory.manage")) return;
   if (!body.success) {
     res.status(400).json({ error: body.error.message });
+    return;
+  }
+  if ([body.data.leadId, body.data.deputyId, ...(body.data.memberIds ?? [])].includes("local-admin")) {
+    res.status(400).json({ error: "The administrator account cannot be assigned to a role" });
     return;
   }
   const departmentIds = [
@@ -1689,8 +1694,12 @@ router.patch("/directory/roles/:roleId", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid role update" });
     return;
   }
+  if ([body.data.leadId, body.data.deputyId, ...(body.data.memberIds ?? [])].includes("local-admin")) {
+    res.status(400).json({ error: "The administrator account cannot be assigned to a role" });
+    return;
+  }
   const currentRole = snapshot.roleById.get(params.data.roleId);
-  if (!currentRole) {
+  if (!currentRole || currentRole.archivedAt) {
     res.status(404).json({ error: "Role not found" });
     return;
   }
@@ -1711,7 +1720,10 @@ router.patch("/directory/roles/:roleId", async (req, res): Promise<void> => {
     res.status(400).json({ error: "One or more departments do not exist" });
     return;
   }
-  await db.transaction(async (tx) => {
+  const updated = await db.transaction(async (tx) => {
+    const [lockedRole] = await tx.select().from(rolesTable)
+      .where(eq(rolesTable.id, params.data.roleId)).for("update");
+    if (!lockedRole || lockedRole.archivedAt) return false;
     await tx
       .update(rolesTable)
       .set({
@@ -1762,7 +1774,12 @@ router.patch("/directory/roles/:roleId", async (req, res): Promise<void> => {
       }
     }
     await addActivity(req, null, "Role updated", params.data.roleId, false, tx);
+    return true;
   });
+  if (!updated) {
+    res.status(404).json({ error: "Role not found" });
+    return;
+  }
   const refreshed = await loadSnapshot();
   const role = refreshed.roleById.get(params.data.roleId);
   if (!role) {
@@ -1770,6 +1787,38 @@ router.patch("/directory/roles/:roleId", async (req, res): Promise<void> => {
     return;
   }
   res.json(UpdateRoleResponse.parse(refreshed.buildRole(role.id)));
+});
+
+router.delete("/directory/roles/:roleId", async (req, res): Promise<void> => {
+  const params = DeleteRoleParams.safeParse(req.params);
+  const snapshot = await loadSnapshot();
+  if (!requireCapability(req, res, snapshot, "directory.manage")) return;
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid role" });
+    return;
+  }
+  const result = await db.transaction(async (tx) => {
+    const [role] = await tx.select().from(rolesTable)
+      .where(eq(rolesTable.id, params.data.roleId)).for("update");
+    if (!role || role.archivedAt) return { type: "missing" as const };
+    const unfinished = await tx.select({ id: topicsTable.id }).from(topicsTable)
+      .where(and(eq(topicsTable.roleId, role.id),
+        sql`${topicsTable.status} NOT IN ('completed', 'closed', 'rejected')`));
+    if (unfinished.length) return { type: "in_use" as const, count: unfinished.length };
+    await tx.update(rolesTable).set({ archivedAt: new Date() })
+      .where(eq(rolesTable.id, role.id));
+    await addActivity(req, null, "Role deleted", role.name, false, tx);
+    return { type: "deleted" as const };
+  });
+  if (result.type === "missing") {
+    res.status(404).json({ error: "Role not found" });
+  } else if (result.type === "in_use") {
+    res.status(409).json({
+      error: `Move ${result.count} unfinished topic${result.count === 1 ? "" : "s"} to another role before deleting this role.`,
+    });
+  } else {
+    res.status(204).end();
+  }
 });
 
 router.get("/calendar/topics", async (_req, res): Promise<void> => {
@@ -1881,6 +1930,7 @@ router.post("/topics", async (req, res): Promise<void> => {
     .map((entry) => entry.departmentId);
   if (
     !role ||
+    role.archivedAt ||
     ![role.departmentId, ...roleDepartmentIds].includes(
       parsed.data.departmentId,
     )
@@ -1920,6 +1970,9 @@ router.post("/topics", async (req, res): Promise<void> => {
   }
   const id = randomUUID();
   const [created] = await db.transaction(async (tx) => {
+    const [lockedRole] = await tx.select().from(rolesTable)
+      .where(eq(rolesTable.id, parsed.data.roleId)).for("update");
+    if (!lockedRole || lockedRole.archivedAt) return [];
     const [currentPrerequisite] = dependsOnTopicId
       ? await tx.select().from(topicsTable).where(eq(topicsTable.id, dependsOnTopicId)).for("update")
       : [null];
@@ -1974,7 +2027,7 @@ router.post("/topics", async (req, res): Promise<void> => {
     return rows;
   });
   if (!created) {
-    res.status(409).json({ error: "Prerequisite changed while creating this topic. Refresh and try again." });
+    res.status(409).json({ error: "The role or prerequisite changed. Refresh and try again." });
     return;
   }
   const refreshed = await loadSnapshot();
@@ -2090,6 +2143,21 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
     return;
   }
   if (!requireTopicManager(req, res, currentTopic, current)) return;
+  const nextRoleId = body.data.roleId ?? currentTopic.roleId;
+  const nextRole = current.roleById.get(nextRoleId);
+  const roleDepartmentIds = current.roleDepartments
+    .filter((entry) => entry.roleId === nextRoleId).map((entry) => entry.departmentId);
+  if (!nextRole ||
+    ![nextRole.departmentId, ...roleDepartmentIds].includes(currentTopic.departmentId)) {
+    res.status(400).json({ error: "Select a role linked to this topic's department" });
+    return;
+  }
+  const terminalTopicStatuses = ["completed", "closed", "rejected"];
+  if (nextRole.archivedAt && (nextRoleId !== currentTopic.roleId ||
+    !terminalTopicStatuses.includes(body.data.status ?? currentTopic.status))) {
+    res.status(409).json({ error: "Select an active role before reopening this topic" });
+    return;
+  }
   const dependencyId = body.data.dependsOnTopicId === undefined
     ? currentTopic.dependsOnTopicId
     : body.data.dependsOnTopicId || null;
@@ -2242,7 +2310,13 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
     if (!locked || locked.estimatedFinishDate !== currentTopic.estimatedFinishDate ||
       locked.estimatedStartDate !== currentTopic.estimatedStartDate ||
       locked.dependsOnTopicId !== currentTopic.dependsOnTopicId ||
-      locked.status !== currentTopic.status) return [];
+      locked.status !== currentTopic.status ||
+      locked.roleId !== currentTopic.roleId) return [];
+    const [lockedRole] = await tx.select().from(rolesTable)
+      .where(eq(rolesTable.id, nextRoleId)).for("update");
+    if (!lockedRole || (lockedRole.archivedAt &&
+      (nextRoleId !== locked.roleId ||
+        !terminalTopicStatuses.includes(body.data.status ?? locked.status)))) return [];
     const [lockedPrerequisite] = dependencyChanged && dependencyId
       ? await tx.select().from(topicsTable)
         .where(eq(topicsTable.id, dependencyId)).for("update")

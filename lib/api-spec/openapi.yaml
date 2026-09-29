@@ -560,6 +560,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Role"
+    delete:
+      operationId: deleteRole
+      tags: [directory]
+      summary: Remove an active role while retaining historical topics
+      parameters:
+        - $ref: "#/components/parameters/RolePathId"
+      responses:
+        "204":
+          description: Role removed from the active directory
+        "409":
+          description: Move unfinished topics to another role before deletion
   /directory/members:
     get:
       operationId: listMembers
@@ -1178,6 +1189,7 @@ components:
         title: { type: string, minLength: 3, maxLength: 160 }
         description: { type: string, minLength: 3, maxLength: 2000 }
         documentationUrl: { type: ["string", "null"], format: uri, maxLength: 2048 }
+        roleId: { type: string }
         priority:
           $ref: "#/components/schemas/TopicPriority"
         estimatedStartDate:

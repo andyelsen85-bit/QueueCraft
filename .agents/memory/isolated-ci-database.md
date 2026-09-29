@@ -8,3 +8,5 @@ Run database-mutating CI tests against a disposable PostgreSQL instance rather t
 **Why:** The API suite creates members, topics, and sessions and exercises backup restoration. Running it against the app's development database could modify real work. In this environment, the default local PostgreSQL socket and inherited client role also prevented a disposable instance from working until overridden.
 
 **How to apply:** When reproducing CI failures, create an isolated temporary database, point the test process at it, then stop and remove it. Do not use the active application's database merely because it is already configured.
+
+Check that the test runner actually includes the route integration suite. A green package test command can cover only nested tests when a shell glob misses top-level tests. The route suite also needs CI fixture seeding on a fresh disposable database; without it, requests fail as unauthorized for reasons unrelated to the change.

@@ -2389,6 +2389,7 @@ export const UpdateTopicBody = zod.object({
   "title": zod.string().min(updateTopicBodyTitleMin).max(updateTopicBodyTitleMax).optional(),
   "description": zod.string().min(updateTopicBodyDescriptionMin).max(updateTopicBodyDescriptionMax).optional(),
   "documentationUrl": zod.string().url().max(updateTopicBodyDocumentationUrlMax).nullish(),
+  "roleId": zod.string().optional(),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']).optional(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
@@ -4486,6 +4487,16 @@ export const UpdateRoleResponse = zod.object({
   "memberCount": zod.number().int().optional(),
   "memberIds": zod.array(zod.string()).optional()
 })
+
+
+/**
+ * @summary Remove an active role while retaining historical topics
+ */
+export const DeleteRoleParams = zod.object({
+  "roleId": zod.coerce.string()
+})
+
+export const DeleteRoleResponse = zod.void()
 
 
 /**

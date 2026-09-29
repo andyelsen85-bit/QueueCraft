@@ -7,6 +7,7 @@ import {
   useUpdateDepartment,
   useCreateRole,
   useUpdateRole,
+  useDeleteRole,
   useCreateMember,
   useUpdateMember,
   useGetSession,
@@ -39,7 +40,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Pencil,
@@ -400,6 +403,7 @@ export function Directory() {
   const updateDepartment = useUpdateDepartment();
   const createRole = useCreateRole();
   const updateRole = useUpdateRole();
+  const deleteRole = useDeleteRole();
   const createMember = useCreateMember();
   const updateMember = useUpdateMember();
 
@@ -415,6 +419,8 @@ export function Directory() {
     open: boolean;
     id?: string;
   }>({ open: false });
+  const [deletingRole, setDeletingRole] = React.useState<{ id: string; name: string } | null>(null);
+  const [deleteRoleError, setDeleteRoleError] = React.useState("");
   const [memberDraft, setMemberDraft] = React.useState(emptyMember);
   const [departmentDraft, setDepartmentDraft] = React.useState(emptyDepartment);
   const [roleDraft, setRoleDraft] = React.useState(emptyRole);
@@ -500,9 +506,9 @@ export function Directory() {
             departmentIds: role.departmentIds?.length
               ? role.departmentIds
               : [role.departmentId],
-            leadId: role.lead.id,
-            deputyId: role.deputy?.id ?? "",
-            memberIds: role.memberIds ?? [],
+            leadId: role.lead.id === "local-admin" ? "" : role.lead.id,
+            deputyId: role.deputy?.id === "local-admin" ? "" : role.deputy?.id ?? "",
+            memberIds: (role.memberIds ?? []).filter((id) => id !== "local-admin"),
           }
         : emptyRole,
     );
@@ -674,6 +680,18 @@ export function Directory() {
     } catch {}
   };
 
+  const confirmDeleteRole = async () => {
+    if (!deletingRole) return;
+    setDeleteRoleError("");
+    try {
+      await deleteRole.mutateAsync({ roleId: deletingRole.id });
+      setDeletingRole(null);
+      invalidateDirectory();
+    } catch (error) {
+      setDeleteRoleError(mutationError(error) ?? "Could not delete role.");
+    }
+  };
+
   const searchActiveDirectory = async () => {
     setAdLoading(true);
     setAdError("");
@@ -753,7 +771,11 @@ export function Directory() {
     [departments],
   );
   const sortedRoles = React.useMemo(() => sortByName(roles), [roles]);
-  const sortedMembers = React.useMemo(() => sortByName(members), [members]);
+  const directoryMembers = React.useMemo(() => sortByName(members), [members]);
+  const sortedMembers = React.useMemo(
+    () => directoryMembers.filter((member) => member.id !== "local-admin"),
+    [directoryMembers],
+  );
   const sortedAdUsers = React.useMemo(() => sortByName(adUsers), [adUsers]);
 
   if (loading) {
@@ -962,23 +984,42 @@ export function Directory() {
                     </div>
                     <CardTitle className="text-lg">{role.name}</CardTitle>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Edit ${role.name}`}
-                    onClick={() => openRole(role)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Edit ${role.name}`}
+                      onClick={() => openRole(role)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    {canManageCio && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Delete ${role.name}`}
+                        onClick={() => {
+                          setDeleteRoleError("");
+                          setDeletingRole({ id: role.id, name: role.name });
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-0">
-                  <PersonLine label="Role Lead" member={role.lead} primary />
-                  {role.deputy && (
+                  {role.lead.id === "local-admin" ? (
+                    <p className="text-sm text-muted-foreground">Role lead needs reassignment</p>
+                  ) : (
+                    <PersonLine label="Role Lead" member={role.lead} primary />
+                  )}
+                  {role.deputy && role.deputy.id !== "local-admin" && (
                     <PersonLine label="Deputy" member={role.deputy} />
                   )}
                   <p className="text-xs text-muted-foreground">
-                    {role.memberCount} role member
-                    {role.memberCount === 1 ? "" : "s"}
+                    {(role.memberIds ?? []).filter((id) => id !== "local-admin").length} role member
+                    {(role.memberIds ?? []).filter((id) => id !== "local-admin").length === 1 ? "" : "s"}
                   </p>
                 </CardContent>
               </Card>
@@ -999,8 +1040,8 @@ export function Directory() {
           )}
           <Card>
             <div className="divide-y divide-border">
-              {sortedMembers.map((member) => {
-                const assignedRoles = sortedRoles.filter(
+              {directoryMembers.map((member) => {
+                const assignedRoles = member.id === "local-admin" ? [] : sortedRoles.filter(
                   (role) =>
                     role.lead.id === member.id ||
                     role.deputy?.id === member.id ||
@@ -1464,6 +1505,35 @@ export function Directory() {
                 : "Save department"}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(deletingRole)} onOpenChange={(open) => {
+        if (!open && !deleteRole.isPending) setDeletingRole(null);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {deletingRole?.name}?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This removes the role from the directory and future topic assignments.
+            Completed, closed, and rejected topics keep this role in their history.
+            Move any unfinished topics to another role first.
+          </p>
+          {deleteRoleError && (
+            <div role="alert" className="space-y-2 text-sm text-destructive">
+              <p>{deleteRoleError}</p>
+              <Link href="/topics" className="underline">Browse topics to reassign them</Link>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingRole(null)} disabled={deleteRole.isPending}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => void confirmDeleteRole()} disabled={deleteRole.isPending}>
+              {deleteRole.isPending ? "Deleting…" : "Delete role"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -114,6 +114,7 @@ export const applicationSettingsTable = pgTable("application_settings", {
 export const rolesTable = pgTable("roles", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   departmentId: text("department_id")
     .notNull()
     .references(() => departmentsTable.id),

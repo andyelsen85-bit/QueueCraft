@@ -162,6 +162,13 @@
       "when": 1790328909107,
       "tag": "0022_flippant_captain_cross",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790679995052,
+      "tag": "0023_spicy_rictor",
+      "breakpoints": true
     }
   ]
 }
