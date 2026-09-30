@@ -22,5 +22,6 @@ export interface CalendarTopic {
   estimatedStartDate: Date | null;
   /** @nullable */
   estimatedFinishDate: Date | null;
+  assignedMemberIds: string[];
   milestones: CalendarMilestone[];
 }

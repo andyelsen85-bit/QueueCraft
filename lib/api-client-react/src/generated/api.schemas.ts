@@ -335,6 +335,7 @@ export interface CalendarMilestone {
   beginDate: string | null;
   /** @nullable */
   targetDate: string | null;
+  assignedMemberIds: string[];
 }
 
 export interface CalendarTopic {
@@ -350,6 +351,7 @@ export interface CalendarTopic {
   estimatedStartDate: string | null;
   /** @nullable */
   estimatedFinishDate: string | null;
+  assignedMemberIds: string[];
   milestones: CalendarMilestone[];
 }
 

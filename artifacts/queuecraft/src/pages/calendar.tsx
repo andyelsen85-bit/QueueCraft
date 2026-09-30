@@ -2,7 +2,7 @@ import * as React from "react"
 import { addMonths, differenceInCalendarDays, eachDayOfInterval, endOfMonth, format, isBefore, isAfter, isSameDay, isWeekend, startOfMonth } from "date-fns"
 import { ChevronRight, Target } from "lucide-react"
 import { Link } from "wouter"
-import { useListCalendarTopics, useListRoles } from "@workspace/api-client-react"
+import { useListCalendarTopics, useListMembers, useListRoles } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { PriorityBadge, StatusBadge } from "@/components/badges"
@@ -87,13 +87,20 @@ function TimelineCells({
 export function Calendar() {
   const [month, setMonth] = React.useState(() => startOfMonth(new Date()));
   const [roleId, setRoleId] = React.useState("");
+  const [memberId, setMemberId] = React.useState("");
   const [expandedTopics, setExpandedTopics] = React.useState<Record<string, boolean>>({});
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const { data: topics, isLoading, isError, refetch } = useListCalendarTopics();
   const { data: roles, isLoading: rolesLoading, isError: rolesError, refetch: refetchRoles } = useListRoles();
+  const { data: members, isLoading: membersLoading, isError: membersError, refetch: refetchMembers } = useListMembers();
   const sortedRoles = React.useMemo(
     () => [...(roles ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
     [roles],
+  );
+  const sortedMembers = React.useMemo(
+    () => [...(members ?? [])].filter((member) => member.id !== "local-admin")
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    [members],
   );
 
   const months = React.useMemo(() => Array.from({ length: MONTH_COUNT }, (_, index) => {
@@ -112,9 +119,12 @@ export function Calendar() {
     return (topics ?? [])
       .filter((topic) => !roleId || topic.roleId === roleId)
       .map(topic => {
+        const topicAssigned = !memberId || topic.assignedMemberIds.includes(memberId);
         const schedule = dateRange(topic.estimatedStartDate, topic.estimatedFinishDate ?? topic.targetDate);
-        const topicRange = schedule && overlapsMonth(schedule, rangeStart, rangeEnd) ? schedule : null;
+        const scheduleInView = schedule && overlapsMonth(schedule, rangeStart, rangeEnd) ? schedule : null;
+        const topicRange = topicAssigned ? scheduleInView : null;
         const milestones = topic.milestones
+          .filter(milestone => !memberId || milestone.assignedMemberIds.includes(memberId))
           .map(milestone => ({
             ...milestone, range: dateRange(milestone.beginDate, milestone.targetDate),
           }))
@@ -126,11 +136,14 @@ export function Calendar() {
           });
         const milestonesInView = milestones.filter(milestone =>
           milestone.range && overlapsMonth(milestone.range, rangeStart, rangeEnd));
-        if (!topicRange && milestonesInView.length === 0) return null;
+        // Keep a non-assigned parent as context for the member's milestones,
+        // including undated milestones beneath a scheduled topic.
+        const milestoneContextRange = !topicAssigned && milestones.length > 0 ? scheduleInView : null;
+        if (!topicRange && !milestoneContextRange && milestonesInView.length === 0) return null;
         const firstMilestone = milestonesInView.reduce<Date | null>(
           (first, milestone) => !first || isBefore(milestone.range!.start, first)
             ? milestone.range!.start : first, null);
-        const focusD = topicRange?.start ?? firstMilestone!;
+        const focusD = topicRange?.start ?? milestoneContextRange?.start ?? firstMilestone!;
         return { ...topic, topicRange, milestones, milestonesInView: milestonesInView.length, focusD };
       })
       .filter((topic): topic is NonNullable<typeof topic> => topic !== null)
@@ -139,7 +152,7 @@ export function Calendar() {
         if (startDiff !== 0) return startDiff;
         return a.title.localeCompare(b.title);
       });
-  }, [topics, roleId, rangeStart, rangeEnd]);
+  }, [topics, roleId, memberId, rangeStart, rangeEnd]);
 
   React.useLayoutEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollLeft = 0;
@@ -147,7 +160,7 @@ export function Calendar() {
 
   const topicsWithMilestones = visibleTopics.filter((topic) => topic.milestones.length > 0);
   const allExpanded = topicsWithMilestones.length > 0 && topicsWithMilestones.every((topic) =>
-    expandedTopics[topic.id] ?? (!topic.topicRange && topic.milestonesInView > 0));
+    expandedTopics[topic.id] ?? (!topic.topicRange && topic.milestones.length > 0));
   const toggleAll = () => {
     setExpandedTopics((current) => {
       const next = { ...current };
@@ -180,6 +193,17 @@ export function Calendar() {
             </select>
           </label>
           {rolesError && <Button variant="outline" size="sm" onClick={() => void refetchRoles()}>Retry roles</Button>}
+          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            Member filter
+            <select value={memberId} onChange={(event) => setMemberId(event.target.value)}
+              disabled={membersLoading || membersError}
+              className="h-9 w-44 rounded-md border bg-card px-3 text-sm font-medium text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              aria-label="Filter calendar by member">
+              <option value="">All members</option>
+              {sortedMembers.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
+            </select>
+          </label>
+          {membersError && <Button variant="outline" size="sm" onClick={() => void refetchMembers()}>Retry members</Button>}
           <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
             Start month
             <input type="month" value={format(month, "yyyy-MM")}
@@ -257,14 +281,16 @@ export function Calendar() {
                  </div>
                ) : visibleTopics.length === 0 ? (
                  <div className="sticky left-0 flex h-48 w-[min(100vw,40rem)] items-center justify-center text-sm text-muted-foreground">
-                    {roleId
-                      ? `No topics or milestones scheduled for ${sortedRoles.find((role) => role.id === roleId)?.name ?? "this role"} in this period.`
-                      : "No topics or milestones scheduled for this period."}
+                     {memberId
+                       ? `No assigned topics or milestones scheduled for ${sortedMembers.find((member) => member.id === memberId)?.name ?? "this member"}${roleId ? ` in ${sortedRoles.find((role) => role.id === roleId)?.name ?? "this role"}` : ""} in this period.`
+                       : roleId
+                         ? `No topics or milestones scheduled for ${sortedRoles.find((role) => role.id === roleId)?.name ?? "this role"} in this period.`
+                         : "No topics or milestones scheduled for this period."}
                 </div>
               ) : (
                  visibleTopics.map((topic) => {
                     const expanded = expandedTopics[topic.id] ??
-                      (!topic.topicRange && topic.milestonesInView > 0);
+                      (!topic.topicRange && topic.milestones.length > 0);
                    return (
                      <React.Fragment key={topic.id}>
                        <div className="flex h-16 border-b hover:bg-muted/30 group">

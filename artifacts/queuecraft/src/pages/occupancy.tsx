@@ -510,16 +510,18 @@ export function Occupancy() {
                               allocationPercent: number;
                               allocationType: string;
                             }) => (
-                              <div
+                              <Link
+                                href={`/topics/${topic.topicId}`}
+                                aria-label={`Open ${topic.milestoneId ? "milestone" : "topic"} ${topic.title} in topic details`}
                                 key={
                                   topic.milestoneId
                                     ? `milestone:${topic.milestoneId}`
                                     : `topic:${topic.topicId}`
                                 }
-                                className="flex items-center justify-between p-3 rounded-sm border bg-background hover:border-primary/50 transition-colors"
+                                className="flex min-w-0 items-center justify-between rounded-sm border bg-background p-3 transition-colors hover:border-primary/50 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                               >
                                 <span className="text-sm font-medium truncate pr-4">
-                                  Milestone ·{" "}
+                                  {topic.milestoneId ? "Milestone" : "Topic"} ·{" "}
                                   {topic.title}
                                 </span>
                                  <span
@@ -528,7 +530,7 @@ export function Occupancy() {
                                  >
                                   {topic.allocationPercent}%
                                 </span>
-                              </div>
+                              </Link>
                             ),
                           )}
                           {allocations.length > 0 && (

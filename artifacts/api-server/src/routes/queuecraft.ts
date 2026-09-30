@@ -562,6 +562,7 @@ async function loadSnapshot() {
     topics,
     milestones,
     milestoneAllocations,
+    collaboratorMilestones,
     storedMilestoneAllocations,
     activities,
     collaborators,
@@ -1824,10 +1825,31 @@ router.delete("/directory/roles/:roleId", async (req, res): Promise<void> => {
 router.get("/calendar/topics", async (_req, res): Promise<void> => {
   const snapshot = await loadSnapshot();
   const milestonesByTopic = new Map<string, typeof snapshot.milestones>();
+  const topicMembers = new Map<string, Set<string>>();
+  const milestoneMembers = new Map<string, Set<string>>();
+  const addMember = (assignments: Map<string, Set<string>>, id: string, memberId: string | null) => {
+    if (!memberId) return;
+    const assigned = assignments.get(id) ?? new Set<string>();
+    assigned.add(memberId);
+    assignments.set(id, assigned);
+  };
+  for (const topic of snapshot.topics) addMember(topicMembers, topic.id, topic.primaryAssigneeId);
+  for (const collaborator of snapshot.collaborators) {
+    addMember(topicMembers, collaborator.topicId, collaborator.memberId);
+  }
+  const collaboratorsById = new Map(snapshot.collaborators.map((entry) => [entry.id, entry]));
   for (const milestone of snapshot.milestones) {
     const rows = milestonesByTopic.get(milestone.topicId) ?? [];
     rows.push(milestone);
     milestonesByTopic.set(milestone.topicId, rows);
+    addMember(milestoneMembers, milestone.id, milestone.assigneeId);
+  }
+  for (const allocation of snapshot.milestoneAllocations) {
+    addMember(milestoneMembers, allocation.milestoneId, allocation.memberId);
+  }
+  for (const assignment of snapshot.collaboratorMilestones) {
+    addMember(milestoneMembers, assignment.milestoneId,
+      collaboratorsById.get(assignment.collaboratorId)?.memberId ?? null);
   }
   res.json(ListCalendarTopicsResponse.parse(snapshot.topics.map((topic) => ({
     id: topic.id,
@@ -1839,12 +1861,14 @@ router.get("/calendar/topics", async (_req, res): Promise<void> => {
     targetDate: topic.targetDate,
     estimatedStartDate: topic.estimatedStartDate,
     estimatedFinishDate: topic.estimatedFinishDate,
+    assignedMemberIds: [...(topicMembers.get(topic.id) ?? [])],
     milestones: (milestonesByTopic.get(topic.id) ?? []).map((milestone) => ({
       id: milestone.id,
       title: milestone.title,
       status: milestone.status,
       beginDate: milestone.beginDate,
       targetDate: milestone.targetDate,
+      assignedMemberIds: [...(milestoneMembers.get(milestone.id) ?? [])],
     })),
   }))));
 });

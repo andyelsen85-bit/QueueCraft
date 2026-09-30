@@ -1937,12 +1937,14 @@ export const ListCalendarTopicsResponseItem = zod.object({
   "targetDate": zod.coerce.date().nullable(),
   "estimatedStartDate": zod.coerce.date().nullable(),
   "estimatedFinishDate": zod.coerce.date().nullable(),
+  "assignedMemberIds": zod.array(zod.string()),
   "milestones": zod.array(zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']),
   "beginDate": zod.coerce.date().nullable(),
-  "targetDate": zod.coerce.date().nullable()
+  "targetDate": zod.coerce.date().nullable(),
+  "assignedMemberIds": zod.array(zod.string())
 }))
 })
 export const ListCalendarTopicsResponse = zod.array(ListCalendarTopicsResponseItem)

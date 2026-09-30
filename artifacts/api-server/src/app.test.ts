@@ -1970,6 +1970,52 @@ describe("QueueCraft security and preference flows", () => {
     }
   });
 
+  test("exposes topic and milestone assignments independently for calendar member filtering", async () => {
+    const agent = request.agent(app);
+    await agent.get("/api/session").expect(200);
+    const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const collaboratorId = randomUUID();
+    const milestoneOnlyId = randomUUID();
+    await db.insert(membersTable).values([
+      { id: collaboratorId, name: "Calendar collaborator", initials: "CC",
+        email: `calendar-${collaboratorId}@example.invalid` },
+      { id: milestoneOnlyId, name: "Milestone only", initials: "MO",
+        email: `calendar-${milestoneOnlyId}@example.invalid` },
+    ]);
+    let topicId: string | undefined;
+    try {
+      const created = await agent.post("/api/topics").set("x-csrf-token", csrf).send({
+        title: `Calendar assignments ${randomUUID()}`,
+        description: "Topic and milestone assignment filtering.",
+        departmentId: "dept-platform", roleId: "role-ci-validation", priority: "P3",
+        primaryAssigneeId: "member-andy",
+      }).expect(201);
+      topicId = created.body.id;
+      await agent.post(`/api/topics/${topicId}/collaborators`).set("x-csrf-token", csrf)
+        .send({ memberId: collaboratorId }).expect(201);
+      const allocated = await agent.post(`/api/topics/${topicId}/milestones`)
+        .set("x-csrf-token", csrf).send({
+          title: "Allocated milestone", beginDate: "2045-03-01", targetDate: "2045-03-04",
+          allocations: [{ memberId: collaboratorId, allocationPercent: 25 }],
+        }).expect(201);
+      const standalone = await agent.post(`/api/topics/${topicId}/milestones`)
+        .set("x-csrf-token", csrf).send({
+          title: "Milestone-only assignee", beginDate: "2045-03-05", targetDate: "2045-03-07",
+          assigneeId: milestoneOnlyId,
+        }).expect(201);
+      const calendar = await agent.get("/api/calendar/topics").expect(200);
+      const row = calendar.body.find((entry: { id: string }) => entry.id === topicId);
+      assert.deepEqual(new Set(row.assignedMemberIds), new Set(["member-andy", collaboratorId]));
+      assert.deepEqual(row.milestones.find((entry: { id: string }) => entry.id === allocated.body.id)
+        .assignedMemberIds, [collaboratorId]);
+      assert.deepEqual(row.milestones.find((entry: { id: string }) => entry.id === standalone.body.id)
+        .assignedMemberIds, [milestoneOnlyId]);
+    } finally {
+      if (topicId) await agent.delete(`/api/topics/${topicId}`).set("x-csrf-token", csrf).expect(204);
+      await db.delete(membersTable).where(inArray(membersTable.id, [collaboratorId, milestoneOnlyId]));
+    }
+  });
+
   test("saves, displays, and clears a topic documentation URL", async () => {
     const agent = request.agent(app);
     await agent.get("/api/session").expect(200);

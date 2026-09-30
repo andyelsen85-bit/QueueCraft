@@ -15,4 +15,5 @@ export interface CalendarMilestone {
   beginDate: Date | null;
   /** @nullable */
   targetDate: Date | null;
+  assignedMemberIds: string[];
 }
