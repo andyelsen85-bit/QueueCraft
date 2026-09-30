@@ -22,7 +22,7 @@
     "express-session": "^1.18.2",
     "helmet": "^8.1.0",
     "ldapts": "^8.0.0",
-    "nodemailer": "^9.1.1",
+    "nodemailer": "^10.0.12",
     "openid-client": "^6.8.1",
     "pino": "^9.14.0",
     "pino-http": "^10.5.0"

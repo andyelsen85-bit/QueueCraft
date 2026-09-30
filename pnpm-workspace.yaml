@@ -160,3 +160,7 @@ overrides:
   esbuild: "0.28.2"
   # orval pins js-yaml to an exact version older than the CVE fix (>=4.3.2)
   js-yaml: '4.3.2'
+  # orval's typedoc/minimatch chain resolves an older brace-expansion with DoS advisories
+  "minimatch>brace-expansion": "5.0.12"
+  # orval's openapi-parser/ajv chain resolves a vulnerable fast-uri
+  "ajv>fast-uri": "3.1.8"

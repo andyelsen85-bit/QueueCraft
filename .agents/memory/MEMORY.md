@@ -13,3 +13,5 @@
 - [Additive role capacity](additive-role-capacity.md) — sum full member occupancy across a role, including shared members and leads; do not average percentages.
 - [Role retirement and topic history](role-retirement-history.md) — move unfinished topics before deleting a role; historical topics retain their original role.
 - [Calendar member filtering](calendar-member-filtering.md) — filter topic and milestone assignments independently, retaining a parent row only as context for matching milestones.
+- [Dependency audit repairs](dependency-audit-repairs.md) — codegen upgrades can change form schema types; prefer narrowly scoped fixes when a newer generator breaks consumers.
+- [Incremental TypeScript cache](incremental-typescript-cache.md) — after changing dependency graphs, compare a fresh non-incremental check before treating cached type errors as real.
