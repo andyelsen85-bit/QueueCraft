@@ -968,10 +968,10 @@ export function Directory() {
         <TabsContent value="roles" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {sortedRoles.map((role) => (
-              <Card key={role.id}>
+              <Card key={role.id} className="min-w-0">
                 <CardHeader className="flex-row items-start justify-between space-y-0">
-                  <div>
-                    <div className="text-xs font-mono text-muted-foreground mb-1">
+                  <div className="min-w-0">
+                    <div className="text-xs font-mono text-muted-foreground mb-1 break-words">
                       {(role.departmentIds?.length
                         ? role.departmentIds
                         : [role.departmentId]
@@ -982,9 +982,9 @@ export function Directory() {
                         .filter(Boolean)
                         .join(" · ")}
                     </div>
-                    <CardTitle className="text-lg">{role.name}</CardTitle>
+                    <CardTitle className="text-lg break-words">{role.name}</CardTitle>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex shrink-0 gap-1">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1021,6 +1021,15 @@ export function Directory() {
                     {(role.memberIds ?? []).filter((id) => id !== "local-admin").length} role member
                     {(role.memberIds ?? []).filter((id) => id !== "local-admin").length === 1 ? "" : "s"}
                   </p>
+                  <ul className="flex flex-wrap gap-2" aria-label={`Members of ${role.name}`}>
+                    {directoryMembers
+                      .filter((member) => member.id !== "local-admin" && (role.memberIds ?? []).includes(member.id))
+                      .map((member) => (
+                        <li key={member.id} className="max-w-full break-words rounded-md bg-muted px-2.5 py-1 text-xs">
+                          {member.name}
+                        </li>
+                      ))}
+                  </ul>
                 </CardContent>
               </Card>
             ))}
@@ -1050,32 +1059,41 @@ export function Directory() {
                 const isExpanded = expandedRoleMembers.has(member.id);
                 return (
                   <React.Fragment key={member.id}>
-                    <div className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors">
-                      <Avatar className="h-10 w-10">
+                    <div className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2 p-4 hover:bg-muted/50 transition-colors sm:grid-cols-[2.5rem_minmax(0,1fr)_auto] sm:gap-x-4">
+                      <Avatar className="h-10 w-10 shrink-0">
                         <AvatarFallback className="bg-muted text-foreground border">
                           {member.initials}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex flex-col flex-1 min-w-0">
-                        <span className="font-semibold truncate">{member.name}</span>
-                        <span className="text-sm text-muted-foreground truncate">
-                          {member.title || "Member"}
-                        </span>
+                      <div className="min-w-0 space-y-2">
+                        <div className="flex min-w-0 flex-col gap-1 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
+                          <div className="min-w-0">
+                            <p className="font-semibold break-words">{member.name}</p>
+                            <p className="text-sm text-muted-foreground break-words">
+                              {member.title || "Member"}
+                            </p>
+                          </div>
+                          <p className="min-w-0 text-xs text-muted-foreground font-mono break-all">
+                            {member.email}
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">
+                            <span className="text-muted-foreground text-xs uppercase mr-1">BAU:</span>
+                            {(member.dailyBusinessPercent ?? 0)}%
+                          </p>
+                          {member.dailyBusinessTasks.length > 0 && (
+                            <ul className="flex flex-wrap gap-1.5" aria-label={`BAU tasks for ${member.name}`}>
+                              {member.dailyBusinessTasks.map((task, index) => (
+                                <li key={index} className="max-w-full break-words rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+                                  {task.name}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
                       </div>
-                      <div className="hidden sm:block text-sm text-muted-foreground font-mono truncate">
-                        {member.email}
-                      </div>
-                      <div className="hidden sm:block text-sm font-medium">
-                        <span className="text-muted-foreground text-xs uppercase mr-1">
-                          BAU:
-                        </span>
-                        {(member.dailyBusinessPercent ?? 0)}%
-                        {member.dailyBusinessTasks.length > 0 && (
-                          <span className="ml-1 text-xs text-muted-foreground">
-                            ({member.dailyBusinessTasks.map((task) => task.name).join(", ")})
-                          </span>
-                        )}
-                      </div>
+                      <div className="col-start-2 flex shrink-0 gap-1 sm:col-start-3 sm:row-start-1">
                       <Button
                         type="button"
                         variant="ghost"
@@ -1113,6 +1131,7 @@ export function Directory() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
+                      </div>
                     </div>
                     {isExpanded && (
                       <div className="space-y-3 bg-muted/20 px-6 py-4 sm:pl-20">
