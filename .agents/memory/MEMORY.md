@@ -16,3 +16,4 @@
 - [Dependency audit repairs](dependency-audit-repairs.md) — codegen upgrades can change form schema types; prefer narrowly scoped fixes when a newer generator breaks consumers.
 - [Incremental TypeScript cache](incremental-typescript-cache.md) — after changing dependency graphs, compare a fresh non-incremental check before treating cached type errors as real.
 - [GitHub remote verification](github-remote-verification.md) — verify live branch state through the connector; local tracking refs and shell push errors can misrepresent remote state.
+- [Milestone creation access](milestone-creation-access.md) — every member may create milestones on every topic, regardless of department or topic assignment.

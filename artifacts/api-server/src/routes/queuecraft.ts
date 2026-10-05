@@ -3017,7 +3017,8 @@ router.post("/topics/:topicId/milestones", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Topic not found" });
     return;
   }
-  if (!requireTopicManager(req, res, topic, before)) return;
+  // Authentication middleware permits every active member to plan milestones,
+  // regardless of department or topic management access.
   if (topic.dependsOnTopicId && !topic.estimatedStartDate) {
     res.status(409).json({ error: "Set a tentative estimated start on this topic before adding dated milestones" });
     return;

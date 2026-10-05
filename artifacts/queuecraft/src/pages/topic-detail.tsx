@@ -669,6 +669,7 @@ export function TopicDetail() {
   const prerequisiteReady = !topic.dependency ||
     ["completed", "closed"].includes(topic.dependency.status);
   const userId = session?.user?.id;
+  const canCreateMilestones = Boolean(userId);
   const canManageMilestones = Boolean(userId && (
     userId === topic.creator.id ||
     userId === topic.primaryAssignee?.id ||
@@ -1244,7 +1245,7 @@ export function TopicDetail() {
                   <CardTitle className="text-lg">
                     Tracked Deliverables
                   </CardTitle>
-                  {canManageMilestones && (
+                  {canCreateMilestones && (
                     <Dialog
                       open={milestoneOpen}
                       onOpenChange={(open) => {

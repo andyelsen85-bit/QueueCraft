@@ -1066,6 +1066,64 @@ describe("QueueCraft security and preference flows", () => {
     await db.delete(topicsTable).where(eq(topicsTable.id, created.body.id));
   });
 
+  test("members can create milestones across departments without gaining topic management access", async () => {
+    const manager = request.agent(app);
+    const session = await manager.get("/api/session").expect(200);
+    const csrf = (await manager.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const actorId = session.body.user.id as string;
+    const id = randomUUID();
+    const departmentId = `milestone-outsider-dept-${id}`;
+    const roleId = `milestone-outsider-role-${id}`;
+    const email = `milestone-outsider-${id}@example.invalid`;
+    const password = `Temporary-${randomUUID()}`;
+    const member = await manager.post("/api/directory/members").set("x-csrf-token", csrf)
+      .send({ name: "Cross-department milestone member", email, password }).expect(201);
+    const topicIds: string[] = [];
+    try {
+      await db.insert(departmentsTable).values({
+        id: departmentId, name: "Unrelated department", serviceHeadId: actorId,
+      });
+      await db.insert(rolesTable).values({
+        id: roleId, name: "Unrelated role", departmentId, leadId: actorId,
+      });
+      await db.insert(roleMembersTable).values({ roleId, memberId: member.body.id });
+      const ordinary = request.agent(app);
+      await ordinary.post("/api/auth/local").send({ username: email, password }).expect(200);
+      const ordinaryCsrf = (await ordinary.get("/api/auth/csrf").expect(200)).body.csrfToken;
+      for (const status of ["pending_validation", "open"] as const) {
+        const topic = await manager.post("/api/topics").set("x-csrf-token", csrf).send({
+          title: `Cross-department milestones ${status} ${id}`,
+          description: "Milestone creation must not require topic membership.",
+          departmentId: "dept-platform", roleId: "role-ci-validation", priority: "P3",
+        }).expect(201);
+        topicIds.push(topic.body.id);
+        await db.update(topicsTable).set({ status }).where(eq(topicsTable.id, topic.body.id));
+        const url = `/api/topics/${topic.body.id}/milestones`;
+        const input = { title: "Created by an unrelated member", beginDate: "2046-01-01", targetDate: "2046-01-05" };
+        await ordinary.post(url).send(input).expect(403);
+        await ordinary.post(url).set("x-csrf-token", ordinaryCsrf)
+          .send({ ...input, targetDate: "2045-12-31" }).expect(400);
+        const milestone = await ordinary.post(url).set("x-csrf-token", ordinaryCsrf).send(input).expect(201);
+        const detail = await ordinary.get(`/api/topics/${topic.body.id}`).expect(200);
+        assert.ok(detail.body.milestones.some((entry: { id: string }) => entry.id === milestone.body.id));
+        assert.equal(detail.body.status, status);
+        await ordinary.patch(`/api/milestones/${milestone.body.id}`).set("x-csrf-token", ordinaryCsrf)
+          .send({ title: "Unauthorized edit" }).expect(403);
+        await ordinary.delete(`/api/milestones/${milestone.body.id}`).set("x-csrf-token", ordinaryCsrf).expect(403);
+      }
+    } finally {
+      for (const topicId of topicIds) {
+        await manager.delete(`/api/topics/${topicId}`).set("x-csrf-token", csrf).expect(204);
+      }
+      await db.delete(roleMembersTable).where(eq(roleMembersTable.roleId, roleId));
+      await db.delete(rolesTable).where(eq(rolesTable.id, roleId));
+      await db.delete(departmentsTable).where(eq(departmentsTable.id, departmentId));
+      // Preserve the actor referenced by immutable milestone audit history.
+      await db.execute(sql`DELETE FROM user_sessions WHERE sess ->> 'userId' = ${member.body.id}`);
+      await db.update(membersTable).set({ status: "disabled" }).where(eq(membersTable.id, member.body.id));
+    }
+  });
+
   test("requires a note for finish-date changes and allows milestone deletion", async () => {
     const agent = request.agent(app);
     await agent.get("/api/session").expect(200);
