@@ -97,6 +97,100 @@ after(async () => {
   await pool.end();
 });
 
+async function waitForConcurrentTopicLocks(client: Pick<typeof pool, "query">) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    // PostgreSQL caches statistics within a transaction; refresh before polling.
+    await client.query("SELECT pg_stat_clear_snapshot()");
+    const result = await client.query(
+      "SELECT count(*)::int AS waiting FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%topics%'",
+    );
+    if (result.rows[0].waiting >= 2) return;
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  throw new Error("Both concurrent topic saves must reach the write lock");
+}
+
+test("duplicate date saves return success without repeating dependency shifts or audit activity", async () => {
+  const agent = request.agent(app);
+  await agent.get("/api/session").expect(200);
+  const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+  const created = await agent.post("/api/topics").set("x-csrf-token", csrf).send({
+    title: "Concurrent finish-date regression",
+    description: "Isolated duplicate date-save regression fixture",
+    departmentId: "dept-platform", roleId: "role-ci-validation", priority: "P3",
+    estimatedStartDate: "2030-01-01", estimatedFinishDate: "2030-01-31",
+  }).expect(201);
+  const id = created.body.id;
+  const child = await agent.post("/api/topics").set("x-csrf-token", csrf).send({
+    title: "Duplicate save dependent regression",
+    description: "Dependent schedule must move only once",
+    departmentId: "dept-platform", roleId: "role-ci-validation", priority: "P3",
+    dependsOnTopicId: id, estimatedStartDate: "2030-01-31", estimatedFinishDate: "2030-02-10",
+  }).expect(201);
+  const client = await pool.connect();
+  let responses;
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT id FROM topics WHERE id = $1 FOR UPDATE", [id]);
+    const requests = [1, 2].map(() => agent.patch(`/api/topics/${id}`)
+      .set("x-csrf-token", csrf).send({ estimatedFinishDate: "2030-02-28" }).then(response => response));
+    // Both requests read the original schedule before either can acquire its write lock.
+    await waitForConcurrentTopicLocks(client);
+    await client.query("ROLLBACK");
+    responses = await Promise.all(requests);
+  } finally {
+    await client.query("ROLLBACK");
+    client.release();
+  }
+  assert.deepEqual(responses.map(response => response.status).sort(), [200, 200]);
+  assert.ok(responses.every(response => response.body.estimatedFinishDate.startsWith("2030-02-28")));
+  const activity = await db.select().from(activityTable).where(and(
+    eq(activityTable.topicId, id), eq(activityTable.action, "Topic updated"),
+  ));
+  assert.equal(activity.length, 1);
+  const dependent = (await agent.get(`/api/topics/${child.body.id}`).expect(200)).body;
+  assert.ok(dependent.estimatedStartDate.startsWith("2030-02-28"));
+  assert.ok(dependent.estimatedFinishDate.startsWith("2030-03-10"));
+  const shifts = await db.select().from(activityTable).where(and(
+    eq(activityTable.topicId, child.body.id), eq(activityTable.action, "Dependency schedule shifted"),
+  ));
+  assert.equal(shifts.length, 1);
+  await agent.delete(`/api/topics/${child.body.id}`).set("x-csrf-token", csrf).expect(204);
+  await agent.delete(`/api/topics/${id}`).set("x-csrf-token", csrf).expect(204);
+});
+
+test("different concurrent date saves retain the real conflict protection", async () => {
+  const agent = request.agent(app);
+  await agent.get("/api/session").expect(200);
+  const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+  const created = await agent.post("/api/topics").set("x-csrf-token", csrf).send({
+    title: "Conflicting finish-date regression",
+    description: "Conflicting concurrent saves must not overwrite",
+    departmentId: "dept-platform", roleId: "role-ci-validation", priority: "P3",
+    estimatedStartDate: "2030-01-01", estimatedFinishDate: "2030-01-31",
+  }).expect(201);
+  const id = created.body.id;
+  const client = await pool.connect();
+  let responses;
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT id FROM topics WHERE id = $1 FOR UPDATE", [id]);
+    const requests = ["2030-02-28", "2030-03-31"].map(estimatedFinishDate => agent.patch(`/api/topics/${id}`)
+      .set("x-csrf-token", csrf).send({ estimatedFinishDate }).then(response => response));
+    await waitForConcurrentTopicLocks(client);
+    await client.query("ROLLBACK");
+    responses = await Promise.all(requests);
+  } finally {
+    await client.query("ROLLBACK");
+    client.release();
+  }
+  assert.deepEqual(responses.map(response => response.status).sort(), [200, 409]);
+  const winner = responses.find(response => response.status === 200)!;
+  const saved = (await agent.get(`/api/topics/${id}`).expect(200)).body;
+  assert.equal(saved.estimatedFinishDate, winner.body.estimatedFinishDate);
+  await agent.delete(`/api/topics/${id}`).set("x-csrf-token", csrf).expect(204);
+});
+
 describe("QueueCraft security and preference flows", () => {
   test("local admin and delegated authorities can manage permissions and Settings", () => {
     const snapshot = {

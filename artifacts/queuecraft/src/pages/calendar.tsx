@@ -1,4 +1,5 @@
 import * as React from "react"
+import { formatDate } from "@/lib/dates"
 import { addMonths, differenceInCalendarDays, eachDayOfInterval, endOfMonth, format, isBefore, isAfter, isSameDay, isWeekend, startOfMonth } from "date-fns"
 import { ChevronRight, Target } from "lucide-react"
 import { Link } from "wouter"
@@ -93,8 +94,8 @@ function TimelineCells({
               ${isBefore(range.start, rangeStart) ? 'rounded-l-none border-l-0' : 'rounded-l-md'}
               ${isAfter(range.end, rangeEnd) ? 'rounded-r-none border-r-0' : 'rounded-r-md'}
               ${getBarColors(status)}`}
-            title={`${title}\n${format(range.start, "MMM d, yyyy")} - ${format(range.end, "MMM d, yyyy")}`}
-            aria-label={`${title}. ${status.replaceAll("_", " ")}. ${format(range.start, "MMM d, yyyy")} to ${format(range.end, "MMM d, yyyy")}.`}
+            title={`${title}\n${formatDate(range.start)} – ${formatDate(range.end)}`}
+            aria-label={`${title}. ${status.replaceAll("_", " ")}. ${formatDate(range.start)} to ${formatDate(range.end)}.`}
           >
             <span className="truncate text-[11px] font-semibold leading-none">{title}</span>
           </Link>
@@ -396,7 +397,7 @@ export function Calendar() {
                 </div>
                  {todayLeft !== null && (
                    <div className="pointer-events-none absolute inset-y-0 z-40 w-1 bg-black dark:bg-white"
-                     style={{ left: todayLeft - 2 }} aria-label={`Today: ${format(today, "MMMM d, yyyy")}`}>
+                     style={{ left: todayLeft - 2 }} aria-label={`Today: ${formatDate(today)}`}>
                      <span className="absolute -left-5 top-0 rounded-b bg-black px-1 text-[10px] font-bold text-white dark:bg-white dark:text-black">Today</span>
                    </div>
                  )}
@@ -478,7 +479,7 @@ export function Calendar() {
                                </Link>
                                <div className="truncate text-[10px] text-muted-foreground">
                                  {milestone.range
-                                   ? `${format(milestone.range.start, "MMM d")} – ${format(milestone.range.end, "MMM d")}`
+                                   ? `${formatDate(milestone.range.start)} – ${formatDate(milestone.range.end)}`
                                    : "No dates planned"}
                                </div>
                              </div>

@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { formatDate } from "./dates";
 import { formatHours, weeklyAllocationHours } from "./contract-hours";
 
 export type BauExportMember = {
@@ -96,7 +97,7 @@ export function buildMemberBauPdf(members: readonly BauExportMember[], fonts: Pd
   const contentWidth = width - margin * 2;
   const bottom = height - 48;
   let y = 94;
-  const date = generated.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  const date = formatDate(generated);
   const sorted = orderedMembers(members);
 
   function text(value: string | string[], x: number, top: number, size = 10, bold = false, color = [51, 65, 85]) {

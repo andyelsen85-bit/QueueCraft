@@ -4,7 +4,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useUpdateMilestone, useUpdateTopic, usePreviewScheduleImpact, type ScheduleImpact } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
+import { formatDate } from "@/lib/dates"
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
@@ -161,7 +162,7 @@ export function DateHandles({
           style={{ left: pStartIdx * DAY_WIDTH, width: (pEndIdx - pStartIdx + 1) * DAY_WIDTH }}>
           <span className="absolute -top-1 left-0 -translate-y-full whitespace-nowrap rounded bg-popover px-1.5 py-0.5 text-[10px] font-semibold text-popover-foreground shadow"
             role="status">
-            {format(preview.start, "MMM d, yyyy")} - {format(preview.end, "MMM d, yyyy")}
+            {formatDate(preview.start)} – {formatDate(preview.end)}
           </span>
         </div>
       )}
@@ -200,6 +201,8 @@ function EditForm({ edit, onClose, onSaving }: { edit: EditRequest; onClose: () 
   const [reviewedOptions, setReviewedOptions] = React.useState<{ extend?: boolean; finishValue?: string; skipTopicCheck?: boolean }>({})
   const [start, setStart] = React.useState(edit.start)
   const [finish, setFinish] = React.useState(edit.finish)
+  const [startValid, setStartValid] = React.useState(true)
+  const [finishValid, setFinishValid] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [decision, setDecision] = React.useState<
     { kind: "milestone"; suggested: string } | { kind: "topic"; latest: string } | null>(null)
@@ -208,6 +211,7 @@ function EditForm({ edit, onClose, onSaving }: { edit: EditRequest; onClose: () 
 
   const submit = async (opts: { extend?: boolean; finishValue?: string; skipTopicCheck?: boolean } = {}, save = false) => {
     if (busy.current) return;
+    if (!startValid || !finishValid) { setError("Enter valid dates in DD/MM/YYYY format."); return }
     const s = start.trim()
     const f = (opts.finishValue ?? finish).trim()
     if ((edit.rawStart && !s) || (edit.rawFinish && !f)) {
@@ -285,36 +289,36 @@ function EditForm({ edit, onClose, onSaving }: { edit: EditRequest; onClose: () 
         <DialogDescription>
           {edit.title}.{" "}
           {edit.kind === "topic"
-            ? `Only the planned estimate dates change.${edit.committedFinish ? ` The committed finish date (${edit.committedFinish}) stays unchanged.` : " The committed finish date stays unchanged."}`
+            ? `Only the planned estimate dates change.${edit.committedFinish ? ` The committed finish date (${formatDate(edit.committedFinish)}) stays unchanged.` : " The committed finish date stays unchanged."}`
             : "Review the dates before saving."}
         </DialogDescription>
       </DialogHeader>
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           {edit.kind === "topic" ? "Estimated start" : "Begin date"}
-          <Input type="date" value={start} disabled={pending || !!decision} onChange={(e) => { setStart(e.target.value); setImpact(null) }} data-testid="input-edit-start" />
+          <DateField value={start} onValidityChange={setStartValid} disabled={pending || !!decision} onChange={(value) => { setStart(value); setImpact(null) }} data-testid="input-edit-start" />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           {edit.kind === "topic" ? "Estimated finish" : "Target date"}
-          <Input type="date" value={finish} disabled={pending || !!decision} onChange={(e) => { setFinish(e.target.value); setImpact(null) }} data-testid="input-edit-finish" />
+          <DateField value={finish} onValidityChange={setFinishValid} disabled={pending || !!decision} onChange={(value) => { setFinish(value); setImpact(null) }} data-testid="input-edit-finish" />
         </label>
       </div>
       {decision?.kind === "topic" && (
         <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200" role="alert">
-          <p>This finish is before the latest milestone target ({decision.latest}). Choose how to proceed.</p>
+          <p>This finish is before the latest milestone target ({formatDate(decision.latest)}). Choose how to proceed.</p>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" disabled={pending} onClick={() => void submit({ skipTopicCheck: true })}>Keep shortened estimate</Button>
             <Button size="sm" disabled={pending} onClick={() => { setFinish(decision.latest); setDecision(null); void submit({ finishValue: decision.latest, skipTopicCheck: true }) }}>
-              Use latest target ({decision.latest})
+              Use latest target ({formatDate(decision.latest)})
             </Button>
           </div>
         </div>
       )}
       {decision?.kind === "milestone" && (
         <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200" role="alert">
-          <p>This target is after the topic's estimated finish. The suggested topic finish is {decision.suggested}.</p>
+          <p>This target is after the topic's estimated finish. The suggested topic finish is {formatDate(decision.suggested)}.</p>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" disabled={pending} onClick={() => void submit({ extend: true })}>Extend topic to {decision.suggested}</Button>
+            <Button size="sm" disabled={pending} onClick={() => void submit({ extend: true })}>Extend topic to {formatDate(decision.suggested)}</Button>
             <Button size="sm" variant="outline" disabled={pending} onClick={() => void submit({ extend: false })}>Keep estimate</Button>
           </div>
         </div>
@@ -338,8 +342,8 @@ function EditForm({ edit, onClose, onSaving }: { edit: EditRequest; onClose: () 
                     <td className="p-2"><span className="font-medium">{change.title}</span>
                       <div className="text-muted-foreground">{change.kind === "topic" ? "Topic" : `Milestone · ${change.topicTitle}`}</div>
                     </td>
-                    <td className="p-2">{change.originalStart?.slice(0, 10) ?? "Not set"}<br />{change.originalFinish?.slice(0, 10) ?? "Not set"}</td>
-                    <td className="p-2">{change.projectedStart?.slice(0, 10) ?? "Not set"}<br />{change.projectedFinish?.slice(0, 10) ?? "Not set"}</td>
+                    <td className="p-2">{formatDate(change.originalStart) || "Not set"}<br />{formatDate(change.originalFinish) || "Not set"}</td>
+                    <td className="p-2">{formatDate(change.projectedStart) || "Not set"}<br />{formatDate(change.projectedFinish) || "Not set"}</td>
                   </tr>
                 ))}</tbody>
               </table>
@@ -351,7 +355,7 @@ function EditForm({ edit, onClose, onSaving }: { edit: EditRequest; onClose: () 
       <DialogFooter>
         <Button variant="outline" onClick={onClose} disabled={pending}>Cancel</Button>
         {impact && <Button variant="outline" disabled={pending} onClick={() => { setImpact(null); setDecision(null) }}>Back to dates</Button>}
-        <Button onClick={() => void submit(impact ? reviewedOptions : {}, !!impact)} disabled={pending || !!decision} data-testid="button-save-dates">
+        <Button onClick={() => void submit(impact ? reviewedOptions : {}, !!impact)} disabled={pending || !!decision || !startValid || !finishValid} data-testid="button-save-dates">
           {pending ? (impact ? "Saving..." : "Checking...") : impact ? "Save dates" : "Review impact"}
         </Button>
       </DialogFooter>

@@ -8,10 +8,11 @@ type DateFieldProps = Omit<
 > & {
   value?: string | null;
   onChange: (value: string) => void;
+  onValidityChange?: (valid: boolean) => void;
 };
 
 export const DateField = React.forwardRef<HTMLInputElement, DateFieldProps>(
-  ({ value, onChange, onBlur, ...props }, forwardedRef) => {
+  ({ value, onChange, onBlur, onValidityChange, ...props }, forwardedRef) => {
     const [displayValue, setDisplayValue] = React.useState(() =>
       isoDateToDisplay(value),
     );
@@ -19,7 +20,9 @@ export const DateField = React.forwardRef<HTMLInputElement, DateFieldProps>(
 
     React.useEffect(() => {
       setDisplayValue(isoDateToDisplay(value));
-    }, [value]);
+      inputRef.current?.setCustomValidity("");
+      onValidityChange?.(true);
+    }, [value, onValidityChange]);
 
     const setRef = (element: HTMLInputElement | null) => {
       inputRef.current = element;
@@ -31,10 +34,12 @@ export const DateField = React.forwardRef<HTMLInputElement, DateFieldProps>(
       setDisplayValue(nextDisplayValue);
       if (!nextDisplayValue) {
         inputRef.current?.setCustomValidity("");
+        onValidityChange?.(true);
         onChange("");
         return;
       }
       const isoValue = displayDateToIso(nextDisplayValue);
+      onValidityChange?.(Boolean(isoValue));
       inputRef.current?.setCustomValidity(
         isoValue ? "" : "Enter a valid date in DD/MM/YYYY format.",
       );

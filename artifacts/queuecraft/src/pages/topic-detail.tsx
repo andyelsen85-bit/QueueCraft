@@ -315,7 +315,10 @@ export function TopicDetail() {
     }
   }, [editTopicOpen, selectedEditDependency?.estimatedFinishDate, selectedEditDependencyId, editTopicForm]);
 
+  const topicSaveInFlight = React.useRef(false);
   const saveTopic = (data: any) => {
+    if (topicSaveInFlight.current) return;
+    topicSaveInFlight.current = true;
     setEditTopicError("");
     setTopicFinishChoice(null);
     updateTopic.mutate(
@@ -338,10 +341,12 @@ export function TopicDetail() {
           invalidateData();
         },
         onError: (error) => setEditTopicError(error instanceof Error ? error.message : "Could not save topic."),
+        onSettled: () => { topicSaveInFlight.current = false; },
       },
     );
   };
   const onEditTopic = (data: any) => {
+    if (topicSaveInFlight.current) return;
     const proposed = data.estimatedFinishDate;
     const previousStart = dateInputValue(topic?.estimatedStartDate);
     const newStart = data.estimatedStartDate;

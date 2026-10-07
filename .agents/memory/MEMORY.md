@@ -5,7 +5,7 @@
 - [BAU legacy values on publish](bau-publish-backfill.md) — schema-only publish may skip data backfill; treat old scalar BAU as a named task until edited.
 - [Urgent security mail and digests](urgent-security-mail.md) — keep break-glass alerts immediate and outside user-clearable digest queues.
 - [Milestone occupancy transition](milestone-occupancy.md) — old topic-level allocations remain historical, never counted or automatically distributed to milestones.
-- [OpenAPI date responses](openapi-date-responses.md) — generated date response parsing serializes date-only fields as ISO datetimes; normalize before date arithmetic or date inputs.
+- [API and display dates](openapi-date-responses.md) — normalize ISO datetime responses before date arithmetic; all user-facing date fields use DD/MM/YYYY, independent of locale.
 - [Prerequisite scheduling](prerequisite-edits.md) — preserve planned periods, defer anchoring when a prerequisite has no finish, and protect already-started work.
 - [Milestone finish choice](milestone-finish-choice.md) — treat “last finished milestone date” as the latest planned target and offer an explicit choice about extending the topic.
 - [Legacy milestone status](legacy-milestone-status.md) — offer Returned going forward without silently reinterpreting historical Blocked milestones.

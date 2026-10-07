@@ -18,3 +18,9 @@ Audit-generating test writes are not fully reversible. Keep synthetic actors ref
 **Why:** Actor cleanup can require deleting protected audit entries, which is deliberately blocked.
 
 **How to apply:** Expire temporary sessions and remove reversible fixtures, then discard the entire isolated database after the test run.
+
+Run disposable PostgreSQL as a foreground server in a managed background shell task when it must survive multiple tool calls.
+
+**Why:** A server daemonized by pg_ctl from a completed shell did not survive into the next tool call, causing connection refusal.
+
+**How to apply:** Keep the temporary server attached to its background task and stop that task after verification. Do not replace or restart the app's database.

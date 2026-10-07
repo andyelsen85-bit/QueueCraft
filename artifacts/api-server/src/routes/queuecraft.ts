@@ -2514,12 +2514,32 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
   const [updated] = await db.transaction(async (tx) => {
     const [locked] = await tx.select().from(topicsTable)
       .where(eq(topicsTable.id, params.data.topicId)).for("update");
-    if (!locked || locked.estimatedFinishDate !== currentTopic.estimatedFinishDate ||
+    if (!locked) return [];
+    if (locked.estimatedFinishDate !== currentTopic.estimatedFinishDate ||
       locked.estimatedStartDate !== currentTopic.estimatedStartDate ||
       locked.dependsOnTopicId !== currentTopic.dependsOnTopicId ||
       locked.status !== currentTopic.status ||
       locked.departmentId !== currentTopic.departmentId ||
-      locked.roleId !== currentTopic.roleId) return [];
+      locked.roleId !== currentTopic.roleId) {
+      // A duplicate request may have read the old schedule before the first save
+      // acquired this lock. Acknowledge an already-applied change, without
+      // overwriting concurrent edits or repeating dependency shifts and activity.
+      const requestedValues = {
+        ...normalizedUpdate,
+        ...(dependencyChanged && dependencyId ? {
+          dependsOnTopicId: dependencyId,
+          estimatedStartDate: nextStart,
+          estimatedFinishDate: nextFinish,
+        } : {}),
+      };
+      const alreadyApplied = Object.entries(requestedValues).every(([field, value]) => {
+        if (value === undefined) return true;
+        const expected = field === "estimatedStartDate" || field === "estimatedFinishDate"
+          ? dateOnly(value as string | null) : value;
+        return JSON.stringify(locked[field as keyof typeof locked] ?? null) === JSON.stringify(expected ?? null);
+      });
+      return alreadyApplied ? [locked] : [];
+    }
     const lockedRouting = await lockTopicRouting(tx, nextDepartmentId, nextRoleId, true);
     if (!lockedRouting || (lockedRouting.role?.archivedAt &&
       (nextRoleId !== locked.roleId ||

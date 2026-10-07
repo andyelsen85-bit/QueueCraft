@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { formatDate, formatDateTime } from "./dates";
 import { addDays, differenceInCalendarDays, format, startOfMonth, addMonths } from "date-fns";
 import type { CalendarTopic } from "@workspace/api-client-react";
 import { loadBauPdfFonts } from "./member-bau-export";
@@ -132,7 +133,7 @@ export function buildCalendarPdf(
     pdf.setFont("Calendar", "bold"); pdf.setFontSize(28);
     pdf.text(options.title ?? "QueueCraft — Planning calendar", margin, 66);
     pdf.setFont("Calendar", "normal"); pdf.setFontSize(13);
-    pdf.text(`${format(start, "yyyy-MM-dd")} to ${format(end, "yyyy-MM-dd")}  |  A0 landscape  |  Generated ${format(generated, "yyyy-MM-dd HH:mm")}`, margin, 94);
+    pdf.text(`${formatDate(start)} to ${formatDate(end)}  |  A0 landscape  |  Generated ${formatDateTime(generated)}`, margin, 94);
     const filterLines = pdf.splitTextToSize(options.filterLabel ?? "All departments · All roles · All members", width - 2 * margin);
     pdf.text(filterLines.slice(0, 2), margin, 115);
     pdf.setFontSize(11);
