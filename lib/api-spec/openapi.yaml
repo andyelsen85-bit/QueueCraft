@@ -1158,6 +1158,14 @@ components:
             $ref: "#/components/schemas/TopicCollaborator"
         milestoneCount: { type: integer }
         completedMilestoneCount: { type: integer }
+        plannedMilestoneHours:
+          type: number
+          minimum: 0
+          description: Sum of known planned member hours across all milestone allocations, using inclusive Monday-Friday dates and each member's weekly contract.
+        unestimatedMilestoneAllocationCount:
+          type: integer
+          minimum: 0
+          description: Number of nonzero milestone allocations whose hours cannot be calculated because their contract or dates are missing or invalid.
         targetDate:
           type: ["string", "null"]
           format: date

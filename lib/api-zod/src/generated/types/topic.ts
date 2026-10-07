@@ -32,6 +32,16 @@ export interface Topic {
   collaborators?: TopicCollaborator[];
   milestoneCount?: number;
   completedMilestoneCount?: number;
+  /**
+     * Sum of known planned member hours across all milestone allocations, using inclusive Monday-Friday dates and each member's weekly contract.
+     * @minimum 0
+     */
+  plannedMilestoneHours?: number;
+  /**
+     * Number of nonzero milestone allocations whose hours cannot be calculated because their contract or dates are missing or invalid.
+     * @minimum 0
+     */
+  unestimatedMilestoneAllocationCount?: number;
   /** @nullable */
   targetDate?: Date | null;
   /** @nullable */

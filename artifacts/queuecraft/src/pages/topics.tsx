@@ -41,6 +41,7 @@ import {
 import { Textarea } from "@/components/ui/input";
 import { DateField } from "@/components/ui/date-field";
 import { formatDate } from "@/lib/dates";
+import { formatHours } from "@/lib/contract-hours";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
 import { Link, useLocation } from "wouter";
@@ -882,7 +883,21 @@ export function Topics() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex-none flex items-center gap-4">
+                  <div className="flex-none flex flex-wrap items-center gap-4">
+                    <div className="text-right text-xs" data-testid={`topic-planned-hours-${t.id}`}
+                      title="Total across all members and milestones: weekly contract hours × allocation percentage × inclusive working days ÷ 5. BAU is excluded.">
+                      <div className="font-mono uppercase text-muted-foreground">Planned hours</div>
+                      <div className="font-semibold tabular-nums">
+                        {t.plannedMilestoneHours == null ? "—" :
+                          t.unestimatedMilestoneAllocationCount && t.plannedMilestoneHours === 0 ? "Not calculable" :
+                            `${formatHours(t.plannedMilestoneHours)} h${t.unestimatedMilestoneAllocationCount ? " (partial)" : ""}`}
+                      </div>
+                      {!!t.unestimatedMilestoneAllocationCount && (
+                        <div className="mt-1 max-w-[180px] text-amber-700 dark:text-amber-400">
+                          {t.unestimatedMilestoneAllocationCount} allocation{t.unestimatedMilestoneAllocationCount === 1 ? "" : "s"} missing contract hours or dates
+                        </div>
+                      )}
+                    </div>
                     <div className="hidden text-right text-xs sm:block">
                       <div className="font-mono uppercase text-muted-foreground">
                         Est. finish

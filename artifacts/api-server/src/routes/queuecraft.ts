@@ -24,6 +24,7 @@ import {
 } from "@workspace/db";
 import { hashLocalPassword } from "../services/local-password";
 import { memberAvailability } from "../lib/member-availability";
+import { topicPlannedHours } from "../lib/topic-planned-hours";
 import {
   AddTopicCollaboratorBody,
   AddTopicCollaboratorParams,
@@ -481,6 +482,7 @@ async function loadSnapshot() {
     };
   };
 
+  const plannedHoursByTopic = topicPlannedHours(milestones, milestoneAllocations, members);
   const buildTopic = (topic: (typeof topics)[number]) => {
     const creator = member(topic.creatorId);
     if (!creator) throw new Error(`Topic creator ${topic.creatorId} not found`);
@@ -514,6 +516,10 @@ async function loadSnapshot() {
           };
         }),
       milestoneCount: topicMilestones.length,
+      ...(plannedHoursByTopic.get(topic.id) ?? {
+        plannedMilestoneHours: 0,
+        unestimatedMilestoneAllocationCount: 0,
+      }),
       completedMilestoneCount: topicMilestones.filter(
         (milestone) => milestone.status === "completed",
       ).length,

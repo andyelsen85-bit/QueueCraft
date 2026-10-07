@@ -258,6 +258,10 @@ export const getMyWorkResponseCreatedItemCollaboratorsItemMemberDailyBusinessTas
 export const getMyWorkResponseCreatedItemCollaboratorsItemMemberDailyBusinessTasksItemPercentMin = 0;
 export const getMyWorkResponseCreatedItemCollaboratorsItemMemberDailyBusinessTasksItemPercentMax = 100;
 
+export const getMyWorkResponseCreatedItemPlannedMilestoneHoursMin = 0;
+
+export const getMyWorkResponseCreatedItemUnestimatedMilestoneAllocationCountMin = 0;
+
 export const getMyWorkResponseCreatedItemEstimatedEffortHoursMin = 0;
 
 export const getMyWorkResponseCreatedItemValidatorOneDailyBusinessPercentMin = 0;
@@ -349,6 +353,10 @@ export const getMyWorkResponseAssignedItemCollaboratorsItemMemberDailyBusinessTa
 
 export const getMyWorkResponseAssignedItemCollaboratorsItemMemberDailyBusinessTasksItemPercentMin = 0;
 export const getMyWorkResponseAssignedItemCollaboratorsItemMemberDailyBusinessTasksItemPercentMax = 100;
+
+export const getMyWorkResponseAssignedItemPlannedMilestoneHoursMin = 0;
+
+export const getMyWorkResponseAssignedItemUnestimatedMilestoneAllocationCountMin = 0;
 
 export const getMyWorkResponseAssignedItemEstimatedEffortHoursMin = 0;
 
@@ -469,6 +477,10 @@ export const getMyWorkResponseCollaborationsItemCollaboratorsItemMemberDailyBusi
 export const getMyWorkResponseCollaborationsItemCollaboratorsItemMemberDailyBusinessTasksItemPercentMin = 0;
 export const getMyWorkResponseCollaborationsItemCollaboratorsItemMemberDailyBusinessTasksItemPercentMax = 100;
 
+export const getMyWorkResponseCollaborationsItemPlannedMilestoneHoursMin = 0;
+
+export const getMyWorkResponseCollaborationsItemUnestimatedMilestoneAllocationCountMin = 0;
+
 export const getMyWorkResponseCollaborationsItemEstimatedEffortHoursMin = 0;
 
 export const getMyWorkResponseCollaborationsItemValidatorOneDailyBusinessPercentMin = 0;
@@ -560,6 +572,10 @@ export const getMyWorkResponseValidationQueueItemCollaboratorsItemMemberDailyBus
 
 export const getMyWorkResponseValidationQueueItemCollaboratorsItemMemberDailyBusinessTasksItemPercentMin = 0;
 export const getMyWorkResponseValidationQueueItemCollaboratorsItemMemberDailyBusinessTasksItemPercentMax = 100;
+
+export const getMyWorkResponseValidationQueueItemPlannedMilestoneHoursMin = 0;
+
+export const getMyWorkResponseValidationQueueItemUnestimatedMilestoneAllocationCountMin = 0;
 
 export const getMyWorkResponseValidationQueueItemEstimatedEffortHoursMin = 0;
 
@@ -715,6 +731,8 @@ export const GetMyWorkResponse = zod.object({
 })).optional(),
   "milestoneCount": zod.number().int().optional(),
   "completedMilestoneCount": zod.number().int().optional(),
+  "plannedMilestoneHours": zod.number().min(getMyWorkResponseCreatedItemPlannedMilestoneHoursMin).optional().describe('Sum of known planned member hours across all milestone allocations, using inclusive Monday-Friday dates and each member\'s weekly contract.'),
+  "unestimatedMilestoneAllocationCount": zod.number().int().min(getMyWorkResponseCreatedItemUnestimatedMilestoneAllocationCountMin).optional().describe('Number of nonzero milestone allocations whose hours cannot be calculated because their contract or dates are missing or invalid.'),
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
@@ -886,6 +904,8 @@ export const GetMyWorkResponse = zod.object({
 })).optional(),
   "milestoneCount": zod.number().int().optional(),
   "completedMilestoneCount": zod.number().int().optional(),
+  "plannedMilestoneHours": zod.number().min(getMyWorkResponseAssignedItemPlannedMilestoneHoursMin).optional().describe('Sum of known planned member hours across all milestone allocations, using inclusive Monday-Friday dates and each member\'s weekly contract.'),
+  "unestimatedMilestoneAllocationCount": zod.number().int().min(getMyWorkResponseAssignedItemUnestimatedMilestoneAllocationCountMin).optional().describe('Number of nonzero milestone allocations whose hours cannot be calculated because their contract or dates are missing or invalid.'),
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
@@ -1104,6 +1124,8 @@ export const GetMyWorkResponse = zod.object({
 })).optional(),
   "milestoneCount": zod.number().int().optional(),
   "completedMilestoneCount": zod.number().int().optional(),
+  "plannedMilestoneHours": zod.number().min(getMyWorkResponseCollaborationsItemPlannedMilestoneHoursMin).optional().describe('Sum of known planned member hours across all milestone allocations, using inclusive Monday-Friday dates and each member\'s weekly contract.'),
+  "unestimatedMilestoneAllocationCount": zod.number().int().min(getMyWorkResponseCollaborationsItemUnestimatedMilestoneAllocationCountMin).optional().describe('Number of nonzero milestone allocations whose hours cannot be calculated because their contract or dates are missing or invalid.'),
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
@@ -1275,6 +1297,8 @@ export const GetMyWorkResponse = zod.object({
 })).optional(),
   "milestoneCount": zod.number().int().optional(),
   "completedMilestoneCount": zod.number().int().optional(),
+  "plannedMilestoneHours": zod.number().min(getMyWorkResponseValidationQueueItemPlannedMilestoneHoursMin).optional().describe('Sum of known planned member hours across all milestone allocations, using inclusive Monday-Friday dates and each member\'s weekly contract.'),
+  "unestimatedMilestoneAllocationCount": zod.number().int().min(getMyWorkResponseValidationQueueItemUnestimatedMilestoneAllocationCountMin).optional().describe('Number of nonzero milestone allocations whose hours cannot be calculated because their contract or dates are missing or invalid.'),
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
@@ -1392,6 +1416,10 @@ export const getValidationQueueResponseCollaboratorsItemMemberDailyBusinessTasks
 
 export const getValidationQueueResponseCollaboratorsItemMemberDailyBusinessTasksItemPercentMin = 0;
 export const getValidationQueueResponseCollaboratorsItemMemberDailyBusinessTasksItemPercentMax = 100;
+
+export const getValidationQueueResponsePlannedMilestoneHoursMin = 0;
+
+export const getValidationQueueResponseUnestimatedMilestoneAllocationCountMin = 0;
 
 export const getValidationQueueResponseEstimatedEffortHoursMin = 0;
 
@@ -1546,6 +1574,8 @@ export const GetValidationQueueResponseItem = zod.object({
 })).optional(),
   "milestoneCount": zod.number().int().optional(),
   "completedMilestoneCount": zod.number().int().optional(),
+  "plannedMilestoneHours": zod.number().min(getValidationQueueResponsePlannedMilestoneHoursMin).optional().describe('Sum of known planned member hours across all milestone allocations, using inclusive Monday-Friday dates and each member\'s weekly contract.'),
+  "unestimatedMilestoneAllocationCount": zod.number().int().min(getValidationQueueResponseUnestimatedMilestoneAllocationCountMin).optional().describe('Number of nonzero milestone allocations whose hours cannot be calculated because their contract or dates are missing or invalid.'),
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
@@ -1677,6 +1707,10 @@ export const listTopicsResponseCollaboratorsItemMemberDailyBusinessTasksItemName
 
 export const listTopicsResponseCollaboratorsItemMemberDailyBusinessTasksItemPercentMin = 0;
 export const listTopicsResponseCollaboratorsItemMemberDailyBusinessTasksItemPercentMax = 100;
+
+export const listTopicsResponsePlannedMilestoneHoursMin = 0;
+
+export const listTopicsResponseUnestimatedMilestoneAllocationCountMin = 0;
 
 export const listTopicsResponseEstimatedEffortHoursMin = 0;
 
@@ -1831,6 +1865,8 @@ export const ListTopicsResponseItem = zod.object({
 })).optional(),
   "milestoneCount": zod.number().int().optional(),
   "completedMilestoneCount": zod.number().int().optional(),
+  "plannedMilestoneHours": zod.number().min(listTopicsResponsePlannedMilestoneHoursMin).optional().describe('Sum of known planned member hours across all milestone allocations, using inclusive Monday-Friday dates and each member\'s weekly contract.'),
+  "unestimatedMilestoneAllocationCount": zod.number().int().min(listTopicsResponseUnestimatedMilestoneAllocationCountMin).optional().describe('Number of nonzero milestone allocations whose hours cannot be calculated because their contract or dates are missing or invalid.'),
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
@@ -1977,6 +2013,10 @@ export const createTopicResponseCollaboratorsItemMemberDailyBusinessTasksItemNam
 
 export const createTopicResponseCollaboratorsItemMemberDailyBusinessTasksItemPercentMin = 0;
 export const createTopicResponseCollaboratorsItemMemberDailyBusinessTasksItemPercentMax = 100;
+
+export const createTopicResponsePlannedMilestoneHoursMin = 0;
+
+export const createTopicResponseUnestimatedMilestoneAllocationCountMin = 0;
 
 export const createTopicResponseEstimatedEffortHoursMin = 0;
 
@@ -2131,6 +2171,8 @@ export const CreateTopicResponse = zod.object({
 })).optional(),
   "milestoneCount": zod.number().int().optional(),
   "completedMilestoneCount": zod.number().int().optional(),
+  "plannedMilestoneHours": zod.number().min(createTopicResponsePlannedMilestoneHoursMin).optional().describe('Sum of known planned member hours across all milestone allocations, using inclusive Monday-Friday dates and each member\'s weekly contract.'),
+  "unestimatedMilestoneAllocationCount": zod.number().int().min(createTopicResponseUnestimatedMilestoneAllocationCountMin).optional().describe('Number of nonzero milestone allocations whose hours cannot be calculated because their contract or dates are missing or invalid.'),
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
@@ -2329,6 +2371,10 @@ export const getTopicResponseOneCollaboratorsItemMemberDailyBusinessTasksItemNam
 
 export const getTopicResponseOneCollaboratorsItemMemberDailyBusinessTasksItemPercentMin = 0;
 export const getTopicResponseOneCollaboratorsItemMemberDailyBusinessTasksItemPercentMax = 100;
+
+export const getTopicResponseOnePlannedMilestoneHoursMin = 0;
+
+export const getTopicResponseOneUnestimatedMilestoneAllocationCountMin = 0;
 
 export const getTopicResponseOneEstimatedEffortHoursMin = 0;
 
@@ -2546,6 +2592,8 @@ export const GetTopicResponse = zod.object({
 })).optional(),
   "milestoneCount": zod.number().int().optional(),
   "completedMilestoneCount": zod.number().int().optional(),
+  "plannedMilestoneHours": zod.number().min(getTopicResponseOnePlannedMilestoneHoursMin).optional().describe('Sum of known planned member hours across all milestone allocations, using inclusive Monday-Friday dates and each member\'s weekly contract.'),
+  "unestimatedMilestoneAllocationCount": zod.number().int().min(getTopicResponseOneUnestimatedMilestoneAllocationCountMin).optional().describe('Number of nonzero milestone allocations whose hours cannot be calculated because their contract or dates are missing or invalid.'),
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
@@ -2813,6 +2861,10 @@ export const updateTopicResponseCollaboratorsItemMemberDailyBusinessTasksItemNam
 export const updateTopicResponseCollaboratorsItemMemberDailyBusinessTasksItemPercentMin = 0;
 export const updateTopicResponseCollaboratorsItemMemberDailyBusinessTasksItemPercentMax = 100;
 
+export const updateTopicResponsePlannedMilestoneHoursMin = 0;
+
+export const updateTopicResponseUnestimatedMilestoneAllocationCountMin = 0;
+
 export const updateTopicResponseEstimatedEffortHoursMin = 0;
 
 export const updateTopicResponseValidatorOneDailyBusinessPercentMin = 0;
@@ -2966,6 +3018,8 @@ export const UpdateTopicResponse = zod.object({
 })).optional(),
   "milestoneCount": zod.number().int().optional(),
   "completedMilestoneCount": zod.number().int().optional(),
+  "plannedMilestoneHours": zod.number().min(updateTopicResponsePlannedMilestoneHoursMin).optional().describe('Sum of known planned member hours across all milestone allocations, using inclusive Monday-Friday dates and each member\'s weekly contract.'),
+  "unestimatedMilestoneAllocationCount": zod.number().int().min(updateTopicResponseUnestimatedMilestoneAllocationCountMin).optional().describe('Number of nonzero milestone allocations whose hours cannot be calculated because their contract or dates are missing or invalid.'),
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
@@ -3105,6 +3159,10 @@ export const updateTopicFinishDateResponseCollaboratorsItemMemberDailyBusinessTa
 
 export const updateTopicFinishDateResponseCollaboratorsItemMemberDailyBusinessTasksItemPercentMin = 0;
 export const updateTopicFinishDateResponseCollaboratorsItemMemberDailyBusinessTasksItemPercentMax = 100;
+
+export const updateTopicFinishDateResponsePlannedMilestoneHoursMin = 0;
+
+export const updateTopicFinishDateResponseUnestimatedMilestoneAllocationCountMin = 0;
 
 export const updateTopicFinishDateResponseEstimatedEffortHoursMin = 0;
 
@@ -3259,6 +3317,8 @@ export const UpdateTopicFinishDateResponse = zod.object({
 })).optional(),
   "milestoneCount": zod.number().int().optional(),
   "completedMilestoneCount": zod.number().int().optional(),
+  "plannedMilestoneHours": zod.number().min(updateTopicFinishDateResponsePlannedMilestoneHoursMin).optional().describe('Sum of known planned member hours across all milestone allocations, using inclusive Monday-Friday dates and each member\'s weekly contract.'),
+  "unestimatedMilestoneAllocationCount": zod.number().int().min(updateTopicFinishDateResponseUnestimatedMilestoneAllocationCountMin).optional().describe('Number of nonzero milestone allocations whose hours cannot be calculated because their contract or dates are missing or invalid.'),
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
@@ -3438,6 +3498,10 @@ export const validateTopicResponseCollaboratorsItemMemberDailyBusinessTasksItemN
 export const validateTopicResponseCollaboratorsItemMemberDailyBusinessTasksItemPercentMin = 0;
 export const validateTopicResponseCollaboratorsItemMemberDailyBusinessTasksItemPercentMax = 100;
 
+export const validateTopicResponsePlannedMilestoneHoursMin = 0;
+
+export const validateTopicResponseUnestimatedMilestoneAllocationCountMin = 0;
+
 export const validateTopicResponseEstimatedEffortHoursMin = 0;
 
 export const validateTopicResponseValidatorOneDailyBusinessPercentMin = 0;
@@ -3591,6 +3655,8 @@ export const ValidateTopicResponse = zod.object({
 })).optional(),
   "milestoneCount": zod.number().int().optional(),
   "completedMilestoneCount": zod.number().int().optional(),
+  "plannedMilestoneHours": zod.number().min(validateTopicResponsePlannedMilestoneHoursMin).optional().describe('Sum of known planned member hours across all milestone allocations, using inclusive Monday-Friday dates and each member\'s weekly contract.'),
+  "unestimatedMilestoneAllocationCount": zod.number().int().min(validateTopicResponseUnestimatedMilestoneAllocationCountMin).optional().describe('Number of nonzero milestone allocations whose hours cannot be calculated because their contract or dates are missing or invalid.'),
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
@@ -3725,6 +3791,10 @@ export const validateTopicBreakGlassResponseCollaboratorsItemMemberDailyBusiness
 
 export const validateTopicBreakGlassResponseCollaboratorsItemMemberDailyBusinessTasksItemPercentMin = 0;
 export const validateTopicBreakGlassResponseCollaboratorsItemMemberDailyBusinessTasksItemPercentMax = 100;
+
+export const validateTopicBreakGlassResponsePlannedMilestoneHoursMin = 0;
+
+export const validateTopicBreakGlassResponseUnestimatedMilestoneAllocationCountMin = 0;
 
 export const validateTopicBreakGlassResponseEstimatedEffortHoursMin = 0;
 
@@ -3879,6 +3949,8 @@ export const ValidateTopicBreakGlassResponse = zod.object({
 })).optional(),
   "milestoneCount": zod.number().int().optional(),
   "completedMilestoneCount": zod.number().int().optional(),
+  "plannedMilestoneHours": zod.number().min(validateTopicBreakGlassResponsePlannedMilestoneHoursMin).optional().describe('Sum of known planned member hours across all milestone allocations, using inclusive Monday-Friday dates and each member\'s weekly contract.'),
+  "unestimatedMilestoneAllocationCount": zod.number().int().min(validateTopicBreakGlassResponseUnestimatedMilestoneAllocationCountMin).optional().describe('Number of nonzero milestone allocations whose hours cannot be calculated because their contract or dates are missing or invalid.'),
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
@@ -4003,6 +4075,10 @@ export const assignTopicResponseCollaboratorsItemMemberDailyBusinessTasksItemNam
 
 export const assignTopicResponseCollaboratorsItemMemberDailyBusinessTasksItemPercentMin = 0;
 export const assignTopicResponseCollaboratorsItemMemberDailyBusinessTasksItemPercentMax = 100;
+
+export const assignTopicResponsePlannedMilestoneHoursMin = 0;
+
+export const assignTopicResponseUnestimatedMilestoneAllocationCountMin = 0;
 
 export const assignTopicResponseEstimatedEffortHoursMin = 0;
 
@@ -4157,6 +4233,8 @@ export const AssignTopicResponse = zod.object({
 })).optional(),
   "milestoneCount": zod.number().int().optional(),
   "completedMilestoneCount": zod.number().int().optional(),
+  "plannedMilestoneHours": zod.number().min(assignTopicResponsePlannedMilestoneHoursMin).optional().describe('Sum of known planned member hours across all milestone allocations, using inclusive Monday-Friday dates and each member\'s weekly contract.'),
+  "unestimatedMilestoneAllocationCount": zod.number().int().min(assignTopicResponseUnestimatedMilestoneAllocationCountMin).optional().describe('Number of nonzero milestone allocations whose hours cannot be calculated because their contract or dates are missing or invalid.'),
   "targetDate": zod.coerce.date().nullish(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
