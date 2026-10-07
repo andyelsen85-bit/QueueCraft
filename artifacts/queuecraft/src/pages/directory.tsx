@@ -56,6 +56,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { jsPDF } from "jspdf";
+import { downloadMemberBauCsv, downloadMemberBauPdf } from "@/lib/member-bau-export";
 
 type MemberDraft = {
   name: string;
@@ -394,6 +395,8 @@ export function Directory() {
   } = useListDepartments();
   const { data: roles, isLoading: lr, isError: re } = useListRoles();
   const { data: members, isLoading: lm, isError: me } = useListMembers();
+  const [exportingBauPdf, setExportingBauPdf] = React.useState(false);
+  const [bauExportError, setBauExportError] = React.useState("");
   const { data: session } = useGetSession();
   const canManageCio =
     session?.capabilities?.includes("directory.manage") ?? false;
@@ -1037,6 +1040,38 @@ export function Directory() {
         </TabsContent>
 
         <TabsContent value="members">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Members &amp; BAU allocations</h2>
+              <p className="text-xs text-muted-foreground">Export all listed members and their full task breakdown.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" disabled={me || !directoryMembers.length || exportingBauPdf}
+                onClick={async () => {
+                  setBauExportError("");
+                  setExportingBauPdf(true);
+                  try {
+                    await downloadMemberBauPdf(directoryMembers);
+                  } catch (error) {
+                    setBauExportError(error instanceof Error ? error.message : "Could not export PDF. Please try again.");
+                  } finally {
+                    setExportingBauPdf(false);
+                  }
+                }}>
+                <Download className="mr-2 h-4 w-4" />
+                {exportingBauPdf ? "Preparing PDF…" : "Export PDF"}
+              </Button>
+              <Button variant="outline" size="sm" disabled={me || !directoryMembers.length}
+                onClick={() => {
+                  setBauExportError("");
+                  try { downloadMemberBauCsv(directoryMembers); }
+                  catch { setBauExportError("Could not export CSV. Please try again."); }
+                }}>
+                <Download className="mr-2 h-4 w-4" />Export CSV
+              </Button>
+            </div>
+          </div>
+          {bauExportError && <p role="alert" className="mb-3 text-sm text-destructive">{bauExportError}</p>}
           {memberActionError && (
             <div className="mb-3 rounded-sm border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
               {memberActionError}
