@@ -48,6 +48,16 @@ import {
   notificationAction,
 } from "./services/notifications";
 
+async function resetTopicToPendingFixture(topicId: string) {
+  // Keep transition tests representative of pre-existing pending topics after creation policy changes.
+  await db.update(topicsTable).set({
+    status: "pending_validation",
+    validatorId: null,
+    validatedAt: null,
+    validationReason: null,
+  }).where(eq(topicsTable.id, topicId));
+}
+
 before(async () => {
   if (!process.env.CI) return;
   await db
@@ -898,6 +908,7 @@ describe("QueueCraft security and preference flows", () => {
         const topicId = created.body.id as string;
         topicIds.push(topicId);
         topicTitles.set(topicId, title);
+        await resetTopicToPendingFixture(topicId);
 
         if (!validated) {
           const collaboratorId = randomUUID();
@@ -1008,6 +1019,7 @@ describe("QueueCraft security and preference flows", () => {
       const getAllocations = async () =>
         (await manager.get(`${url}/allocations`).expect(200)).body as { member: { id: string }; allocationPercent: number }[];
 
+      await resetTopicToPendingFixture(created.body.id);
       const pendingChange = await assign(other.id).expect(200);
       assert.equal(pendingChange.body.primaryAssignee.id, other.id);
       assert.equal(pendingChange.body.status, "pending_validation");
@@ -1079,6 +1091,7 @@ describe("QueueCraft security and preference flows", () => {
       })
       .expect(201);
 
+    await resetTopicToPendingFixture(created.body.id);
     await agent
       .patch(`/api/topics/${created.body.id}`)
       .set("x-csrf-token", csrf.body.csrfToken)
@@ -1109,6 +1122,111 @@ describe("QueueCraft security and preference flows", () => {
       .delete(activityTable)
       .where(eq(activityTable.topicId, created.body.id));
     await db.delete(topicsTable).where(eq(topicsTable.id, created.body.id));
+  });
+
+  test("creation skips approval only for the selected role lead or selected department leadership", async () => {
+    const manager = request.agent(app);
+    await manager.get("/api/session").expect(200);
+    const csrf = (await manager.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const suffix = randomUUID();
+    const actors: Record<string, { id: string; client: ReturnType<typeof request.agent>; csrf: string }> = {};
+    for (const name of ["lead", "head", "deputy", "member", "role-deputy", "cio"]) {
+      const email = `approval-${name}-${suffix}@example.invalid`;
+      const password = `Temporary-${randomUUID()}`;
+      const created = await manager.post("/api/directory/members").set("x-csrf-token", csrf)
+        .send({ name: `Approval fixture ${name}`, email, password }).expect(201);
+      if (name === "cio") await db.update(membersTable).set({ isCio: true, cioOverride: true })
+        .where(eq(membersTable.id, created.body.id));
+      const client = request.agent(app);
+      await client.post("/api/auth/local").send({ username: email, password }).expect(200);
+      actors[name] = { id: created.body.id, client, csrf: (await client.get("/api/auth/csrf").expect(200)).body.csrfToken };
+    }
+    const ownDepartment = `approval-own-${suffix}`;
+    const otherDepartment = `approval-other-${suffix}`;
+    const ownRole = `approval-role-${suffix}`;
+    const otherRole = `approval-other-role-${suffix}`;
+    const outsideRole = `approval-outside-role-${suffix}`;
+    const ids: string[] = [];
+    await db.insert(departmentsTable).values([
+      { id: ownDepartment, name: "Approval own department", serviceHeadId: actors.head.id, serviceHeadDeputyId: actors.deputy.id },
+      { id: otherDepartment, name: "Approval other department", serviceHeadId: "member-andy" },
+    ]);
+    await db.insert(rolesTable).values([
+      { id: ownRole, name: "Approval led role", departmentId: ownDepartment, leadId: actors.lead.id, deputyId: actors["role-deputy"].id },
+      { id: otherRole, name: "Approval other role", departmentId: ownDepartment, leadId: actors.member.id },
+      { id: outsideRole, name: "Approval outside role", departmentId: otherDepartment, leadId: "member-andy" },
+    ]);
+    await db.insert(roleMembersTable).values({ roleId: ownRole, memberId: actors.member.id });
+    await db.insert(roleDepartmentsTable).values({ roleId: ownRole, departmentId: otherDepartment });
+    const create = async (actorName: string, departmentId: string | null, roleId: string | null, auto: boolean) => {
+      const actor = actors[actorName];
+      const response = await actor.client.post("/api/topics").set("x-csrf-token", actor.csrf)
+        .send({
+          title: `Approval scope ${randomUUID()}`, description: "Synthetic approval-policy regression",
+          departmentId, roleId, priority: "P3",
+          status: "open", validatorId: actor.id, validationMode: "break_glass",
+        }).expect(201);
+      const topic = response.body;
+      ids.push(topic.id);
+      assert.equal(topic.status, auto ? "open" : "pending_validation");
+      assert.equal(topic.validationMode, "standard");
+      assert.equal(topic.validator?.id ?? null, auto ? actor.id : null);
+      assert.equal(Boolean(topic.validatedAt), auto);
+      if (auto) assert.match(topic.validationReason, /^Automatically approved at creation:/);
+      else assert.equal(topic.validationReason, null);
+      const reloaded = (await actor.client.get(`/api/topics/${topic.id}`).expect(200)).body;
+      assert.equal(reloaded.status, topic.status);
+      assert.equal(reloaded.validatedAt, topic.validatedAt);
+      const reviewer = departmentId === ownDepartment ? actors.head.client : manager;
+      const queue = (await reviewer.get("/api/validation-queue").expect(200)).body;
+      assert.equal(queue.some((entry: { id: string }) => entry.id === topic.id), !auto);
+      return topic;
+    };
+    try {
+      const automatic = await create("lead", ownDepartment, ownRole, true);
+      await actors.head.client.post(`/api/topics/${automatic.id}/validate`)
+        .set("x-csrf-token", actors.head.csrf).send({}).expect(409);
+      await create("lead", otherDepartment, ownRole, true);
+      await create("lead", ownDepartment, otherRole, false);
+      await create("lead", otherDepartment, outsideRole, false);
+      await create("head", ownDepartment, otherRole, true);
+      await create("deputy", ownDepartment, ownRole, true);
+      const outside = await create("head", otherDepartment, outsideRole, false);
+      await actors.head.client.post(`/api/topics/${outside.id}/validate`)
+        .set("x-csrf-token", actors.head.csrf).send({}).expect(403);
+      await manager.post(`/api/topics/${outside.id}/validate`)
+        .set("x-csrf-token", csrf).send({}).expect(200);
+      await create("deputy", otherDepartment, outsideRole, false);
+      await create("role-deputy", ownDepartment, ownRole, false);
+      const pending = await create("member", ownDepartment, ownRole, false);
+      await actors.lead.client.post(`/api/topics/${pending.id}/validate`)
+        .set("x-csrf-token", actors.lead.csrf).send({}).expect(403);
+      await actors.head.client.post(`/api/topics/${pending.id}/validate`)
+        .set("x-csrf-token", actors.head.csrf).send({}).expect(200);
+      const pendingDeputy = await create("lead", ownDepartment, otherRole, false);
+      await actors.deputy.client.post(`/api/topics/${pendingDeputy.id}/validate`)
+        .set("x-csrf-token", actors.deputy.csrf).send({}).expect(200);
+      await create("head", ownDepartment, null, false);
+      await create("lead", null, null, false);
+      const exceptional = await create("cio", ownDepartment, ownRole, false);
+      await actors.cio.client.post(`/api/topics/${exceptional.id}/validate`)
+        .set("x-csrf-token", actors.cio.csrf).send({}).expect(403);
+      const emergency = await actors.cio.client.post(`/api/topics/${exceptional.id}/validation-break-glass`)
+        .set("x-csrf-token", actors.cio.csrf)
+        .send({ reason: "Critical approval exception for isolated regression coverage" }).expect(200);
+      assert.equal(emergency.body.validationMode, "break_glass");
+      assert.equal(emergency.body.validator.id, actors.cio.id);
+    } finally {
+      await db.delete(notificationOutboxTable).where(inArray(notificationOutboxTable.topicId, ids));
+      await db.delete(activityTable).where(inArray(activityTable.topicId, ids));
+      await db.delete(topicsTable).where(inArray(topicsTable.id, ids));
+      await db.delete(roleMembersTable).where(eq(roleMembersTable.roleId, ownRole));
+      await db.delete(roleDepartmentsTable).where(eq(roleDepartmentsTable.roleId, ownRole));
+      await db.delete(rolesTable).where(inArray(rolesTable.id, [ownRole, otherRole, outsideRole]));
+      await db.delete(departmentsTable).where(inArray(departmentsTable.id, [ownDepartment, otherDepartment]));
+      for (const actor of Object.values(actors)) await db.execute(sql`DELETE FROM user_sessions WHERE sess ->> 'userId' = ${actor.id}`);
+      // Retain synthetic actors referenced by immutable audit entries until database disposal.
+    }
   });
 
   test("unassigned topics require complete authorized routing before approval, and transfers preserve approval", async () => {
@@ -1367,6 +1485,7 @@ describe("QueueCraft security and preference flows", () => {
         estimatedFinishDate: "2041-01-31",
       })
       .expect(201);
+    await resetTopicToPendingFixture(created.body.id);
     await db.insert(topicAllocationsTable).values({
       topicId: created.body.id, memberId: "member-andy", allocationPercent: 20,
     });
@@ -1528,6 +1647,7 @@ describe("QueueCraft security and preference flows", () => {
           priority: "P3", primaryAssigneeId: "member-andy",
         }).expect(201);
       topicId = created.body.id;
+      await resetTopicToPendingFixture(topicId!);
       const path = `/api/topics/${topicId}`;
       const collaborator = await agent.post(`${path}/collaborators`).set("x-csrf-token", csrf)
         .send({ memberId: otherId }).expect(201);
@@ -1618,6 +1738,7 @@ describe("QueueCraft security and preference flows", () => {
         departmentId: "dept-platform", roleId: "role-ci-validation",
         priority: "P3", primaryAssigneeId: "member-andy",
       }).expect(201);
+    await resetTopicToPendingFixture(created.body.id);
     try {
       const milestoneId = randomUUID();
       await db.insert(milestonesTable).values({
@@ -1665,6 +1786,7 @@ describe("QueueCraft security and preference flows", () => {
             description: "Role deletion history and reassignment test.",
             departmentId: "dept-platform", roleId: role.body.id, priority: "P3" }).expect(201);
         topicIds.push(topic.body.id);
+        await resetTopicToPendingFixture(topic.body.id);
         await agent.post(`/api/topics/${topic.body.id}/validate`)
           .set("x-csrf-token", csrf).send({}).expect(200);
         if (status !== "open") {
@@ -1734,6 +1856,7 @@ describe("QueueCraft security and preference flows", () => {
         description: "Temporary milestone status transition test.",
         departmentId: "dept-platform", roleId: "role-ci-validation", priority: "P3",
       }).expect(201);
+    await resetTopicToPendingFixture(created.body.id);
     try {
       const milestone = await agent.post(`/api/topics/${created.body.id}/milestones`)
         .set("x-csrf-token", csrf)
@@ -1771,6 +1894,7 @@ describe("QueueCraft security and preference flows", () => {
         description: "Verify chronological milestone status controls topic start.",
         departmentId: "dept-platform", roleId: "role-ci-validation", priority: "P3",
       }).expect(201);
+    await resetTopicToPendingFixture(created.body.id);
     try {
       const later = await agent.post(`/api/topics/${created.body.id}/milestones`)
         .set("x-csrf-token", csrf)
@@ -1809,6 +1933,7 @@ describe("QueueCraft security and preference flows", () => {
           estimatedStartDate: start, estimatedFinishDate: finish, dependsOnTopicId,
         }).expect(201);
       ids.push(result.body.id);
+      await resetTopicToPendingFixture(result.body.id);
       return result.body;
     };
     const detail = async (id: string) => (await agent.get(`/api/topics/${id}`).expect(200)).body;
@@ -1897,6 +2022,7 @@ describe("QueueCraft security and preference flows", () => {
         ...dates, dependsOnTopicId,
       }).expect(201);
       ids.push(response.body.id);
+      await resetTopicToPendingFixture(response.body.id);
       return response.body.id as string;
     };
     const detail = async (id: string) => (await agent.get(`/api/topics/${id}`).expect(200)).body;
@@ -1969,6 +2095,7 @@ describe("QueueCraft security and preference flows", () => {
         estimatedStartDate: start, estimatedFinishDate: finish, dependsOnTopicId,
       }).expect(201);
       ids.push(response.body.id);
+      await resetTopicToPendingFixture(response.body.id);
       return response.body.id as string;
     };
     const detail = async (id: string) => (await agent.get(`/api/topics/${id}`).expect(200)).body;

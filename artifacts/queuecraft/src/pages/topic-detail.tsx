@@ -2052,6 +2052,9 @@ export function TopicDetail() {
                       )}
                       {topic.validationMode === "break_glass"
                         ? "Break-Glass Validation"
+                        : topic.creator.id === topic.validator?.id &&
+                          topic.validationReason?.startsWith("Automatically approved at creation:")
+                        ? "Approval not required"
                         : "Standard Validation"}
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">

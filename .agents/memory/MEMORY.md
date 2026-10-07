@@ -18,4 +18,4 @@
 - [GitHub remote verification](github-remote-verification.md) — verify live branch state through the connector; local tracking refs and shell push errors can misrepresent remote state.
 - [Milestone creation access](milestone-creation-access.md) — every member may create milestones on every topic, regardless of department or topic assignment.
 - [Contract-hour estimates](contract-hour-estimates.md) — no assumed weekly contract; milestone estimates use inclusive Monday–Friday dates and count public holidays.
-- [Topic routing and approval](topic-routing-policy.md) — topics may be unassigned until approval; department transfers preserve existing status and approval history.
+- [Topic routing and approval](topic-routing-policy.md) — own-scope creation skips approval; unassigned topics need routing; department transfers retain approval history.

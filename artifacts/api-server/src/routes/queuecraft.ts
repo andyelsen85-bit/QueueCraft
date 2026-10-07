@@ -2029,8 +2029,18 @@ router.post("/topics", async (req, res): Promise<void> => {
     return;
   }
   const id = randomUUID();
+  const creatorId = currentUserId(req);
   const [created] = await db.transaction(async (tx) => {
-    if (!await lockTopicRouting(tx, departmentId, roleId)) return [];
+    const routing = await lockTopicRouting(tx, departmentId, roleId);
+    if (!routing) return [];
+    const approvalAuthority = routing.department && routing.role
+      ? [routing.department.serviceHeadId, routing.department.serviceHeadDeputyId].includes(creatorId)
+        ? "selected department's Head or Deputy"
+        : routing.role.leadId === creatorId ? "selected role's lead" : null
+      : null;
+    const approvalReason = approvalAuthority
+      ? `Automatically approved at creation: creator is the ${approvalAuthority}.`
+      : null;
     const [currentPrerequisite] = dependsOnTopicId
       ? await tx.select().from(topicsTable).where(eq(topicsTable.id, dependsOnTopicId)).for("update")
       : [null];
@@ -2050,14 +2060,17 @@ router.post("/topics", async (req, res): Promise<void> => {
         departmentId,
         roleId,
         priority: parsed.data.priority,
-        creatorId: currentUserId(req),
+        creatorId,
         primaryAssigneeId: parsed.data.primaryAssigneeId,
         targetDate: dateOnly(parsed.data.targetDate),
         estimatedStartDate: plannedStart,
         estimatedFinishDate: plannedFinish,
         dependsOnTopicId,
         estimatedEffortHours: parsed.data.estimatedEffortHours,
-        status: "pending_validation",
+        status: approvalAuthority ? "open" : "pending_validation",
+        validatorId: approvalAuthority ? creatorId : null,
+        validatedAt: approvalAuthority ? new Date() : null,
+        validationReason: approvalReason,
       })
       .returning();
     await addActivity(
@@ -2077,7 +2090,8 @@ router.post("/topics", async (req, res): Promise<void> => {
         `Estimated finish: ${displayActivityValue(plannedFinish)}`,
         `Prerequisite: ${currentPrerequisite?.title ?? "—"}`,
         `Estimated effort (hours): ${displayActivityValue(parsed.data.estimatedEffortHours)}`,
-        "Initial status: Pending validation",
+        approvalAuthority ? "Initial status: Open" : "Initial status: Pending validation",
+        approvalReason ?? "Approval: Required from the selected department's Head or Deputy",
       ].join("\n"),
       false,
       tx,

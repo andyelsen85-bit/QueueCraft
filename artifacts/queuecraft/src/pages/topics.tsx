@@ -7,6 +7,7 @@ import {
   useListRoles,
   useGetTopicFilterPreferences,
   useUpdateTopicFilterPreferences,
+  useGetSession,
   getGetValidationQueueQueryKey,
   getGetMyWorkQueryKey,
   getGetDashboardSummaryQueryKey,
@@ -254,6 +255,7 @@ export function Topics() {
 
   const { data: departments } = useListDepartments();
   const { data: roles } = useListRoles();
+  const { data: session } = useGetSession();
   const sortedDepartments = React.useMemo(
     () =>
       [...(departments ?? [])].sort((left, right) =>
@@ -307,6 +309,12 @@ export function Topics() {
 
   const watchDept = form.watch("departmentId");
   const watchRole = form.watch("roleId");
+  const selectedDepartment = departments?.find((department) => department.id === watchDept);
+  const selectedRole = roles?.find((role) => role.id === watchRole);
+  const opensWithoutApproval = Boolean(selectedDepartment && selectedRole && session?.user &&
+    (selectedRole.departmentId === watchDept || selectedRole.departmentIds?.includes(watchDept)) &&
+    (selectedRole.lead.id === session.user.id ||
+      [selectedDepartment.serviceHead.id, selectedDepartment.serviceHeadDeputy?.id].includes(session.user.id)));
   const selectedDependencyId = form.watch("dependsOnTopicId");
   const selectedDependency = dependencyCandidates?.find((topic) => topic.id === selectedDependencyId);
   React.useEffect(() => {
@@ -490,7 +498,11 @@ export function Topics() {
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  You may leave department and role unassigned. Both must be selected before this topic can be validated.
+                  {!selectedDepartment || !selectedRole
+                    ? "You may leave department and role unassigned. Both must be selected before this topic can be validated."
+                    : opensWithoutApproval
+                      ? "This topic will open immediately. No separate approval is required for your selected role or department."
+                      : "This topic will need approval from the Head or Deputy of the selected department."}
                 </p>
 
                 <div className="grid gap-4 sm:grid-cols-2">
