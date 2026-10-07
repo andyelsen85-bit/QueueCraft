@@ -15,7 +15,8 @@ export interface CalendarTopic {
   priority: TopicPriority;
   status: TopicStatus;
   departmentName: string;
-  roleId: string;
+  /** @nullable */
+  roleId: string | null;
   /** @nullable */
   targetDate: Date | null;
   /** @nullable */

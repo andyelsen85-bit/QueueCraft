@@ -475,8 +475,8 @@ async function loadSnapshot() {
       title: topic.title,
       description: topic.description,
       documentationUrl: topic.documentationUrl,
-      department: buildDepartment(topic.departmentId),
-      role: buildRole(topic.roleId),
+      department: topic.departmentId ? buildDepartment(topic.departmentId) : null,
+      role: topic.roleId ? buildRole(topic.roleId) : null,
       priority: topic.priority,
       status: topic.status,
       creator,
@@ -664,8 +664,8 @@ function canManageTopic(
   topic: Awaited<ReturnType<typeof loadSnapshot>>["topics"][number],
   snapshot: Awaited<ReturnType<typeof loadSnapshot>>,
 ) {
-  const role = snapshot.roleById.get(topic.roleId);
-  const department = snapshot.departmentById.get(topic.departmentId);
+  const role = snapshot.roleById.get(topic.roleId ?? "");
+  const department = snapshot.departmentById.get(topic.departmentId ?? "");
   const collaborator = snapshot.collaborators.some(
     (entry) => entry.topicId === topic.id && entry.memberId === userId,
   );
@@ -673,6 +673,10 @@ function canManageTopic(
     topic.creatorId === userId ||
     topic.primaryAssigneeId === userId ||
     collaborator ||
+    (!topic.departmentId && topic.status === "pending_validation" &&
+      (snapshot.memberById.get(userId)?.isCio ||
+        snapshot.departments.some((entry) =>
+          [entry.serviceHeadId, entry.serviceHeadDeputyId].includes(userId)))) ||
     [role?.leadId, role?.deputyId].includes(userId) ||
     [department?.serviceHeadId, department?.serviceHeadDeputyId].includes(
       userId,
@@ -691,6 +695,46 @@ function canManageDepartment(
     department &&
     [department.serviceHeadId, department.serviceHeadDeputyId].includes(userId),
   );
+}
+
+function topicRoutingError(
+  snapshot: Awaited<ReturnType<typeof loadSnapshot>>,
+  departmentId: string | null,
+  roleId: string | null,
+  requireBoth = false,
+  requireActiveRole = true,
+) {
+  if (requireBoth && (!departmentId || !roleId))
+    return "Select a department and role before validating this topic";
+  if (departmentId && !snapshot.departmentById.has(departmentId))
+    return "Select an existing department";
+  if (!roleId) return null;
+  const role = snapshot.roleById.get(roleId);
+  if (!departmentId || !role ||
+    (requireActiveRole && role.archivedAt) ||
+    ![role.departmentId, ...snapshot.roleDepartments
+      .filter((entry) => entry.roleId === roleId)
+      .map((entry) => entry.departmentId)].includes(departmentId))
+    return "Select an active role linked to the selected department";
+  return null;
+}
+
+async function lockTopicRouting(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  departmentId: string | null,
+  roleId: string | null,
+  allowArchivedRole = false,
+) {
+  const [department] = departmentId
+    ? await tx.select().from(departmentsTable).where(eq(departmentsTable.id, departmentId)).for("share")
+    : [null];
+  if (departmentId && !department) return null;
+  if (!roleId) return { department, role: null };
+  const [role] = await tx.select().from(rolesTable).where(eq(rolesTable.id, roleId)).for("update");
+  if (!department || !role || (role.archivedAt && !allowArchivedRole)) return null;
+  const links = await tx.select().from(roleDepartmentsTable).where(eq(roleDepartmentsTable.roleId, roleId));
+  if (![role.departmentId, ...links.map((entry) => entry.departmentId)].includes(department.id)) return null;
+  return { department, role };
 }
 
 function requireTopicManager(
@@ -1857,7 +1901,7 @@ router.get("/calendar/topics", async (_req, res): Promise<void> => {
     title: topic.title,
     priority: topic.priority,
     status: topic.status,
-    departmentName: snapshot.buildTopic(topic).department.name,
+    departmentName: snapshot.buildTopic(topic).department?.name ?? "Not assigned",
     roleId: topic.roleId,
     targetDate: topic.targetDate,
     estimatedStartDate: topic.estimatedStartDate,
@@ -1949,20 +1993,11 @@ router.post("/topics", async (req, res): Promise<void> => {
     }
   }
   const snapshot = await loadSnapshot();
-  const role = snapshot.roleById.get(parsed.data.roleId);
-  const roleDepartmentIds = snapshot.roleDepartments
-    .filter((entry) => entry.roleId === parsed.data.roleId)
-    .map((entry) => entry.departmentId);
-  if (
-    !role ||
-    role.archivedAt ||
-    ![role.departmentId, ...roleDepartmentIds].includes(
-      parsed.data.departmentId,
-    )
-  ) {
-    res
-      .status(400)
-      .json({ error: "Role does not belong to the selected department" });
+  const departmentId = parsed.data.departmentId ?? null;
+  const roleId = parsed.data.roleId ?? null;
+  const routingError = topicRoutingError(snapshot, departmentId, roleId);
+  if (routingError) {
+    res.status(400).json({ error: routingError });
     return;
   }
   const estimatedStartDate = dateOnly(parsed.data.estimatedStartDate);
@@ -1995,9 +2030,7 @@ router.post("/topics", async (req, res): Promise<void> => {
   }
   const id = randomUUID();
   const [created] = await db.transaction(async (tx) => {
-    const [lockedRole] = await tx.select().from(rolesTable)
-      .where(eq(rolesTable.id, parsed.data.roleId)).for("update");
-    if (!lockedRole || lockedRole.archivedAt) return [];
+    if (!await lockTopicRouting(tx, departmentId, roleId)) return [];
     const [currentPrerequisite] = dependsOnTopicId
       ? await tx.select().from(topicsTable).where(eq(topicsTable.id, dependsOnTopicId)).for("update")
       : [null];
@@ -2014,8 +2047,8 @@ router.post("/topics", async (req, res): Promise<void> => {
         title: parsed.data.title,
         description: parsed.data.description,
         documentationUrl,
-        departmentId: parsed.data.departmentId,
-        roleId: parsed.data.roleId,
+        departmentId,
+        roleId,
         priority: parsed.data.priority,
         creatorId: currentUserId(req),
         primaryAssigneeId: parsed.data.primaryAssigneeId,
@@ -2035,8 +2068,8 @@ router.post("/topics", async (req, res): Promise<void> => {
         `Title: ${parsed.data.title}`,
         `Description: ${parsed.data.description}`,
         `Documentation URL: ${displayActivityValue(documentationUrl)}`,
-        `Department: ${snapshot.departmentById.get(parsed.data.departmentId)?.name ?? parsed.data.departmentId}`,
-        `Affected role: ${role.name}`,
+        `Department: ${snapshot.departmentById.get(departmentId ?? "")?.name ?? "—"}`,
+        `Affected role: ${snapshot.roleById.get(roleId ?? "")?.name ?? "—"}`,
         `Priority: ${parsed.data.priority}`,
         `Primary assignee: ${parsed.data.primaryAssigneeId ? snapshot.memberById.get(parsed.data.primaryAssigneeId)?.name ?? parsed.data.primaryAssigneeId : "—"}`,
         `Target date: ${displayActivityValue(parsed.data.targetDate)}`,
@@ -2090,7 +2123,7 @@ router.delete("/topics/:topicId", async (req, res): Promise<void> => {
   }
   if (!requireCapability(req, res, snapshot, "topic.delete")) return;
   const userId = currentUserId(req);
-  const department = snapshot.departmentById.get(topic.departmentId);
+  const department = snapshot.departmentById.get(topic.departmentId ?? "");
   const isLocalAdmin = userId === "local-admin" && req.session.authProvider === "local";
   if (!isLocalAdmin && ![department?.serviceHeadId, department?.serviceHeadDeputyId].includes(userId)) {
     res.status(403).json({ error: "Only this department's Service Head or Deputy can delete this topic" });
@@ -2168,17 +2201,17 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
     return;
   }
   if (!requireTopicManager(req, res, currentTopic, current)) return;
-  const nextRoleId = body.data.roleId ?? currentTopic.roleId;
-  const nextRole = current.roleById.get(nextRoleId);
-  const roleDepartmentIds = current.roleDepartments
-    .filter((entry) => entry.roleId === nextRoleId).map((entry) => entry.departmentId);
-  if (!nextRole ||
-    ![nextRole.departmentId, ...roleDepartmentIds].includes(currentTopic.departmentId)) {
-    res.status(400).json({ error: "Select a role linked to this topic's department" });
+  const nextDepartmentId = body.data.departmentId === undefined ? currentTopic.departmentId : body.data.departmentId;
+  const nextRoleId = body.data.roleId === undefined ? currentTopic.roleId : body.data.roleId;
+  const nextRole = current.roleById.get(nextRoleId ?? "");
+  const routingError = topicRoutingError(current, nextDepartmentId, nextRoleId,
+    currentTopic.status !== "pending_validation", false);
+  if (routingError) {
+    res.status(400).json({ error: routingError });
     return;
   }
   const terminalTopicStatuses = ["completed", "closed", "rejected"];
-  if (nextRole.archivedAt && (nextRoleId !== currentTopic.roleId ||
+  if (nextRole?.archivedAt && (nextRoleId !== currentTopic.roleId ||
     !terminalTopicStatuses.includes(body.data.status ?? currentTopic.status))) {
     res.status(409).json({ error: "Select an active role before reopening this topic" });
     return;
@@ -2336,10 +2369,10 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
       locked.estimatedStartDate !== currentTopic.estimatedStartDate ||
       locked.dependsOnTopicId !== currentTopic.dependsOnTopicId ||
       locked.status !== currentTopic.status ||
+      locked.departmentId !== currentTopic.departmentId ||
       locked.roleId !== currentTopic.roleId) return [];
-    const [lockedRole] = await tx.select().from(rolesTable)
-      .where(eq(rolesTable.id, nextRoleId)).for("update");
-    if (!lockedRole || (lockedRole.archivedAt &&
+    const lockedRouting = await lockTopicRouting(tx, nextDepartmentId, nextRoleId, true);
+    if (!lockedRouting || (lockedRouting.role?.archivedAt &&
       (nextRoleId !== locked.roleId ||
         !terminalTopicStatuses.includes(body.data.status ?? locked.status)))) return [];
     const [lockedPrerequisite] = dependencyChanged && dependencyId
@@ -2631,7 +2664,19 @@ router.post("/topics/:topicId/validate", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Topic not found" });
     return;
   }
-  const department = snapshot.departmentById.get(topic.departmentId);
+  const departmentId = body.data.departmentId ?? topic.departmentId;
+  const roleId = body.data.roleId ?? topic.roleId;
+  const routingError = topicRoutingError(snapshot, departmentId, roleId, true);
+  if (routingError) {
+    res.status(400).json({ error: routingError });
+    return;
+  }
+  if (topic.departmentId && departmentId !== topic.departmentId &&
+    !canManageTopic(currentUserId(req), topic, snapshot)) {
+    res.status(403).json({ error: "You do not have management access to reroute this topic" });
+    return;
+  }
+  const department = snapshot.departmentById.get(departmentId!);
   if (
     !department ||
     ![department.serviceHeadId, department.serviceHeadDeputyId].includes(
@@ -2644,9 +2689,18 @@ router.post("/topics/:topicId/validate", async (req, res): Promise<void> => {
     return;
   }
   const [updated] = await db.transaction(async (tx) => {
+    const [lockedTopic] = await tx.select().from(topicsTable)
+      .where(eq(topicsTable.id, topic.id)).for("update");
+    if (!lockedTopic || lockedTopic.status !== "pending_validation" ||
+      lockedTopic.departmentId !== topic.departmentId || lockedTopic.roleId !== topic.roleId) return [];
+    const routing = await lockTopicRouting(tx, departmentId, roleId);
+    if (!routing?.department || !routing.role ||
+      ![routing.department.serviceHeadId, routing.department.serviceHeadDeputyId].includes(currentUserId(req))) return [];
     const [validated] = await tx
       .update(topicsTable)
       .set({
+        departmentId,
+        roleId,
         status: "open",
         validationMode: "standard",
         validationReason: body.data.note,
@@ -2666,7 +2720,7 @@ router.post("/topics/:topicId/validate", async (req, res): Promise<void> => {
         req,
         topic.id,
         "Topic validated",
-        body.data.note ?? "Validated by service authority.",
+        `${body.data.note ?? "Validated by service authority."}\nDepartment: ${routing.department.name}\nRole: ${routing.role.name}`,
         false,
         tx,
       );
@@ -2705,8 +2759,15 @@ router.post(
       res.status(404).json({ error: "Topic not found" });
       return;
     }
+    const departmentId = body.data.departmentId ?? topic.departmentId;
+    const roleId = body.data.roleId ?? topic.roleId;
+    const routingError = topicRoutingError(snapshotBefore, departmentId, roleId, true);
+    if (routingError) {
+      res.status(400).json({ error: routingError });
+      return;
+    }
     const authorityDepartment = snapshotBefore.departmentById.get(
-      topic.departmentId,
+      departmentId!,
     );
     if (
       authorityDepartment &&
@@ -2730,9 +2791,18 @@ router.post(
           .filter(Boolean) as string[])
       : [];
     const [updated] = await db.transaction(async (tx) => {
+      const [lockedTopic] = await tx.select().from(topicsTable)
+        .where(eq(topicsTable.id, topic.id)).for("update");
+      if (!lockedTopic || lockedTopic.status !== "pending_validation" ||
+        lockedTopic.departmentId !== topic.departmentId || lockedTopic.roleId !== topic.roleId) return [];
+      const routing = await lockTopicRouting(tx, departmentId, roleId);
+      if (!routing?.department || !routing.role ||
+        [routing.department.serviceHeadId, routing.department.serviceHeadDeputyId].includes(currentUserId(req))) return [];
       const [validated] = await tx
         .update(topicsTable)
         .set({
+          departmentId,
+          roleId,
           status: "open",
           validationMode: "break_glass",
           validationReason: body.data.reason,
@@ -2752,7 +2822,7 @@ router.post(
         req,
         validated.id,
         "Break-glass validation",
-        `${body.data.reason} Responsible authority notification queued.`,
+        `${body.data.reason}\nDepartment: ${routing.department.name}\nRole: ${routing.role.name}\nResponsible authority notification queued.`,
         true,
         tx,
       );
@@ -3432,7 +3502,8 @@ router.get("/validation-queue", async (req, res): Promise<void> => {
   const queue = snapshot.topics.filter(
     (topic) =>
       topic.status === "pending_validation" &&
-      responsibleDepartmentIds.includes(topic.departmentId),
+      ((!topic.departmentId && responsibleDepartmentIds.length > 0) ||
+        responsibleDepartmentIds.includes(topic.departmentId ?? "")),
   );
   res.json(GetValidationQueueResponse.parse(queue.map(snapshot.buildTopic)));
 });
@@ -3472,7 +3543,8 @@ router.get("/my-work", async (req, res): Promise<void> => {
       validationQueue: builtTopics.filter(
         (topic) =>
           topic.status === "pending_validation" &&
-          responsibleDepartmentIds.includes(topic.department.id),
+          ((!topic.department && responsibleDepartmentIds.length > 0) ||
+            responsibleDepartmentIds.includes(topic.department?.id ?? "")),
       ),
     }),
   );
@@ -3544,14 +3616,14 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
         label,
         count: snapshot.topics.filter(
           (topic) =>
-            snapshot.departmentById.get(topic.departmentId)?.name === label,
+            snapshot.departmentById.get(topic.departmentId ?? "")?.name === label,
         ).length,
         color: null,
       })),
       roleCounts: roleNames.map((label) => ({
         label,
         count: snapshot.topics.filter(
-          (topic) => snapshot.roleById.get(topic.roleId)?.name === label,
+          (topic) => snapshot.roleById.get(topic.roleId ?? "")?.name === label,
         ).length,
         color: null,
       })),

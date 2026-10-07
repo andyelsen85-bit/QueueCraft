@@ -3,6 +3,7 @@ import {
   useGetTopic,
   useGetSession,
   useListRoles,
+  useListDepartments,
   useDeleteTopic,
   useUpdateTopic,
   useUpdateTopicFinishDate,
@@ -22,6 +23,7 @@ import {
   getListCalendarTopicsQueryKey,
   getGetValidationQueueQueryKey,
   getGetOccupancyOverviewQueryKey,
+  getGetOccupancyForecastQueryKey,
   getGetMyWorkQueryKey,
   getGetDashboardSummaryQueryKey,
   getGetDashboardActivityQueryKey,
@@ -43,6 +45,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { DateField } from "@/components/ui/date-field";
+import { TopicRoutingFields } from "@/components/topic-routing-fields";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import {
   Dialog,
@@ -147,6 +150,7 @@ export function TopicDetail() {
   const { data: topic, isLoading } = useGetTopic(topicId!);
   const { data: session } = useGetSession();
   const { data: roles } = useListRoles();
+  const { data: departments } = useListDepartments();
   const { data: members } = useListMembers();
   const { data: dependencyCandidates } = useListDependencyCandidates({ topicId: topicId! });
   const sortedMembers = React.useMemo(
@@ -212,6 +216,7 @@ export function TopicDetail() {
     queryClient.invalidateQueries({
       queryKey: getGetOccupancyOverviewQueryKey(),
     });
+    queryClient.invalidateQueries({ queryKey: getGetOccupancyForecastQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetMyWorkQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetDashboardActivityQueryKey() });
@@ -233,7 +238,8 @@ export function TopicDetail() {
           }
         }, "Enter a valid HTTP or HTTPS URL without credentials"),
         priority: z.enum(["P1", "P2", "P3", "P4"]),
-        roleId: z.string().min(1),
+        departmentId: z.string(),
+        roleId: z.string(),
         estimatedStartDate: z.string().optional().nullable(),
         estimatedFinishDate: z.string().optional().nullable(),
         dependsOnTopicId: z.string().optional().nullable(),
@@ -244,17 +250,32 @@ export function TopicDetail() {
   });
 
   const validationForm = useForm({
-    resolver: zodResolver(z.object({ note: z.string().optional() })),
+    resolver: zodResolver(z.object({
+      departmentId: z.string().min(1, "Select a department"),
+      roleId: z.string().min(1, "Select a role"),
+      note: z.string().optional(),
+    })),
+    defaultValues: { departmentId: "", roleId: "", note: "" },
   });
 
   const breakGlassForm = useForm({
     resolver: zodResolver(
       z.object({
+        departmentId: z.string().min(1, "Select a department"),
+        roleId: z.string().min(1, "Select a role"),
         reason: z.string().min(20).max(2000),
         notifyResponsible: z.boolean().default(true),
       }),
     ),
+    defaultValues: { departmentId: "", roleId: "", reason: "", notifyResponsible: true },
   });
+
+  React.useEffect(() => {
+    if (!topic) return;
+    const routing = { departmentId: topic.department?.id ?? "", roleId: topic.role?.id ?? "" };
+    if (validationOpen) validationForm.reset({ ...routing, note: "" });
+    if (breakGlassOpen) breakGlassForm.reset({ ...routing, reason: "", notifyResponsible: true });
+  }, [topic?.id, topic?.department?.id, topic?.role?.id, validationOpen, breakGlassOpen, validationForm, breakGlassForm]);
 
   // Set default values when topic loads
   React.useEffect(() => {
@@ -264,7 +285,8 @@ export function TopicDetail() {
         description: topic.description,
         documentationUrl: topic.documentationUrl ?? "",
         priority: topic.priority as any,
-        roleId: topic.role.id,
+        departmentId: topic.department?.id ?? "",
+        roleId: topic.role?.id ?? "",
         estimatedStartDate: dateInputValue(topic.estimatedStartDate),
         estimatedFinishDate: dateInputValue(topic.estimatedFinishDate),
         dependsOnTopicId: topic.dependency?.id ?? null,
@@ -300,6 +322,8 @@ export function TopicDetail() {
         topicId: topicId!,
         data: {
           ...data,
+          departmentId: data.departmentId || null,
+          roleId: data.roleId || null,
           documentationUrl: data.documentationUrl?.trim() || null,
           estimatedEffortHours: data.estimatedEffortHours || null,
           estimatedStartDate: data.estimatedStartDate || null,
@@ -675,17 +699,19 @@ export function TopicDetail() {
     userId === topic.creator.id ||
     userId === topic.primaryAssignee?.id ||
     topic.collaborators?.some((entry) => entry.member.id === userId) ||
-    userId === topic.role.lead.id ||
-    userId === topic.role.deputy?.id ||
-    userId === topic.department.serviceHead.id ||
-    userId === topic.department.serviceHeadDeputy?.id
+    userId === topic.role?.lead.id ||
+    userId === topic.role?.deputy?.id ||
+    userId === topic.department?.serviceHead.id ||
+    userId === topic.department?.serviceHeadDeputy?.id ||
+    (!topic.department && isPendingValidation &&
+      session?.capabilities?.includes("validation.break_glass"))
   ));
   const canDeleteTopic = Boolean(
     session?.capabilities?.includes("topic.delete") &&
     userId &&
     (
       (userId === "local-admin" && session.authProvider === "local") ||
-      [topic.department.serviceHead.id, topic.department.serviceHeadDeputy?.id].includes(userId)
+      [topic.department?.serviceHead.id, topic.department?.serviceHeadDeputy?.id].includes(userId)
     ),
   );
 
@@ -729,11 +755,11 @@ export function TopicDetail() {
           <div className="flex w-fit max-w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-sm border bg-muted/50 p-3 text-sm font-mono">
             <div className="min-w-0 break-words">
               <span className="text-muted-foreground">Dept:</span>{" "}
-              <span className="font-semibold">{topic.department.name}</span>
+              <span className="font-semibold">{topic.department?.name ?? "Not assigned"}</span>
             </div>
             <div className="min-w-0 break-words">
               <span className="text-muted-foreground">Role:</span>{" "}
-              {topic.role.name}
+              {topic.role?.name ?? "Not assigned"}
             </div>
             <div className="min-w-0 break-words">
               <span className="text-muted-foreground">Created by:</span>{" "}
@@ -765,6 +791,19 @@ export function TopicDetail() {
                       onSubmit={validationForm.handleSubmit(onValidate)}
                       className="space-y-4"
                     >
+                      <TopicRoutingFields
+                        departmentId={validationForm.watch("departmentId")}
+                        roleId={validationForm.watch("roleId")}
+                        departments={(departments ?? []).filter((department) =>
+                          [department.serviceHead.id, department.serviceHeadDeputy?.id].includes(userId))}
+                        roles={roles ?? []}
+                        onChange={(routing) => {
+                          validationForm.setValue("departmentId", routing.departmentId, { shouldValidate: true });
+                          validationForm.setValue("roleId", routing.roleId, { shouldValidate: true });
+                        }}
+                      />
+                      <p className="text-xs text-muted-foreground">Select a department you lead and one of its roles before approving routing.</p>
+                      {validateTopic.error && <p role="alert" className="text-sm text-destructive">{validateTopic.error.message}</p>}
                       <FormField
                         control={validationForm.control}
                         name="note"
@@ -787,6 +826,10 @@ export function TopicDetail() {
                         </Button>
                         <Button
                           type="submit"
+                          disabled={validateTopic.isPending || !validationForm.watch("roleId") ||
+                            !(departments ?? []).some((department) =>
+                              department.id === validationForm.watch("departmentId") &&
+                              [department.serviceHead.id, department.serviceHeadDeputy?.id].includes(userId))}
                           className="bg-yellow-600 hover:bg-yellow-700 text-white"
                         >
                           Approve Routing
@@ -823,6 +866,18 @@ export function TopicDetail() {
                       onSubmit={breakGlassForm.handleSubmit(onBreakGlass)}
                       className="space-y-4"
                     >
+                      <TopicRoutingFields
+                        departmentId={breakGlassForm.watch("departmentId")}
+                        roleId={breakGlassForm.watch("roleId")}
+                        departments={departments ?? []}
+                        roles={roles ?? []}
+                        onChange={(routing) => {
+                          breakGlassForm.setValue("departmentId", routing.departmentId, { shouldValidate: true });
+                          breakGlassForm.setValue("roleId", routing.roleId, { shouldValidate: true });
+                        }}
+                      />
+                      <p className="text-xs text-muted-foreground">Department and role are required, including for break-glass approval.</p>
+                      {validateBreakGlass.error && <p role="alert" className="text-sm text-destructive">{validateBreakGlass.error.message}</p>}
                       <FormField
                         control={breakGlassForm.control}
                         name="reason"
@@ -846,7 +901,8 @@ export function TopicDetail() {
                         >
                           Cancel
                         </Button>
-                        <Button type="submit" variant="destructive">
+                        <Button type="submit" variant="destructive"
+                          disabled={validateBreakGlass.isPending || !breakGlassForm.watch("departmentId") || !breakGlassForm.watch("roleId")}>
                           Execute Break Glass
                         </Button>
                       </div>
@@ -934,31 +990,23 @@ export function TopicDetail() {
                       </FormItem>
                     )}
                   />
-                  {!["completed", "closed", "rejected"].includes(topic.status) && (
-                    <FormField
-                      control={editTopicForm.control}
-                      name="roleId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Role</FormLabel>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <FormControl>
-                              <SelectTrigger><SelectValue placeholder="Select an active role" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {(roles ?? [])
-                                .filter((role) => role.departmentId === topic.department.id ||
-                                  role.departmentIds?.includes(topic.department.id))
-                                .map((role) => (
-                                  <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
+                  <TopicRoutingFields
+                    departmentId={editTopicForm.watch("departmentId") ?? ""}
+                    roleId={editTopicForm.watch("roleId") ?? ""}
+                    departments={departments ?? []}
+                    roles={topic.role && !(roles ?? []).some((role) => role.id === topic.role?.id)
+                      ? [...(roles ?? []), topic.role] : roles ?? []}
+                    allowUnassigned={isPendingValidation}
+                    onChange={(routing) => {
+                      editTopicForm.setValue("departmentId", routing.departmentId, { shouldValidate: true });
+                      editTopicForm.setValue("roleId", routing.roleId, { shouldValidate: true });
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {isPendingValidation
+                      ? "Department and role may stay unassigned until validation."
+                      : "Changing department preserves this topic’s status and existing approval. Select a role linked to the new department."}
+                  </p>
                   <FormField
                     control={editTopicForm.control}
                     name="documentationUrl"

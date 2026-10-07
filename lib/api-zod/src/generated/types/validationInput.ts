@@ -7,6 +7,10 @@
  */
 
 export interface ValidationInput {
+  /** @minLength 1 */
+  departmentId?: string;
+  /** @minLength 1 */
+  roleId?: string;
   /**
      * @maxLength 1000
      * @nullable

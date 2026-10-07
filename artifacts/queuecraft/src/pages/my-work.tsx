@@ -55,9 +55,9 @@ export function MyWork() {
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-semibold truncate group-hover:text-primary transition-colors">{t.title}</h3>
                   <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground font-mono">
-                    <span>{t.department.name}</span>
+                    <span>{t.department?.name ?? "Not assigned"}</span>
                     <span>•</span>
-                    <span>{t.role.name}</span>
+                    <span>{t.role?.name ?? "Not assigned"}</span>
                   </div>
                 </div>
                 <div className="flex-none">

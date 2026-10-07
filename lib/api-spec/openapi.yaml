@@ -1052,7 +1052,7 @@ components:
         status:
           $ref: "#/components/schemas/TopicStatus"
         departmentName: { type: string }
-        roleId: { type: string }
+        roleId: { type: ["string", "null"] }
         targetDate: { type: ["string", "null"], format: date }
         estimatedStartDate: { type: ["string", "null"], format: date }
         estimatedFinishDate: { type: ["string", "null"], format: date }
@@ -1083,9 +1083,13 @@ components:
         description: { type: string }
         documentationUrl: { type: ["string", "null"], format: uri, maxLength: 2048 }
         department:
-          $ref: "#/components/schemas/Department"
+          anyOf:
+            - $ref: "#/components/schemas/Department"
+            - type: "null"
         role:
-          $ref: "#/components/schemas/Role"
+          anyOf:
+            - $ref: "#/components/schemas/Role"
+            - type: "null"
         priority:
           $ref: "#/components/schemas/TopicPriority"
         status:
@@ -1169,13 +1173,13 @@ components:
           default: false
     TopicInput:
       type: object
-      required: [title, description, departmentId, roleId, priority]
+      required: [title, description, priority]
       properties:
         title: { type: string, minLength: 3, maxLength: 160 }
         description: { type: string, minLength: 3, maxLength: 2000 }
         documentationUrl: { type: ["string", "null"], format: uri, maxLength: 2048 }
-        departmentId: { type: string }
-        roleId: { type: string }
+        departmentId: { type: ["string", "null"], minLength: 1 }
+        roleId: { type: ["string", "null"], minLength: 1 }
         priority:
           $ref: "#/components/schemas/TopicPriority"
         targetDate:
@@ -1198,7 +1202,8 @@ components:
         title: { type: string, minLength: 3, maxLength: 160 }
         description: { type: string, minLength: 3, maxLength: 2000 }
         documentationUrl: { type: ["string", "null"], format: uri, maxLength: 2048 }
-        roleId: { type: string }
+        departmentId: { type: ["string", "null"], minLength: 1 }
+        roleId: { type: ["string", "null"], minLength: 1 }
         priority:
           $ref: "#/components/schemas/TopicPriority"
         estimatedStartDate:
@@ -1216,11 +1221,15 @@ components:
     ValidationInput:
       type: object
       properties:
+        departmentId: { type: string, minLength: 1 }
+        roleId: { type: string, minLength: 1 }
         note: { type: ["string", "null"], maxLength: 1000 }
     BreakGlassValidationInput:
       type: object
       required: [reason]
       properties:
+        departmentId: { type: string, minLength: 1 }
+        roleId: { type: string, minLength: 1 }
         reason: { type: string, minLength: 20, maxLength: 2000 }
         notifyResponsible:
           type: boolean

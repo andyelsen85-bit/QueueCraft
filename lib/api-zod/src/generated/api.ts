@@ -181,49 +181,49 @@ export const GetDashboardActivityResponse = zod.array(GetDashboardActivityRespon
  */
 export const getMyWorkResponseCreatedItemDocumentationUrlMax = 2048;
 
-export const getMyWorkResponseCreatedItemDepartmentServiceHeadDailyBusinessPercentMin = 0;
-export const getMyWorkResponseCreatedItemDepartmentServiceHeadDailyBusinessPercentMax = 100;
+export const getMyWorkResponseCreatedItemDepartmentOneServiceHeadDailyBusinessPercentMin = 0;
+export const getMyWorkResponseCreatedItemDepartmentOneServiceHeadDailyBusinessPercentMax = 100;
 
-export const getMyWorkResponseCreatedItemDepartmentServiceHeadWeeklyHoursExclusiveMin = 0;
-export const getMyWorkResponseCreatedItemDepartmentServiceHeadWeeklyHoursMax = 168;
+export const getMyWorkResponseCreatedItemDepartmentOneServiceHeadWeeklyHoursExclusiveMin = 0;
+export const getMyWorkResponseCreatedItemDepartmentOneServiceHeadWeeklyHoursMax = 168;
 
-export const getMyWorkResponseCreatedItemDepartmentServiceHeadDailyBusinessTasksItemNameMax = 120;
+export const getMyWorkResponseCreatedItemDepartmentOneServiceHeadDailyBusinessTasksItemNameMax = 120;
 
-export const getMyWorkResponseCreatedItemDepartmentServiceHeadDailyBusinessTasksItemPercentMin = 0;
-export const getMyWorkResponseCreatedItemDepartmentServiceHeadDailyBusinessTasksItemPercentMax = 100;
+export const getMyWorkResponseCreatedItemDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseCreatedItemDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax = 100;
 
-export const getMyWorkResponseCreatedItemDepartmentServiceHeadDeputyOneDailyBusinessPercentMin = 0;
-export const getMyWorkResponseCreatedItemDepartmentServiceHeadDeputyOneDailyBusinessPercentMax = 100;
+export const getMyWorkResponseCreatedItemDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin = 0;
+export const getMyWorkResponseCreatedItemDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax = 100;
 
-export const getMyWorkResponseCreatedItemDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
-export const getMyWorkResponseCreatedItemDepartmentServiceHeadDeputyOneWeeklyHoursMax = 168;
+export const getMyWorkResponseCreatedItemDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
+export const getMyWorkResponseCreatedItemDepartmentOneServiceHeadDeputyOneWeeklyHoursMax = 168;
 
-export const getMyWorkResponseCreatedItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const getMyWorkResponseCreatedItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const getMyWorkResponseCreatedItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const getMyWorkResponseCreatedItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const getMyWorkResponseCreatedItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseCreatedItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
-export const getMyWorkResponseCreatedItemRoleLeadDailyBusinessPercentMin = 0;
-export const getMyWorkResponseCreatedItemRoleLeadDailyBusinessPercentMax = 100;
+export const getMyWorkResponseCreatedItemRoleOneLeadDailyBusinessPercentMin = 0;
+export const getMyWorkResponseCreatedItemRoleOneLeadDailyBusinessPercentMax = 100;
 
-export const getMyWorkResponseCreatedItemRoleLeadWeeklyHoursExclusiveMin = 0;
-export const getMyWorkResponseCreatedItemRoleLeadWeeklyHoursMax = 168;
+export const getMyWorkResponseCreatedItemRoleOneLeadWeeklyHoursExclusiveMin = 0;
+export const getMyWorkResponseCreatedItemRoleOneLeadWeeklyHoursMax = 168;
 
-export const getMyWorkResponseCreatedItemRoleLeadDailyBusinessTasksItemNameMax = 120;
+export const getMyWorkResponseCreatedItemRoleOneLeadDailyBusinessTasksItemNameMax = 120;
 
-export const getMyWorkResponseCreatedItemRoleLeadDailyBusinessTasksItemPercentMin = 0;
-export const getMyWorkResponseCreatedItemRoleLeadDailyBusinessTasksItemPercentMax = 100;
+export const getMyWorkResponseCreatedItemRoleOneLeadDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseCreatedItemRoleOneLeadDailyBusinessTasksItemPercentMax = 100;
 
-export const getMyWorkResponseCreatedItemRoleDeputyOneDailyBusinessPercentMin = 0;
-export const getMyWorkResponseCreatedItemRoleDeputyOneDailyBusinessPercentMax = 100;
+export const getMyWorkResponseCreatedItemRoleOneDeputyOneDailyBusinessPercentMin = 0;
+export const getMyWorkResponseCreatedItemRoleOneDeputyOneDailyBusinessPercentMax = 100;
 
-export const getMyWorkResponseCreatedItemRoleDeputyOneWeeklyHoursExclusiveMin = 0;
-export const getMyWorkResponseCreatedItemRoleDeputyOneWeeklyHoursMax = 168;
+export const getMyWorkResponseCreatedItemRoleOneDeputyOneWeeklyHoursExclusiveMin = 0;
+export const getMyWorkResponseCreatedItemRoleOneDeputyOneWeeklyHoursMax = 168;
 
-export const getMyWorkResponseCreatedItemRoleDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const getMyWorkResponseCreatedItemRoleOneDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const getMyWorkResponseCreatedItemRoleDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const getMyWorkResponseCreatedItemRoleDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const getMyWorkResponseCreatedItemRoleOneDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseCreatedItemRoleOneDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
 export const getMyWorkResponseCreatedItemCreatorDailyBusinessPercentMin = 0;
 export const getMyWorkResponseCreatedItemCreatorDailyBusinessPercentMax = 100;
@@ -273,49 +273,49 @@ export const getMyWorkResponseCreatedItemValidatorOneDailyBusinessTasksItemPerce
 
 export const getMyWorkResponseAssignedItemDocumentationUrlMax = 2048;
 
-export const getMyWorkResponseAssignedItemDepartmentServiceHeadDailyBusinessPercentMin = 0;
-export const getMyWorkResponseAssignedItemDepartmentServiceHeadDailyBusinessPercentMax = 100;
+export const getMyWorkResponseAssignedItemDepartmentOneServiceHeadDailyBusinessPercentMin = 0;
+export const getMyWorkResponseAssignedItemDepartmentOneServiceHeadDailyBusinessPercentMax = 100;
 
-export const getMyWorkResponseAssignedItemDepartmentServiceHeadWeeklyHoursExclusiveMin = 0;
-export const getMyWorkResponseAssignedItemDepartmentServiceHeadWeeklyHoursMax = 168;
+export const getMyWorkResponseAssignedItemDepartmentOneServiceHeadWeeklyHoursExclusiveMin = 0;
+export const getMyWorkResponseAssignedItemDepartmentOneServiceHeadWeeklyHoursMax = 168;
 
-export const getMyWorkResponseAssignedItemDepartmentServiceHeadDailyBusinessTasksItemNameMax = 120;
+export const getMyWorkResponseAssignedItemDepartmentOneServiceHeadDailyBusinessTasksItemNameMax = 120;
 
-export const getMyWorkResponseAssignedItemDepartmentServiceHeadDailyBusinessTasksItemPercentMin = 0;
-export const getMyWorkResponseAssignedItemDepartmentServiceHeadDailyBusinessTasksItemPercentMax = 100;
+export const getMyWorkResponseAssignedItemDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseAssignedItemDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax = 100;
 
-export const getMyWorkResponseAssignedItemDepartmentServiceHeadDeputyOneDailyBusinessPercentMin = 0;
-export const getMyWorkResponseAssignedItemDepartmentServiceHeadDeputyOneDailyBusinessPercentMax = 100;
+export const getMyWorkResponseAssignedItemDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin = 0;
+export const getMyWorkResponseAssignedItemDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax = 100;
 
-export const getMyWorkResponseAssignedItemDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
-export const getMyWorkResponseAssignedItemDepartmentServiceHeadDeputyOneWeeklyHoursMax = 168;
+export const getMyWorkResponseAssignedItemDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
+export const getMyWorkResponseAssignedItemDepartmentOneServiceHeadDeputyOneWeeklyHoursMax = 168;
 
-export const getMyWorkResponseAssignedItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const getMyWorkResponseAssignedItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const getMyWorkResponseAssignedItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const getMyWorkResponseAssignedItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const getMyWorkResponseAssignedItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseAssignedItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
-export const getMyWorkResponseAssignedItemRoleLeadDailyBusinessPercentMin = 0;
-export const getMyWorkResponseAssignedItemRoleLeadDailyBusinessPercentMax = 100;
+export const getMyWorkResponseAssignedItemRoleOneLeadDailyBusinessPercentMin = 0;
+export const getMyWorkResponseAssignedItemRoleOneLeadDailyBusinessPercentMax = 100;
 
-export const getMyWorkResponseAssignedItemRoleLeadWeeklyHoursExclusiveMin = 0;
-export const getMyWorkResponseAssignedItemRoleLeadWeeklyHoursMax = 168;
+export const getMyWorkResponseAssignedItemRoleOneLeadWeeklyHoursExclusiveMin = 0;
+export const getMyWorkResponseAssignedItemRoleOneLeadWeeklyHoursMax = 168;
 
-export const getMyWorkResponseAssignedItemRoleLeadDailyBusinessTasksItemNameMax = 120;
+export const getMyWorkResponseAssignedItemRoleOneLeadDailyBusinessTasksItemNameMax = 120;
 
-export const getMyWorkResponseAssignedItemRoleLeadDailyBusinessTasksItemPercentMin = 0;
-export const getMyWorkResponseAssignedItemRoleLeadDailyBusinessTasksItemPercentMax = 100;
+export const getMyWorkResponseAssignedItemRoleOneLeadDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseAssignedItemRoleOneLeadDailyBusinessTasksItemPercentMax = 100;
 
-export const getMyWorkResponseAssignedItemRoleDeputyOneDailyBusinessPercentMin = 0;
-export const getMyWorkResponseAssignedItemRoleDeputyOneDailyBusinessPercentMax = 100;
+export const getMyWorkResponseAssignedItemRoleOneDeputyOneDailyBusinessPercentMin = 0;
+export const getMyWorkResponseAssignedItemRoleOneDeputyOneDailyBusinessPercentMax = 100;
 
-export const getMyWorkResponseAssignedItemRoleDeputyOneWeeklyHoursExclusiveMin = 0;
-export const getMyWorkResponseAssignedItemRoleDeputyOneWeeklyHoursMax = 168;
+export const getMyWorkResponseAssignedItemRoleOneDeputyOneWeeklyHoursExclusiveMin = 0;
+export const getMyWorkResponseAssignedItemRoleOneDeputyOneWeeklyHoursMax = 168;
 
-export const getMyWorkResponseAssignedItemRoleDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const getMyWorkResponseAssignedItemRoleOneDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const getMyWorkResponseAssignedItemRoleDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const getMyWorkResponseAssignedItemRoleDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const getMyWorkResponseAssignedItemRoleOneDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseAssignedItemRoleOneDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
 export const getMyWorkResponseAssignedItemCreatorDailyBusinessPercentMin = 0;
 export const getMyWorkResponseAssignedItemCreatorDailyBusinessPercentMax = 100;
@@ -392,49 +392,49 @@ export const getMyWorkResponseMilestonesItemAllocationsItemAllocationPercentMax 
 
 export const getMyWorkResponseCollaborationsItemDocumentationUrlMax = 2048;
 
-export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDailyBusinessPercentMin = 0;
-export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDailyBusinessPercentMax = 100;
+export const getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDailyBusinessPercentMin = 0;
+export const getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDailyBusinessPercentMax = 100;
 
-export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadWeeklyHoursExclusiveMin = 0;
-export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadWeeklyHoursMax = 168;
+export const getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadWeeklyHoursExclusiveMin = 0;
+export const getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadWeeklyHoursMax = 168;
 
-export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDailyBusinessTasksItemNameMax = 120;
+export const getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDailyBusinessTasksItemNameMax = 120;
 
-export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDailyBusinessTasksItemPercentMin = 0;
-export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDailyBusinessTasksItemPercentMax = 100;
+export const getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax = 100;
 
-export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDeputyOneDailyBusinessPercentMin = 0;
-export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDeputyOneDailyBusinessPercentMax = 100;
+export const getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin = 0;
+export const getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax = 100;
 
-export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
-export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDeputyOneWeeklyHoursMax = 168;
+export const getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
+export const getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDeputyOneWeeklyHoursMax = 168;
 
-export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const getMyWorkResponseCollaborationsItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
-export const getMyWorkResponseCollaborationsItemRoleLeadDailyBusinessPercentMin = 0;
-export const getMyWorkResponseCollaborationsItemRoleLeadDailyBusinessPercentMax = 100;
+export const getMyWorkResponseCollaborationsItemRoleOneLeadDailyBusinessPercentMin = 0;
+export const getMyWorkResponseCollaborationsItemRoleOneLeadDailyBusinessPercentMax = 100;
 
-export const getMyWorkResponseCollaborationsItemRoleLeadWeeklyHoursExclusiveMin = 0;
-export const getMyWorkResponseCollaborationsItemRoleLeadWeeklyHoursMax = 168;
+export const getMyWorkResponseCollaborationsItemRoleOneLeadWeeklyHoursExclusiveMin = 0;
+export const getMyWorkResponseCollaborationsItemRoleOneLeadWeeklyHoursMax = 168;
 
-export const getMyWorkResponseCollaborationsItemRoleLeadDailyBusinessTasksItemNameMax = 120;
+export const getMyWorkResponseCollaborationsItemRoleOneLeadDailyBusinessTasksItemNameMax = 120;
 
-export const getMyWorkResponseCollaborationsItemRoleLeadDailyBusinessTasksItemPercentMin = 0;
-export const getMyWorkResponseCollaborationsItemRoleLeadDailyBusinessTasksItemPercentMax = 100;
+export const getMyWorkResponseCollaborationsItemRoleOneLeadDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseCollaborationsItemRoleOneLeadDailyBusinessTasksItemPercentMax = 100;
 
-export const getMyWorkResponseCollaborationsItemRoleDeputyOneDailyBusinessPercentMin = 0;
-export const getMyWorkResponseCollaborationsItemRoleDeputyOneDailyBusinessPercentMax = 100;
+export const getMyWorkResponseCollaborationsItemRoleOneDeputyOneDailyBusinessPercentMin = 0;
+export const getMyWorkResponseCollaborationsItemRoleOneDeputyOneDailyBusinessPercentMax = 100;
 
-export const getMyWorkResponseCollaborationsItemRoleDeputyOneWeeklyHoursExclusiveMin = 0;
-export const getMyWorkResponseCollaborationsItemRoleDeputyOneWeeklyHoursMax = 168;
+export const getMyWorkResponseCollaborationsItemRoleOneDeputyOneWeeklyHoursExclusiveMin = 0;
+export const getMyWorkResponseCollaborationsItemRoleOneDeputyOneWeeklyHoursMax = 168;
 
-export const getMyWorkResponseCollaborationsItemRoleDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const getMyWorkResponseCollaborationsItemRoleOneDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const getMyWorkResponseCollaborationsItemRoleDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const getMyWorkResponseCollaborationsItemRoleDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const getMyWorkResponseCollaborationsItemRoleOneDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseCollaborationsItemRoleOneDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
 export const getMyWorkResponseCollaborationsItemCreatorDailyBusinessPercentMin = 0;
 export const getMyWorkResponseCollaborationsItemCreatorDailyBusinessPercentMax = 100;
@@ -484,49 +484,49 @@ export const getMyWorkResponseCollaborationsItemValidatorOneDailyBusinessTasksIt
 
 export const getMyWorkResponseValidationQueueItemDocumentationUrlMax = 2048;
 
-export const getMyWorkResponseValidationQueueItemDepartmentServiceHeadDailyBusinessPercentMin = 0;
-export const getMyWorkResponseValidationQueueItemDepartmentServiceHeadDailyBusinessPercentMax = 100;
+export const getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDailyBusinessPercentMin = 0;
+export const getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDailyBusinessPercentMax = 100;
 
-export const getMyWorkResponseValidationQueueItemDepartmentServiceHeadWeeklyHoursExclusiveMin = 0;
-export const getMyWorkResponseValidationQueueItemDepartmentServiceHeadWeeklyHoursMax = 168;
+export const getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadWeeklyHoursExclusiveMin = 0;
+export const getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadWeeklyHoursMax = 168;
 
-export const getMyWorkResponseValidationQueueItemDepartmentServiceHeadDailyBusinessTasksItemNameMax = 120;
+export const getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDailyBusinessTasksItemNameMax = 120;
 
-export const getMyWorkResponseValidationQueueItemDepartmentServiceHeadDailyBusinessTasksItemPercentMin = 0;
-export const getMyWorkResponseValidationQueueItemDepartmentServiceHeadDailyBusinessTasksItemPercentMax = 100;
+export const getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax = 100;
 
-export const getMyWorkResponseValidationQueueItemDepartmentServiceHeadDeputyOneDailyBusinessPercentMin = 0;
-export const getMyWorkResponseValidationQueueItemDepartmentServiceHeadDeputyOneDailyBusinessPercentMax = 100;
+export const getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin = 0;
+export const getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax = 100;
 
-export const getMyWorkResponseValidationQueueItemDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
-export const getMyWorkResponseValidationQueueItemDepartmentServiceHeadDeputyOneWeeklyHoursMax = 168;
+export const getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
+export const getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDeputyOneWeeklyHoursMax = 168;
 
-export const getMyWorkResponseValidationQueueItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const getMyWorkResponseValidationQueueItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const getMyWorkResponseValidationQueueItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
-export const getMyWorkResponseValidationQueueItemRoleLeadDailyBusinessPercentMin = 0;
-export const getMyWorkResponseValidationQueueItemRoleLeadDailyBusinessPercentMax = 100;
+export const getMyWorkResponseValidationQueueItemRoleOneLeadDailyBusinessPercentMin = 0;
+export const getMyWorkResponseValidationQueueItemRoleOneLeadDailyBusinessPercentMax = 100;
 
-export const getMyWorkResponseValidationQueueItemRoleLeadWeeklyHoursExclusiveMin = 0;
-export const getMyWorkResponseValidationQueueItemRoleLeadWeeklyHoursMax = 168;
+export const getMyWorkResponseValidationQueueItemRoleOneLeadWeeklyHoursExclusiveMin = 0;
+export const getMyWorkResponseValidationQueueItemRoleOneLeadWeeklyHoursMax = 168;
 
-export const getMyWorkResponseValidationQueueItemRoleLeadDailyBusinessTasksItemNameMax = 120;
+export const getMyWorkResponseValidationQueueItemRoleOneLeadDailyBusinessTasksItemNameMax = 120;
 
-export const getMyWorkResponseValidationQueueItemRoleLeadDailyBusinessTasksItemPercentMin = 0;
-export const getMyWorkResponseValidationQueueItemRoleLeadDailyBusinessTasksItemPercentMax = 100;
+export const getMyWorkResponseValidationQueueItemRoleOneLeadDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseValidationQueueItemRoleOneLeadDailyBusinessTasksItemPercentMax = 100;
 
-export const getMyWorkResponseValidationQueueItemRoleDeputyOneDailyBusinessPercentMin = 0;
-export const getMyWorkResponseValidationQueueItemRoleDeputyOneDailyBusinessPercentMax = 100;
+export const getMyWorkResponseValidationQueueItemRoleOneDeputyOneDailyBusinessPercentMin = 0;
+export const getMyWorkResponseValidationQueueItemRoleOneDeputyOneDailyBusinessPercentMax = 100;
 
-export const getMyWorkResponseValidationQueueItemRoleDeputyOneWeeklyHoursExclusiveMin = 0;
-export const getMyWorkResponseValidationQueueItemRoleDeputyOneWeeklyHoursMax = 168;
+export const getMyWorkResponseValidationQueueItemRoleOneDeputyOneWeeklyHoursExclusiveMin = 0;
+export const getMyWorkResponseValidationQueueItemRoleOneDeputyOneWeeklyHoursMax = 168;
 
-export const getMyWorkResponseValidationQueueItemRoleDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const getMyWorkResponseValidationQueueItemRoleOneDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const getMyWorkResponseValidationQueueItemRoleDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const getMyWorkResponseValidationQueueItemRoleDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const getMyWorkResponseValidationQueueItemRoleOneDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const getMyWorkResponseValidationQueueItemRoleOneDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
 export const getMyWorkResponseValidationQueueItemCreatorDailyBusinessPercentMin = 0;
 export const getMyWorkResponseValidationQueueItemCreatorDailyBusinessPercentMax = 100;
@@ -582,7 +582,7 @@ export const GetMyWorkResponse = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "documentationUrl": zod.string().url().max(getMyWorkResponseCreatedItemDocumentationUrlMax).nullish(),
-  "department": zod.object({
+  "department": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "serviceHead": zod.object({
@@ -594,11 +594,11 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseCreatedItemDepartmentServiceHeadDailyBusinessPercentMin).max(getMyWorkResponseCreatedItemDepartmentServiceHeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getMyWorkResponseCreatedItemDepartmentServiceHeadWeeklyHoursExclusiveMin).max(getMyWorkResponseCreatedItemDepartmentServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseCreatedItemDepartmentOneServiceHeadDailyBusinessPercentMin).max(getMyWorkResponseCreatedItemDepartmentOneServiceHeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getMyWorkResponseCreatedItemDepartmentOneServiceHeadWeeklyHoursExclusiveMin).max(getMyWorkResponseCreatedItemDepartmentOneServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getMyWorkResponseCreatedItemDepartmentServiceHeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getMyWorkResponseCreatedItemDepartmentServiceHeadDailyBusinessTasksItemPercentMin).max(getMyWorkResponseCreatedItemDepartmentServiceHeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getMyWorkResponseCreatedItemDepartmentOneServiceHeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseCreatedItemDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin).max(getMyWorkResponseCreatedItemDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "serviceHeadDeputy": zod.union([zod.object({
@@ -610,15 +610,15 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseCreatedItemDepartmentServiceHeadDeputyOneDailyBusinessPercentMin).max(getMyWorkResponseCreatedItemDepartmentServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getMyWorkResponseCreatedItemDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(getMyWorkResponseCreatedItemDepartmentServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseCreatedItemDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin).max(getMyWorkResponseCreatedItemDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getMyWorkResponseCreatedItemDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(getMyWorkResponseCreatedItemDepartmentOneServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getMyWorkResponseCreatedItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getMyWorkResponseCreatedItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(getMyWorkResponseCreatedItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getMyWorkResponseCreatedItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseCreatedItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(getMyWorkResponseCreatedItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()])
-}),
-  "role": zod.object({
+}),zod.null()]),
+  "role": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
@@ -632,11 +632,11 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseCreatedItemRoleLeadDailyBusinessPercentMin).max(getMyWorkResponseCreatedItemRoleLeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getMyWorkResponseCreatedItemRoleLeadWeeklyHoursExclusiveMin).max(getMyWorkResponseCreatedItemRoleLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseCreatedItemRoleOneLeadDailyBusinessPercentMin).max(getMyWorkResponseCreatedItemRoleOneLeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getMyWorkResponseCreatedItemRoleOneLeadWeeklyHoursExclusiveMin).max(getMyWorkResponseCreatedItemRoleOneLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getMyWorkResponseCreatedItemRoleLeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getMyWorkResponseCreatedItemRoleLeadDailyBusinessTasksItemPercentMin).max(getMyWorkResponseCreatedItemRoleLeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getMyWorkResponseCreatedItemRoleOneLeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseCreatedItemRoleOneLeadDailyBusinessTasksItemPercentMin).max(getMyWorkResponseCreatedItemRoleOneLeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "deputy": zod.union([zod.object({
@@ -648,16 +648,16 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseCreatedItemRoleDeputyOneDailyBusinessPercentMin).max(getMyWorkResponseCreatedItemRoleDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getMyWorkResponseCreatedItemRoleDeputyOneWeeklyHoursExclusiveMin).max(getMyWorkResponseCreatedItemRoleDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseCreatedItemRoleOneDeputyOneDailyBusinessPercentMin).max(getMyWorkResponseCreatedItemRoleOneDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getMyWorkResponseCreatedItemRoleOneDeputyOneWeeklyHoursExclusiveMin).max(getMyWorkResponseCreatedItemRoleOneDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getMyWorkResponseCreatedItemRoleDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getMyWorkResponseCreatedItemRoleDeputyOneDailyBusinessTasksItemPercentMin).max(getMyWorkResponseCreatedItemRoleDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getMyWorkResponseCreatedItemRoleOneDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseCreatedItemRoleOneDeputyOneDailyBusinessTasksItemPercentMin).max(getMyWorkResponseCreatedItemRoleOneDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "memberCount": zod.number().int().optional(),
   "memberIds": zod.array(zod.string()).optional()
-}),
+}),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
@@ -753,7 +753,7 @@ export const GetMyWorkResponse = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "documentationUrl": zod.string().url().max(getMyWorkResponseAssignedItemDocumentationUrlMax).nullish(),
-  "department": zod.object({
+  "department": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "serviceHead": zod.object({
@@ -765,11 +765,11 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseAssignedItemDepartmentServiceHeadDailyBusinessPercentMin).max(getMyWorkResponseAssignedItemDepartmentServiceHeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getMyWorkResponseAssignedItemDepartmentServiceHeadWeeklyHoursExclusiveMin).max(getMyWorkResponseAssignedItemDepartmentServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseAssignedItemDepartmentOneServiceHeadDailyBusinessPercentMin).max(getMyWorkResponseAssignedItemDepartmentOneServiceHeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getMyWorkResponseAssignedItemDepartmentOneServiceHeadWeeklyHoursExclusiveMin).max(getMyWorkResponseAssignedItemDepartmentOneServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getMyWorkResponseAssignedItemDepartmentServiceHeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getMyWorkResponseAssignedItemDepartmentServiceHeadDailyBusinessTasksItemPercentMin).max(getMyWorkResponseAssignedItemDepartmentServiceHeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getMyWorkResponseAssignedItemDepartmentOneServiceHeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseAssignedItemDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin).max(getMyWorkResponseAssignedItemDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "serviceHeadDeputy": zod.union([zod.object({
@@ -781,15 +781,15 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseAssignedItemDepartmentServiceHeadDeputyOneDailyBusinessPercentMin).max(getMyWorkResponseAssignedItemDepartmentServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getMyWorkResponseAssignedItemDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(getMyWorkResponseAssignedItemDepartmentServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseAssignedItemDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin).max(getMyWorkResponseAssignedItemDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getMyWorkResponseAssignedItemDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(getMyWorkResponseAssignedItemDepartmentOneServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getMyWorkResponseAssignedItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getMyWorkResponseAssignedItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(getMyWorkResponseAssignedItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getMyWorkResponseAssignedItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseAssignedItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(getMyWorkResponseAssignedItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()])
-}),
-  "role": zod.object({
+}),zod.null()]),
+  "role": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
@@ -803,11 +803,11 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseAssignedItemRoleLeadDailyBusinessPercentMin).max(getMyWorkResponseAssignedItemRoleLeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getMyWorkResponseAssignedItemRoleLeadWeeklyHoursExclusiveMin).max(getMyWorkResponseAssignedItemRoleLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseAssignedItemRoleOneLeadDailyBusinessPercentMin).max(getMyWorkResponseAssignedItemRoleOneLeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getMyWorkResponseAssignedItemRoleOneLeadWeeklyHoursExclusiveMin).max(getMyWorkResponseAssignedItemRoleOneLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getMyWorkResponseAssignedItemRoleLeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getMyWorkResponseAssignedItemRoleLeadDailyBusinessTasksItemPercentMin).max(getMyWorkResponseAssignedItemRoleLeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getMyWorkResponseAssignedItemRoleOneLeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseAssignedItemRoleOneLeadDailyBusinessTasksItemPercentMin).max(getMyWorkResponseAssignedItemRoleOneLeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "deputy": zod.union([zod.object({
@@ -819,16 +819,16 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseAssignedItemRoleDeputyOneDailyBusinessPercentMin).max(getMyWorkResponseAssignedItemRoleDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getMyWorkResponseAssignedItemRoleDeputyOneWeeklyHoursExclusiveMin).max(getMyWorkResponseAssignedItemRoleDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseAssignedItemRoleOneDeputyOneDailyBusinessPercentMin).max(getMyWorkResponseAssignedItemRoleOneDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getMyWorkResponseAssignedItemRoleOneDeputyOneWeeklyHoursExclusiveMin).max(getMyWorkResponseAssignedItemRoleOneDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getMyWorkResponseAssignedItemRoleDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getMyWorkResponseAssignedItemRoleDeputyOneDailyBusinessTasksItemPercentMin).max(getMyWorkResponseAssignedItemRoleDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getMyWorkResponseAssignedItemRoleOneDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseAssignedItemRoleOneDeputyOneDailyBusinessTasksItemPercentMin).max(getMyWorkResponseAssignedItemRoleOneDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "memberCount": zod.number().int().optional(),
   "memberIds": zod.array(zod.string()).optional()
-}),
+}),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
@@ -971,7 +971,7 @@ export const GetMyWorkResponse = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "documentationUrl": zod.string().url().max(getMyWorkResponseCollaborationsItemDocumentationUrlMax).nullish(),
-  "department": zod.object({
+  "department": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "serviceHead": zod.object({
@@ -983,11 +983,11 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseCollaborationsItemDepartmentServiceHeadDailyBusinessPercentMin).max(getMyWorkResponseCollaborationsItemDepartmentServiceHeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getMyWorkResponseCollaborationsItemDepartmentServiceHeadWeeklyHoursExclusiveMin).max(getMyWorkResponseCollaborationsItemDepartmentServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDailyBusinessPercentMin).max(getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadWeeklyHoursExclusiveMin).max(getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getMyWorkResponseCollaborationsItemDepartmentServiceHeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getMyWorkResponseCollaborationsItemDepartmentServiceHeadDailyBusinessTasksItemPercentMin).max(getMyWorkResponseCollaborationsItemDepartmentServiceHeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin).max(getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "serviceHeadDeputy": zod.union([zod.object({
@@ -999,15 +999,15 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseCollaborationsItemDepartmentServiceHeadDeputyOneDailyBusinessPercentMin).max(getMyWorkResponseCollaborationsItemDepartmentServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getMyWorkResponseCollaborationsItemDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(getMyWorkResponseCollaborationsItemDepartmentServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin).max(getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getMyWorkResponseCollaborationsItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getMyWorkResponseCollaborationsItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(getMyWorkResponseCollaborationsItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(getMyWorkResponseCollaborationsItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()])
-}),
-  "role": zod.object({
+}),zod.null()]),
+  "role": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
@@ -1021,11 +1021,11 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseCollaborationsItemRoleLeadDailyBusinessPercentMin).max(getMyWorkResponseCollaborationsItemRoleLeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getMyWorkResponseCollaborationsItemRoleLeadWeeklyHoursExclusiveMin).max(getMyWorkResponseCollaborationsItemRoleLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseCollaborationsItemRoleOneLeadDailyBusinessPercentMin).max(getMyWorkResponseCollaborationsItemRoleOneLeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getMyWorkResponseCollaborationsItemRoleOneLeadWeeklyHoursExclusiveMin).max(getMyWorkResponseCollaborationsItemRoleOneLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getMyWorkResponseCollaborationsItemRoleLeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getMyWorkResponseCollaborationsItemRoleLeadDailyBusinessTasksItemPercentMin).max(getMyWorkResponseCollaborationsItemRoleLeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getMyWorkResponseCollaborationsItemRoleOneLeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseCollaborationsItemRoleOneLeadDailyBusinessTasksItemPercentMin).max(getMyWorkResponseCollaborationsItemRoleOneLeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "deputy": zod.union([zod.object({
@@ -1037,16 +1037,16 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseCollaborationsItemRoleDeputyOneDailyBusinessPercentMin).max(getMyWorkResponseCollaborationsItemRoleDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getMyWorkResponseCollaborationsItemRoleDeputyOneWeeklyHoursExclusiveMin).max(getMyWorkResponseCollaborationsItemRoleDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseCollaborationsItemRoleOneDeputyOneDailyBusinessPercentMin).max(getMyWorkResponseCollaborationsItemRoleOneDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getMyWorkResponseCollaborationsItemRoleOneDeputyOneWeeklyHoursExclusiveMin).max(getMyWorkResponseCollaborationsItemRoleOneDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getMyWorkResponseCollaborationsItemRoleDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getMyWorkResponseCollaborationsItemRoleDeputyOneDailyBusinessTasksItemPercentMin).max(getMyWorkResponseCollaborationsItemRoleDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getMyWorkResponseCollaborationsItemRoleOneDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseCollaborationsItemRoleOneDeputyOneDailyBusinessTasksItemPercentMin).max(getMyWorkResponseCollaborationsItemRoleOneDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "memberCount": zod.number().int().optional(),
   "memberIds": zod.array(zod.string()).optional()
-}),
+}),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
@@ -1142,7 +1142,7 @@ export const GetMyWorkResponse = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "documentationUrl": zod.string().url().max(getMyWorkResponseValidationQueueItemDocumentationUrlMax).nullish(),
-  "department": zod.object({
+  "department": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "serviceHead": zod.object({
@@ -1154,11 +1154,11 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseValidationQueueItemDepartmentServiceHeadDailyBusinessPercentMin).max(getMyWorkResponseValidationQueueItemDepartmentServiceHeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getMyWorkResponseValidationQueueItemDepartmentServiceHeadWeeklyHoursExclusiveMin).max(getMyWorkResponseValidationQueueItemDepartmentServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDailyBusinessPercentMin).max(getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadWeeklyHoursExclusiveMin).max(getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getMyWorkResponseValidationQueueItemDepartmentServiceHeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getMyWorkResponseValidationQueueItemDepartmentServiceHeadDailyBusinessTasksItemPercentMin).max(getMyWorkResponseValidationQueueItemDepartmentServiceHeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin).max(getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "serviceHeadDeputy": zod.union([zod.object({
@@ -1170,15 +1170,15 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseValidationQueueItemDepartmentServiceHeadDeputyOneDailyBusinessPercentMin).max(getMyWorkResponseValidationQueueItemDepartmentServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getMyWorkResponseValidationQueueItemDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(getMyWorkResponseValidationQueueItemDepartmentServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin).max(getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getMyWorkResponseValidationQueueItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getMyWorkResponseValidationQueueItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(getMyWorkResponseValidationQueueItemDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(getMyWorkResponseValidationQueueItemDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()])
-}),
-  "role": zod.object({
+}),zod.null()]),
+  "role": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
@@ -1192,11 +1192,11 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseValidationQueueItemRoleLeadDailyBusinessPercentMin).max(getMyWorkResponseValidationQueueItemRoleLeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getMyWorkResponseValidationQueueItemRoleLeadWeeklyHoursExclusiveMin).max(getMyWorkResponseValidationQueueItemRoleLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseValidationQueueItemRoleOneLeadDailyBusinessPercentMin).max(getMyWorkResponseValidationQueueItemRoleOneLeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getMyWorkResponseValidationQueueItemRoleOneLeadWeeklyHoursExclusiveMin).max(getMyWorkResponseValidationQueueItemRoleOneLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getMyWorkResponseValidationQueueItemRoleLeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getMyWorkResponseValidationQueueItemRoleLeadDailyBusinessTasksItemPercentMin).max(getMyWorkResponseValidationQueueItemRoleLeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getMyWorkResponseValidationQueueItemRoleOneLeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseValidationQueueItemRoleOneLeadDailyBusinessTasksItemPercentMin).max(getMyWorkResponseValidationQueueItemRoleOneLeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "deputy": zod.union([zod.object({
@@ -1208,16 +1208,16 @@ export const GetMyWorkResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseValidationQueueItemRoleDeputyOneDailyBusinessPercentMin).max(getMyWorkResponseValidationQueueItemRoleDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getMyWorkResponseValidationQueueItemRoleDeputyOneWeeklyHoursExclusiveMin).max(getMyWorkResponseValidationQueueItemRoleDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getMyWorkResponseValidationQueueItemRoleOneDeputyOneDailyBusinessPercentMin).max(getMyWorkResponseValidationQueueItemRoleOneDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getMyWorkResponseValidationQueueItemRoleOneDeputyOneWeeklyHoursExclusiveMin).max(getMyWorkResponseValidationQueueItemRoleOneDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getMyWorkResponseValidationQueueItemRoleDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getMyWorkResponseValidationQueueItemRoleDeputyOneDailyBusinessTasksItemPercentMin).max(getMyWorkResponseValidationQueueItemRoleDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getMyWorkResponseValidationQueueItemRoleOneDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getMyWorkResponseValidationQueueItemRoleOneDeputyOneDailyBusinessTasksItemPercentMin).max(getMyWorkResponseValidationQueueItemRoleOneDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "memberCount": zod.number().int().optional(),
   "memberIds": zod.array(zod.string()).optional()
-}),
+}),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
@@ -1316,49 +1316,49 @@ export const GetMyWorkResponse = zod.object({
  */
 export const getValidationQueueResponseDocumentationUrlMax = 2048;
 
-export const getValidationQueueResponseDepartmentServiceHeadDailyBusinessPercentMin = 0;
-export const getValidationQueueResponseDepartmentServiceHeadDailyBusinessPercentMax = 100;
+export const getValidationQueueResponseDepartmentOneServiceHeadDailyBusinessPercentMin = 0;
+export const getValidationQueueResponseDepartmentOneServiceHeadDailyBusinessPercentMax = 100;
 
-export const getValidationQueueResponseDepartmentServiceHeadWeeklyHoursExclusiveMin = 0;
-export const getValidationQueueResponseDepartmentServiceHeadWeeklyHoursMax = 168;
+export const getValidationQueueResponseDepartmentOneServiceHeadWeeklyHoursExclusiveMin = 0;
+export const getValidationQueueResponseDepartmentOneServiceHeadWeeklyHoursMax = 168;
 
-export const getValidationQueueResponseDepartmentServiceHeadDailyBusinessTasksItemNameMax = 120;
+export const getValidationQueueResponseDepartmentOneServiceHeadDailyBusinessTasksItemNameMax = 120;
 
-export const getValidationQueueResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMin = 0;
-export const getValidationQueueResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMax = 100;
+export const getValidationQueueResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin = 0;
+export const getValidationQueueResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax = 100;
 
-export const getValidationQueueResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMin = 0;
-export const getValidationQueueResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMax = 100;
+export const getValidationQueueResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin = 0;
+export const getValidationQueueResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax = 100;
 
-export const getValidationQueueResponseDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
-export const getValidationQueueResponseDepartmentServiceHeadDeputyOneWeeklyHoursMax = 168;
+export const getValidationQueueResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
+export const getValidationQueueResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursMax = 168;
 
-export const getValidationQueueResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const getValidationQueueResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const getValidationQueueResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const getValidationQueueResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const getValidationQueueResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const getValidationQueueResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
-export const getValidationQueueResponseRoleLeadDailyBusinessPercentMin = 0;
-export const getValidationQueueResponseRoleLeadDailyBusinessPercentMax = 100;
+export const getValidationQueueResponseRoleOneLeadDailyBusinessPercentMin = 0;
+export const getValidationQueueResponseRoleOneLeadDailyBusinessPercentMax = 100;
 
-export const getValidationQueueResponseRoleLeadWeeklyHoursExclusiveMin = 0;
-export const getValidationQueueResponseRoleLeadWeeklyHoursMax = 168;
+export const getValidationQueueResponseRoleOneLeadWeeklyHoursExclusiveMin = 0;
+export const getValidationQueueResponseRoleOneLeadWeeklyHoursMax = 168;
 
-export const getValidationQueueResponseRoleLeadDailyBusinessTasksItemNameMax = 120;
+export const getValidationQueueResponseRoleOneLeadDailyBusinessTasksItemNameMax = 120;
 
-export const getValidationQueueResponseRoleLeadDailyBusinessTasksItemPercentMin = 0;
-export const getValidationQueueResponseRoleLeadDailyBusinessTasksItemPercentMax = 100;
+export const getValidationQueueResponseRoleOneLeadDailyBusinessTasksItemPercentMin = 0;
+export const getValidationQueueResponseRoleOneLeadDailyBusinessTasksItemPercentMax = 100;
 
-export const getValidationQueueResponseRoleDeputyOneDailyBusinessPercentMin = 0;
-export const getValidationQueueResponseRoleDeputyOneDailyBusinessPercentMax = 100;
+export const getValidationQueueResponseRoleOneDeputyOneDailyBusinessPercentMin = 0;
+export const getValidationQueueResponseRoleOneDeputyOneDailyBusinessPercentMax = 100;
 
-export const getValidationQueueResponseRoleDeputyOneWeeklyHoursExclusiveMin = 0;
-export const getValidationQueueResponseRoleDeputyOneWeeklyHoursMax = 168;
+export const getValidationQueueResponseRoleOneDeputyOneWeeklyHoursExclusiveMin = 0;
+export const getValidationQueueResponseRoleOneDeputyOneWeeklyHoursMax = 168;
 
-export const getValidationQueueResponseRoleDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const getValidationQueueResponseRoleOneDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const getValidationQueueResponseRoleDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const getValidationQueueResponseRoleDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const getValidationQueueResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const getValidationQueueResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
 export const getValidationQueueResponseCreatorDailyBusinessPercentMin = 0;
 export const getValidationQueueResponseCreatorDailyBusinessPercentMax = 100;
@@ -1413,7 +1413,7 @@ export const GetValidationQueueResponseItem = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "documentationUrl": zod.string().url().max(getValidationQueueResponseDocumentationUrlMax).nullish(),
-  "department": zod.object({
+  "department": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "serviceHead": zod.object({
@@ -1425,11 +1425,11 @@ export const GetValidationQueueResponseItem = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getValidationQueueResponseDepartmentServiceHeadDailyBusinessPercentMin).max(getValidationQueueResponseDepartmentServiceHeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getValidationQueueResponseDepartmentServiceHeadWeeklyHoursExclusiveMin).max(getValidationQueueResponseDepartmentServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getValidationQueueResponseDepartmentOneServiceHeadDailyBusinessPercentMin).max(getValidationQueueResponseDepartmentOneServiceHeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getValidationQueueResponseDepartmentOneServiceHeadWeeklyHoursExclusiveMin).max(getValidationQueueResponseDepartmentOneServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getValidationQueueResponseDepartmentServiceHeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getValidationQueueResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMin).max(getValidationQueueResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getValidationQueueResponseDepartmentOneServiceHeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getValidationQueueResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin).max(getValidationQueueResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "serviceHeadDeputy": zod.union([zod.object({
@@ -1441,15 +1441,15 @@ export const GetValidationQueueResponseItem = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getValidationQueueResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMin).max(getValidationQueueResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getValidationQueueResponseDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(getValidationQueueResponseDepartmentServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getValidationQueueResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin).max(getValidationQueueResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getValidationQueueResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(getValidationQueueResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getValidationQueueResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getValidationQueueResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(getValidationQueueResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getValidationQueueResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getValidationQueueResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(getValidationQueueResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()])
-}),
-  "role": zod.object({
+}),zod.null()]),
+  "role": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
@@ -1463,11 +1463,11 @@ export const GetValidationQueueResponseItem = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getValidationQueueResponseRoleLeadDailyBusinessPercentMin).max(getValidationQueueResponseRoleLeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getValidationQueueResponseRoleLeadWeeklyHoursExclusiveMin).max(getValidationQueueResponseRoleLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getValidationQueueResponseRoleOneLeadDailyBusinessPercentMin).max(getValidationQueueResponseRoleOneLeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getValidationQueueResponseRoleOneLeadWeeklyHoursExclusiveMin).max(getValidationQueueResponseRoleOneLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getValidationQueueResponseRoleLeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getValidationQueueResponseRoleLeadDailyBusinessTasksItemPercentMin).max(getValidationQueueResponseRoleLeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getValidationQueueResponseRoleOneLeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getValidationQueueResponseRoleOneLeadDailyBusinessTasksItemPercentMin).max(getValidationQueueResponseRoleOneLeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "deputy": zod.union([zod.object({
@@ -1479,16 +1479,16 @@ export const GetValidationQueueResponseItem = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getValidationQueueResponseRoleDeputyOneDailyBusinessPercentMin).max(getValidationQueueResponseRoleDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getValidationQueueResponseRoleDeputyOneWeeklyHoursExclusiveMin).max(getValidationQueueResponseRoleDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getValidationQueueResponseRoleOneDeputyOneDailyBusinessPercentMin).max(getValidationQueueResponseRoleOneDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getValidationQueueResponseRoleOneDeputyOneWeeklyHoursExclusiveMin).max(getValidationQueueResponseRoleOneDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getValidationQueueResponseRoleDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getValidationQueueResponseRoleDeputyOneDailyBusinessTasksItemPercentMin).max(getValidationQueueResponseRoleDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getValidationQueueResponseRoleOneDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getValidationQueueResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMin).max(getValidationQueueResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "memberCount": zod.number().int().optional(),
   "memberIds": zod.array(zod.string()).optional()
-}),
+}),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
@@ -1601,49 +1601,49 @@ export const ListTopicsQueryParams = zod.object({
 
 export const listTopicsResponseDocumentationUrlMax = 2048;
 
-export const listTopicsResponseDepartmentServiceHeadDailyBusinessPercentMin = 0;
-export const listTopicsResponseDepartmentServiceHeadDailyBusinessPercentMax = 100;
+export const listTopicsResponseDepartmentOneServiceHeadDailyBusinessPercentMin = 0;
+export const listTopicsResponseDepartmentOneServiceHeadDailyBusinessPercentMax = 100;
 
-export const listTopicsResponseDepartmentServiceHeadWeeklyHoursExclusiveMin = 0;
-export const listTopicsResponseDepartmentServiceHeadWeeklyHoursMax = 168;
+export const listTopicsResponseDepartmentOneServiceHeadWeeklyHoursExclusiveMin = 0;
+export const listTopicsResponseDepartmentOneServiceHeadWeeklyHoursMax = 168;
 
-export const listTopicsResponseDepartmentServiceHeadDailyBusinessTasksItemNameMax = 120;
+export const listTopicsResponseDepartmentOneServiceHeadDailyBusinessTasksItemNameMax = 120;
 
-export const listTopicsResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMin = 0;
-export const listTopicsResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMax = 100;
+export const listTopicsResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin = 0;
+export const listTopicsResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax = 100;
 
-export const listTopicsResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMin = 0;
-export const listTopicsResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMax = 100;
+export const listTopicsResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin = 0;
+export const listTopicsResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax = 100;
 
-export const listTopicsResponseDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
-export const listTopicsResponseDepartmentServiceHeadDeputyOneWeeklyHoursMax = 168;
+export const listTopicsResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
+export const listTopicsResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursMax = 168;
 
-export const listTopicsResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const listTopicsResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const listTopicsResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const listTopicsResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const listTopicsResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const listTopicsResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
-export const listTopicsResponseRoleLeadDailyBusinessPercentMin = 0;
-export const listTopicsResponseRoleLeadDailyBusinessPercentMax = 100;
+export const listTopicsResponseRoleOneLeadDailyBusinessPercentMin = 0;
+export const listTopicsResponseRoleOneLeadDailyBusinessPercentMax = 100;
 
-export const listTopicsResponseRoleLeadWeeklyHoursExclusiveMin = 0;
-export const listTopicsResponseRoleLeadWeeklyHoursMax = 168;
+export const listTopicsResponseRoleOneLeadWeeklyHoursExclusiveMin = 0;
+export const listTopicsResponseRoleOneLeadWeeklyHoursMax = 168;
 
-export const listTopicsResponseRoleLeadDailyBusinessTasksItemNameMax = 120;
+export const listTopicsResponseRoleOneLeadDailyBusinessTasksItemNameMax = 120;
 
-export const listTopicsResponseRoleLeadDailyBusinessTasksItemPercentMin = 0;
-export const listTopicsResponseRoleLeadDailyBusinessTasksItemPercentMax = 100;
+export const listTopicsResponseRoleOneLeadDailyBusinessTasksItemPercentMin = 0;
+export const listTopicsResponseRoleOneLeadDailyBusinessTasksItemPercentMax = 100;
 
-export const listTopicsResponseRoleDeputyOneDailyBusinessPercentMin = 0;
-export const listTopicsResponseRoleDeputyOneDailyBusinessPercentMax = 100;
+export const listTopicsResponseRoleOneDeputyOneDailyBusinessPercentMin = 0;
+export const listTopicsResponseRoleOneDeputyOneDailyBusinessPercentMax = 100;
 
-export const listTopicsResponseRoleDeputyOneWeeklyHoursExclusiveMin = 0;
-export const listTopicsResponseRoleDeputyOneWeeklyHoursMax = 168;
+export const listTopicsResponseRoleOneDeputyOneWeeklyHoursExclusiveMin = 0;
+export const listTopicsResponseRoleOneDeputyOneWeeklyHoursMax = 168;
 
-export const listTopicsResponseRoleDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const listTopicsResponseRoleOneDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const listTopicsResponseRoleDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const listTopicsResponseRoleDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const listTopicsResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const listTopicsResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
 export const listTopicsResponseCreatorDailyBusinessPercentMin = 0;
 export const listTopicsResponseCreatorDailyBusinessPercentMax = 100;
@@ -1698,7 +1698,7 @@ export const ListTopicsResponseItem = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "documentationUrl": zod.string().url().max(listTopicsResponseDocumentationUrlMax).nullish(),
-  "department": zod.object({
+  "department": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "serviceHead": zod.object({
@@ -1710,11 +1710,11 @@ export const ListTopicsResponseItem = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(listTopicsResponseDepartmentServiceHeadDailyBusinessPercentMin).max(listTopicsResponseDepartmentServiceHeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(listTopicsResponseDepartmentServiceHeadWeeklyHoursExclusiveMin).max(listTopicsResponseDepartmentServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(listTopicsResponseDepartmentOneServiceHeadDailyBusinessPercentMin).max(listTopicsResponseDepartmentOneServiceHeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(listTopicsResponseDepartmentOneServiceHeadWeeklyHoursExclusiveMin).max(listTopicsResponseDepartmentOneServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(listTopicsResponseDepartmentServiceHeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(listTopicsResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMin).max(listTopicsResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(listTopicsResponseDepartmentOneServiceHeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(listTopicsResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin).max(listTopicsResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "serviceHeadDeputy": zod.union([zod.object({
@@ -1726,15 +1726,15 @@ export const ListTopicsResponseItem = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(listTopicsResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMin).max(listTopicsResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(listTopicsResponseDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(listTopicsResponseDepartmentServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(listTopicsResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin).max(listTopicsResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(listTopicsResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(listTopicsResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(listTopicsResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(listTopicsResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(listTopicsResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(listTopicsResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(listTopicsResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(listTopicsResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()])
-}),
-  "role": zod.object({
+}),zod.null()]),
+  "role": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
@@ -1748,11 +1748,11 @@ export const ListTopicsResponseItem = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(listTopicsResponseRoleLeadDailyBusinessPercentMin).max(listTopicsResponseRoleLeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(listTopicsResponseRoleLeadWeeklyHoursExclusiveMin).max(listTopicsResponseRoleLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(listTopicsResponseRoleOneLeadDailyBusinessPercentMin).max(listTopicsResponseRoleOneLeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(listTopicsResponseRoleOneLeadWeeklyHoursExclusiveMin).max(listTopicsResponseRoleOneLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(listTopicsResponseRoleLeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(listTopicsResponseRoleLeadDailyBusinessTasksItemPercentMin).max(listTopicsResponseRoleLeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(listTopicsResponseRoleOneLeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(listTopicsResponseRoleOneLeadDailyBusinessTasksItemPercentMin).max(listTopicsResponseRoleOneLeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "deputy": zod.union([zod.object({
@@ -1764,16 +1764,16 @@ export const ListTopicsResponseItem = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(listTopicsResponseRoleDeputyOneDailyBusinessPercentMin).max(listTopicsResponseRoleDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(listTopicsResponseRoleDeputyOneWeeklyHoursExclusiveMin).max(listTopicsResponseRoleDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(listTopicsResponseRoleOneDeputyOneDailyBusinessPercentMin).max(listTopicsResponseRoleOneDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(listTopicsResponseRoleOneDeputyOneWeeklyHoursExclusiveMin).max(listTopicsResponseRoleOneDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(listTopicsResponseRoleDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(listTopicsResponseRoleDeputyOneDailyBusinessTasksItemPercentMin).max(listTopicsResponseRoleDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(listTopicsResponseRoleOneDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(listTopicsResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMin).max(listTopicsResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "memberCount": zod.number().int().optional(),
   "memberIds": zod.array(zod.string()).optional()
-}),
+}),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
@@ -1878,6 +1878,8 @@ export const createTopicBodyDescriptionMax = 2000;
 
 export const createTopicBodyDocumentationUrlMax = 2048;
 
+
+
 export const createTopicBodyEstimatedEffortHoursMin = 0;
 
 
@@ -1886,8 +1888,8 @@ export const CreateTopicBody = zod.object({
   "title": zod.string().min(createTopicBodyTitleMin).max(createTopicBodyTitleMax),
   "description": zod.string().min(createTopicBodyDescriptionMin).max(createTopicBodyDescriptionMax),
   "documentationUrl": zod.string().url().max(createTopicBodyDocumentationUrlMax).nullish(),
-  "departmentId": zod.string(),
-  "roleId": zod.string(),
+  "departmentId": zod.string().min(1).nullish(),
+  "roleId": zod.string().min(1).nullish(),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "targetDate": zod.coerce.date().nullish(),
   "primaryAssigneeId": zod.string().nullish(),
@@ -1899,49 +1901,49 @@ export const CreateTopicBody = zod.object({
 
 export const createTopicResponseDocumentationUrlMax = 2048;
 
-export const createTopicResponseDepartmentServiceHeadDailyBusinessPercentMin = 0;
-export const createTopicResponseDepartmentServiceHeadDailyBusinessPercentMax = 100;
+export const createTopicResponseDepartmentOneServiceHeadDailyBusinessPercentMin = 0;
+export const createTopicResponseDepartmentOneServiceHeadDailyBusinessPercentMax = 100;
 
-export const createTopicResponseDepartmentServiceHeadWeeklyHoursExclusiveMin = 0;
-export const createTopicResponseDepartmentServiceHeadWeeklyHoursMax = 168;
+export const createTopicResponseDepartmentOneServiceHeadWeeklyHoursExclusiveMin = 0;
+export const createTopicResponseDepartmentOneServiceHeadWeeklyHoursMax = 168;
 
-export const createTopicResponseDepartmentServiceHeadDailyBusinessTasksItemNameMax = 120;
+export const createTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemNameMax = 120;
 
-export const createTopicResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMin = 0;
-export const createTopicResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMax = 100;
+export const createTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin = 0;
+export const createTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax = 100;
 
-export const createTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMin = 0;
-export const createTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMax = 100;
+export const createTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin = 0;
+export const createTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax = 100;
 
-export const createTopicResponseDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
-export const createTopicResponseDepartmentServiceHeadDeputyOneWeeklyHoursMax = 168;
+export const createTopicResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
+export const createTopicResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursMax = 168;
 
-export const createTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const createTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const createTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const createTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const createTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const createTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
-export const createTopicResponseRoleLeadDailyBusinessPercentMin = 0;
-export const createTopicResponseRoleLeadDailyBusinessPercentMax = 100;
+export const createTopicResponseRoleOneLeadDailyBusinessPercentMin = 0;
+export const createTopicResponseRoleOneLeadDailyBusinessPercentMax = 100;
 
-export const createTopicResponseRoleLeadWeeklyHoursExclusiveMin = 0;
-export const createTopicResponseRoleLeadWeeklyHoursMax = 168;
+export const createTopicResponseRoleOneLeadWeeklyHoursExclusiveMin = 0;
+export const createTopicResponseRoleOneLeadWeeklyHoursMax = 168;
 
-export const createTopicResponseRoleLeadDailyBusinessTasksItemNameMax = 120;
+export const createTopicResponseRoleOneLeadDailyBusinessTasksItemNameMax = 120;
 
-export const createTopicResponseRoleLeadDailyBusinessTasksItemPercentMin = 0;
-export const createTopicResponseRoleLeadDailyBusinessTasksItemPercentMax = 100;
+export const createTopicResponseRoleOneLeadDailyBusinessTasksItemPercentMin = 0;
+export const createTopicResponseRoleOneLeadDailyBusinessTasksItemPercentMax = 100;
 
-export const createTopicResponseRoleDeputyOneDailyBusinessPercentMin = 0;
-export const createTopicResponseRoleDeputyOneDailyBusinessPercentMax = 100;
+export const createTopicResponseRoleOneDeputyOneDailyBusinessPercentMin = 0;
+export const createTopicResponseRoleOneDeputyOneDailyBusinessPercentMax = 100;
 
-export const createTopicResponseRoleDeputyOneWeeklyHoursExclusiveMin = 0;
-export const createTopicResponseRoleDeputyOneWeeklyHoursMax = 168;
+export const createTopicResponseRoleOneDeputyOneWeeklyHoursExclusiveMin = 0;
+export const createTopicResponseRoleOneDeputyOneWeeklyHoursMax = 168;
 
-export const createTopicResponseRoleDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const createTopicResponseRoleOneDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const createTopicResponseRoleDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const createTopicResponseRoleDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const createTopicResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const createTopicResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
 export const createTopicResponseCreatorDailyBusinessPercentMin = 0;
 export const createTopicResponseCreatorDailyBusinessPercentMax = 100;
@@ -1996,7 +1998,7 @@ export const CreateTopicResponse = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "documentationUrl": zod.string().url().max(createTopicResponseDocumentationUrlMax).nullish(),
-  "department": zod.object({
+  "department": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "serviceHead": zod.object({
@@ -2008,11 +2010,11 @@ export const CreateTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(createTopicResponseDepartmentServiceHeadDailyBusinessPercentMin).max(createTopicResponseDepartmentServiceHeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(createTopicResponseDepartmentServiceHeadWeeklyHoursExclusiveMin).max(createTopicResponseDepartmentServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(createTopicResponseDepartmentOneServiceHeadDailyBusinessPercentMin).max(createTopicResponseDepartmentOneServiceHeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(createTopicResponseDepartmentOneServiceHeadWeeklyHoursExclusiveMin).max(createTopicResponseDepartmentOneServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(createTopicResponseDepartmentServiceHeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(createTopicResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMin).max(createTopicResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(createTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(createTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin).max(createTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "serviceHeadDeputy": zod.union([zod.object({
@@ -2024,15 +2026,15 @@ export const CreateTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(createTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMin).max(createTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(createTopicResponseDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(createTopicResponseDepartmentServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(createTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin).max(createTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(createTopicResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(createTopicResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(createTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(createTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(createTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(createTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(createTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(createTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()])
-}),
-  "role": zod.object({
+}),zod.null()]),
+  "role": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
@@ -2046,11 +2048,11 @@ export const CreateTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(createTopicResponseRoleLeadDailyBusinessPercentMin).max(createTopicResponseRoleLeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(createTopicResponseRoleLeadWeeklyHoursExclusiveMin).max(createTopicResponseRoleLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(createTopicResponseRoleOneLeadDailyBusinessPercentMin).max(createTopicResponseRoleOneLeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(createTopicResponseRoleOneLeadWeeklyHoursExclusiveMin).max(createTopicResponseRoleOneLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(createTopicResponseRoleLeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(createTopicResponseRoleLeadDailyBusinessTasksItemPercentMin).max(createTopicResponseRoleLeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(createTopicResponseRoleOneLeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(createTopicResponseRoleOneLeadDailyBusinessTasksItemPercentMin).max(createTopicResponseRoleOneLeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "deputy": zod.union([zod.object({
@@ -2062,16 +2064,16 @@ export const CreateTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(createTopicResponseRoleDeputyOneDailyBusinessPercentMin).max(createTopicResponseRoleDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(createTopicResponseRoleDeputyOneWeeklyHoursExclusiveMin).max(createTopicResponseRoleDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(createTopicResponseRoleOneDeputyOneDailyBusinessPercentMin).max(createTopicResponseRoleOneDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(createTopicResponseRoleOneDeputyOneWeeklyHoursExclusiveMin).max(createTopicResponseRoleOneDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(createTopicResponseRoleDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(createTopicResponseRoleDeputyOneDailyBusinessTasksItemPercentMin).max(createTopicResponseRoleDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(createTopicResponseRoleOneDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(createTopicResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMin).max(createTopicResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "memberCount": zod.number().int().optional(),
   "memberIds": zod.array(zod.string()).optional()
-}),
+}),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
@@ -2173,7 +2175,7 @@ export const ListCalendarTopicsResponseItem = zod.object({
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "departmentName": zod.string(),
-  "roleId": zod.string(),
+  "roleId": zod.string().nullable(),
   "targetDate": zod.coerce.date().nullable(),
   "estimatedStartDate": zod.coerce.date().nullable(),
   "estimatedFinishDate": zod.coerce.date().nullable(),
@@ -2215,49 +2217,49 @@ export const GetTopicParams = zod.object({
 
 export const getTopicResponseOneDocumentationUrlMax = 2048;
 
-export const getTopicResponseOneDepartmentServiceHeadDailyBusinessPercentMin = 0;
-export const getTopicResponseOneDepartmentServiceHeadDailyBusinessPercentMax = 100;
+export const getTopicResponseOneDepartmentOneServiceHeadDailyBusinessPercentMin = 0;
+export const getTopicResponseOneDepartmentOneServiceHeadDailyBusinessPercentMax = 100;
 
-export const getTopicResponseOneDepartmentServiceHeadWeeklyHoursExclusiveMin = 0;
-export const getTopicResponseOneDepartmentServiceHeadWeeklyHoursMax = 168;
+export const getTopicResponseOneDepartmentOneServiceHeadWeeklyHoursExclusiveMin = 0;
+export const getTopicResponseOneDepartmentOneServiceHeadWeeklyHoursMax = 168;
 
-export const getTopicResponseOneDepartmentServiceHeadDailyBusinessTasksItemNameMax = 120;
+export const getTopicResponseOneDepartmentOneServiceHeadDailyBusinessTasksItemNameMax = 120;
 
-export const getTopicResponseOneDepartmentServiceHeadDailyBusinessTasksItemPercentMin = 0;
-export const getTopicResponseOneDepartmentServiceHeadDailyBusinessTasksItemPercentMax = 100;
+export const getTopicResponseOneDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin = 0;
+export const getTopicResponseOneDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax = 100;
 
-export const getTopicResponseOneDepartmentServiceHeadDeputyOneDailyBusinessPercentMin = 0;
-export const getTopicResponseOneDepartmentServiceHeadDeputyOneDailyBusinessPercentMax = 100;
+export const getTopicResponseOneDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin = 0;
+export const getTopicResponseOneDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax = 100;
 
-export const getTopicResponseOneDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
-export const getTopicResponseOneDepartmentServiceHeadDeputyOneWeeklyHoursMax = 168;
+export const getTopicResponseOneDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
+export const getTopicResponseOneDepartmentOneServiceHeadDeputyOneWeeklyHoursMax = 168;
 
-export const getTopicResponseOneDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const getTopicResponseOneDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const getTopicResponseOneDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const getTopicResponseOneDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const getTopicResponseOneDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const getTopicResponseOneDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
-export const getTopicResponseOneRoleLeadDailyBusinessPercentMin = 0;
-export const getTopicResponseOneRoleLeadDailyBusinessPercentMax = 100;
+export const getTopicResponseOneRoleOneLeadDailyBusinessPercentMin = 0;
+export const getTopicResponseOneRoleOneLeadDailyBusinessPercentMax = 100;
 
-export const getTopicResponseOneRoleLeadWeeklyHoursExclusiveMin = 0;
-export const getTopicResponseOneRoleLeadWeeklyHoursMax = 168;
+export const getTopicResponseOneRoleOneLeadWeeklyHoursExclusiveMin = 0;
+export const getTopicResponseOneRoleOneLeadWeeklyHoursMax = 168;
 
-export const getTopicResponseOneRoleLeadDailyBusinessTasksItemNameMax = 120;
+export const getTopicResponseOneRoleOneLeadDailyBusinessTasksItemNameMax = 120;
 
-export const getTopicResponseOneRoleLeadDailyBusinessTasksItemPercentMin = 0;
-export const getTopicResponseOneRoleLeadDailyBusinessTasksItemPercentMax = 100;
+export const getTopicResponseOneRoleOneLeadDailyBusinessTasksItemPercentMin = 0;
+export const getTopicResponseOneRoleOneLeadDailyBusinessTasksItemPercentMax = 100;
 
-export const getTopicResponseOneRoleDeputyOneDailyBusinessPercentMin = 0;
-export const getTopicResponseOneRoleDeputyOneDailyBusinessPercentMax = 100;
+export const getTopicResponseOneRoleOneDeputyOneDailyBusinessPercentMin = 0;
+export const getTopicResponseOneRoleOneDeputyOneDailyBusinessPercentMax = 100;
 
-export const getTopicResponseOneRoleDeputyOneWeeklyHoursExclusiveMin = 0;
-export const getTopicResponseOneRoleDeputyOneWeeklyHoursMax = 168;
+export const getTopicResponseOneRoleOneDeputyOneWeeklyHoursExclusiveMin = 0;
+export const getTopicResponseOneRoleOneDeputyOneWeeklyHoursMax = 168;
 
-export const getTopicResponseOneRoleDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const getTopicResponseOneRoleOneDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const getTopicResponseOneRoleDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const getTopicResponseOneRoleDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const getTopicResponseOneRoleOneDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const getTopicResponseOneRoleOneDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
 export const getTopicResponseOneCreatorDailyBusinessPercentMin = 0;
 export const getTopicResponseOneCreatorDailyBusinessPercentMax = 100;
@@ -2375,7 +2377,7 @@ export const GetTopicResponse = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "documentationUrl": zod.string().url().max(getTopicResponseOneDocumentationUrlMax).nullish(),
-  "department": zod.object({
+  "department": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "serviceHead": zod.object({
@@ -2387,11 +2389,11 @@ export const GetTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getTopicResponseOneDepartmentServiceHeadDailyBusinessPercentMin).max(getTopicResponseOneDepartmentServiceHeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getTopicResponseOneDepartmentServiceHeadWeeklyHoursExclusiveMin).max(getTopicResponseOneDepartmentServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getTopicResponseOneDepartmentOneServiceHeadDailyBusinessPercentMin).max(getTopicResponseOneDepartmentOneServiceHeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getTopicResponseOneDepartmentOneServiceHeadWeeklyHoursExclusiveMin).max(getTopicResponseOneDepartmentOneServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getTopicResponseOneDepartmentServiceHeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getTopicResponseOneDepartmentServiceHeadDailyBusinessTasksItemPercentMin).max(getTopicResponseOneDepartmentServiceHeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getTopicResponseOneDepartmentOneServiceHeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getTopicResponseOneDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin).max(getTopicResponseOneDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "serviceHeadDeputy": zod.union([zod.object({
@@ -2403,15 +2405,15 @@ export const GetTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getTopicResponseOneDepartmentServiceHeadDeputyOneDailyBusinessPercentMin).max(getTopicResponseOneDepartmentServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getTopicResponseOneDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(getTopicResponseOneDepartmentServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getTopicResponseOneDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin).max(getTopicResponseOneDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getTopicResponseOneDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(getTopicResponseOneDepartmentOneServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getTopicResponseOneDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getTopicResponseOneDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(getTopicResponseOneDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getTopicResponseOneDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getTopicResponseOneDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(getTopicResponseOneDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()])
-}),
-  "role": zod.object({
+}),zod.null()]),
+  "role": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
@@ -2425,11 +2427,11 @@ export const GetTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getTopicResponseOneRoleLeadDailyBusinessPercentMin).max(getTopicResponseOneRoleLeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getTopicResponseOneRoleLeadWeeklyHoursExclusiveMin).max(getTopicResponseOneRoleLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getTopicResponseOneRoleOneLeadDailyBusinessPercentMin).max(getTopicResponseOneRoleOneLeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getTopicResponseOneRoleOneLeadWeeklyHoursExclusiveMin).max(getTopicResponseOneRoleOneLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getTopicResponseOneRoleLeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getTopicResponseOneRoleLeadDailyBusinessTasksItemPercentMin).max(getTopicResponseOneRoleLeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getTopicResponseOneRoleOneLeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getTopicResponseOneRoleOneLeadDailyBusinessTasksItemPercentMin).max(getTopicResponseOneRoleOneLeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "deputy": zod.union([zod.object({
@@ -2441,16 +2443,16 @@ export const GetTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(getTopicResponseOneRoleDeputyOneDailyBusinessPercentMin).max(getTopicResponseOneRoleDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(getTopicResponseOneRoleDeputyOneWeeklyHoursExclusiveMin).max(getTopicResponseOneRoleDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(getTopicResponseOneRoleOneDeputyOneDailyBusinessPercentMin).max(getTopicResponseOneRoleOneDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(getTopicResponseOneRoleOneDeputyOneWeeklyHoursExclusiveMin).max(getTopicResponseOneRoleOneDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(getTopicResponseOneRoleDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(getTopicResponseOneRoleDeputyOneDailyBusinessTasksItemPercentMin).max(getTopicResponseOneRoleDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(getTopicResponseOneRoleOneDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(getTopicResponseOneRoleOneDeputyOneDailyBusinessTasksItemPercentMin).max(getTopicResponseOneRoleOneDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "memberCount": zod.number().int().optional(),
   "memberIds": zod.array(zod.string()).optional()
-}),
+}),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
@@ -2673,6 +2675,8 @@ export const updateTopicBodyDescriptionMax = 2000;
 
 export const updateTopicBodyDocumentationUrlMax = 2048;
 
+
+
 export const updateTopicBodyEstimatedEffortHoursMin = 0;
 
 export const updateTopicBodyCompletionSummaryMax = 1000;
@@ -2683,7 +2687,8 @@ export const UpdateTopicBody = zod.object({
   "title": zod.string().min(updateTopicBodyTitleMin).max(updateTopicBodyTitleMax).optional(),
   "description": zod.string().min(updateTopicBodyDescriptionMin).max(updateTopicBodyDescriptionMax).optional(),
   "documentationUrl": zod.string().url().max(updateTopicBodyDocumentationUrlMax).nullish(),
-  "roleId": zod.string().optional(),
+  "departmentId": zod.string().min(1).nullish(),
+  "roleId": zod.string().min(1).nullish(),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']).optional(),
   "estimatedStartDate": zod.coerce.date().nullish(),
   "estimatedFinishDate": zod.coerce.date().nullish(),
@@ -2695,49 +2700,49 @@ export const UpdateTopicBody = zod.object({
 
 export const updateTopicResponseDocumentationUrlMax = 2048;
 
-export const updateTopicResponseDepartmentServiceHeadDailyBusinessPercentMin = 0;
-export const updateTopicResponseDepartmentServiceHeadDailyBusinessPercentMax = 100;
+export const updateTopicResponseDepartmentOneServiceHeadDailyBusinessPercentMin = 0;
+export const updateTopicResponseDepartmentOneServiceHeadDailyBusinessPercentMax = 100;
 
-export const updateTopicResponseDepartmentServiceHeadWeeklyHoursExclusiveMin = 0;
-export const updateTopicResponseDepartmentServiceHeadWeeklyHoursMax = 168;
+export const updateTopicResponseDepartmentOneServiceHeadWeeklyHoursExclusiveMin = 0;
+export const updateTopicResponseDepartmentOneServiceHeadWeeklyHoursMax = 168;
 
-export const updateTopicResponseDepartmentServiceHeadDailyBusinessTasksItemNameMax = 120;
+export const updateTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemNameMax = 120;
 
-export const updateTopicResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMin = 0;
-export const updateTopicResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMax = 100;
+export const updateTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin = 0;
+export const updateTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax = 100;
 
-export const updateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMin = 0;
-export const updateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMax = 100;
+export const updateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin = 0;
+export const updateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax = 100;
 
-export const updateTopicResponseDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
-export const updateTopicResponseDepartmentServiceHeadDeputyOneWeeklyHoursMax = 168;
+export const updateTopicResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
+export const updateTopicResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursMax = 168;
 
-export const updateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const updateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const updateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const updateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const updateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const updateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
-export const updateTopicResponseRoleLeadDailyBusinessPercentMin = 0;
-export const updateTopicResponseRoleLeadDailyBusinessPercentMax = 100;
+export const updateTopicResponseRoleOneLeadDailyBusinessPercentMin = 0;
+export const updateTopicResponseRoleOneLeadDailyBusinessPercentMax = 100;
 
-export const updateTopicResponseRoleLeadWeeklyHoursExclusiveMin = 0;
-export const updateTopicResponseRoleLeadWeeklyHoursMax = 168;
+export const updateTopicResponseRoleOneLeadWeeklyHoursExclusiveMin = 0;
+export const updateTopicResponseRoleOneLeadWeeklyHoursMax = 168;
 
-export const updateTopicResponseRoleLeadDailyBusinessTasksItemNameMax = 120;
+export const updateTopicResponseRoleOneLeadDailyBusinessTasksItemNameMax = 120;
 
-export const updateTopicResponseRoleLeadDailyBusinessTasksItemPercentMin = 0;
-export const updateTopicResponseRoleLeadDailyBusinessTasksItemPercentMax = 100;
+export const updateTopicResponseRoleOneLeadDailyBusinessTasksItemPercentMin = 0;
+export const updateTopicResponseRoleOneLeadDailyBusinessTasksItemPercentMax = 100;
 
-export const updateTopicResponseRoleDeputyOneDailyBusinessPercentMin = 0;
-export const updateTopicResponseRoleDeputyOneDailyBusinessPercentMax = 100;
+export const updateTopicResponseRoleOneDeputyOneDailyBusinessPercentMin = 0;
+export const updateTopicResponseRoleOneDeputyOneDailyBusinessPercentMax = 100;
 
-export const updateTopicResponseRoleDeputyOneWeeklyHoursExclusiveMin = 0;
-export const updateTopicResponseRoleDeputyOneWeeklyHoursMax = 168;
+export const updateTopicResponseRoleOneDeputyOneWeeklyHoursExclusiveMin = 0;
+export const updateTopicResponseRoleOneDeputyOneWeeklyHoursMax = 168;
 
-export const updateTopicResponseRoleDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const updateTopicResponseRoleOneDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const updateTopicResponseRoleDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const updateTopicResponseRoleDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const updateTopicResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const updateTopicResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
 export const updateTopicResponseCreatorDailyBusinessPercentMin = 0;
 export const updateTopicResponseCreatorDailyBusinessPercentMax = 100;
@@ -2792,7 +2797,7 @@ export const UpdateTopicResponse = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "documentationUrl": zod.string().url().max(updateTopicResponseDocumentationUrlMax).nullish(),
-  "department": zod.object({
+  "department": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "serviceHead": zod.object({
@@ -2804,11 +2809,11 @@ export const UpdateTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(updateTopicResponseDepartmentServiceHeadDailyBusinessPercentMin).max(updateTopicResponseDepartmentServiceHeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(updateTopicResponseDepartmentServiceHeadWeeklyHoursExclusiveMin).max(updateTopicResponseDepartmentServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(updateTopicResponseDepartmentOneServiceHeadDailyBusinessPercentMin).max(updateTopicResponseDepartmentOneServiceHeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(updateTopicResponseDepartmentOneServiceHeadWeeklyHoursExclusiveMin).max(updateTopicResponseDepartmentOneServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(updateTopicResponseDepartmentServiceHeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(updateTopicResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMin).max(updateTopicResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(updateTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(updateTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin).max(updateTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "serviceHeadDeputy": zod.union([zod.object({
@@ -2820,15 +2825,15 @@ export const UpdateTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(updateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMin).max(updateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(updateTopicResponseDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(updateTopicResponseDepartmentServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(updateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin).max(updateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(updateTopicResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(updateTopicResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(updateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(updateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(updateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(updateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(updateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(updateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()])
-}),
-  "role": zod.object({
+}),zod.null()]),
+  "role": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
@@ -2842,11 +2847,11 @@ export const UpdateTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(updateTopicResponseRoleLeadDailyBusinessPercentMin).max(updateTopicResponseRoleLeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(updateTopicResponseRoleLeadWeeklyHoursExclusiveMin).max(updateTopicResponseRoleLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(updateTopicResponseRoleOneLeadDailyBusinessPercentMin).max(updateTopicResponseRoleOneLeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(updateTopicResponseRoleOneLeadWeeklyHoursExclusiveMin).max(updateTopicResponseRoleOneLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(updateTopicResponseRoleLeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(updateTopicResponseRoleLeadDailyBusinessTasksItemPercentMin).max(updateTopicResponseRoleLeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(updateTopicResponseRoleOneLeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(updateTopicResponseRoleOneLeadDailyBusinessTasksItemPercentMin).max(updateTopicResponseRoleOneLeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "deputy": zod.union([zod.object({
@@ -2858,16 +2863,16 @@ export const UpdateTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(updateTopicResponseRoleDeputyOneDailyBusinessPercentMin).max(updateTopicResponseRoleDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(updateTopicResponseRoleDeputyOneWeeklyHoursExclusiveMin).max(updateTopicResponseRoleDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(updateTopicResponseRoleOneDeputyOneDailyBusinessPercentMin).max(updateTopicResponseRoleOneDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(updateTopicResponseRoleOneDeputyOneWeeklyHoursExclusiveMin).max(updateTopicResponseRoleOneDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(updateTopicResponseRoleDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(updateTopicResponseRoleDeputyOneDailyBusinessTasksItemPercentMin).max(updateTopicResponseRoleDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(updateTopicResponseRoleOneDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(updateTopicResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMin).max(updateTopicResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "memberCount": zod.number().int().optional(),
   "memberIds": zod.array(zod.string()).optional()
-}),
+}),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
@@ -2988,49 +2993,49 @@ export const UpdateTopicFinishDateBody = zod.object({
 
 export const updateTopicFinishDateResponseDocumentationUrlMax = 2048;
 
-export const updateTopicFinishDateResponseDepartmentServiceHeadDailyBusinessPercentMin = 0;
-export const updateTopicFinishDateResponseDepartmentServiceHeadDailyBusinessPercentMax = 100;
+export const updateTopicFinishDateResponseDepartmentOneServiceHeadDailyBusinessPercentMin = 0;
+export const updateTopicFinishDateResponseDepartmentOneServiceHeadDailyBusinessPercentMax = 100;
 
-export const updateTopicFinishDateResponseDepartmentServiceHeadWeeklyHoursExclusiveMin = 0;
-export const updateTopicFinishDateResponseDepartmentServiceHeadWeeklyHoursMax = 168;
+export const updateTopicFinishDateResponseDepartmentOneServiceHeadWeeklyHoursExclusiveMin = 0;
+export const updateTopicFinishDateResponseDepartmentOneServiceHeadWeeklyHoursMax = 168;
 
-export const updateTopicFinishDateResponseDepartmentServiceHeadDailyBusinessTasksItemNameMax = 120;
+export const updateTopicFinishDateResponseDepartmentOneServiceHeadDailyBusinessTasksItemNameMax = 120;
 
-export const updateTopicFinishDateResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMin = 0;
-export const updateTopicFinishDateResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMax = 100;
+export const updateTopicFinishDateResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin = 0;
+export const updateTopicFinishDateResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax = 100;
 
-export const updateTopicFinishDateResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMin = 0;
-export const updateTopicFinishDateResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMax = 100;
+export const updateTopicFinishDateResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin = 0;
+export const updateTopicFinishDateResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax = 100;
 
-export const updateTopicFinishDateResponseDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
-export const updateTopicFinishDateResponseDepartmentServiceHeadDeputyOneWeeklyHoursMax = 168;
+export const updateTopicFinishDateResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
+export const updateTopicFinishDateResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursMax = 168;
 
-export const updateTopicFinishDateResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const updateTopicFinishDateResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const updateTopicFinishDateResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const updateTopicFinishDateResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const updateTopicFinishDateResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const updateTopicFinishDateResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
-export const updateTopicFinishDateResponseRoleLeadDailyBusinessPercentMin = 0;
-export const updateTopicFinishDateResponseRoleLeadDailyBusinessPercentMax = 100;
+export const updateTopicFinishDateResponseRoleOneLeadDailyBusinessPercentMin = 0;
+export const updateTopicFinishDateResponseRoleOneLeadDailyBusinessPercentMax = 100;
 
-export const updateTopicFinishDateResponseRoleLeadWeeklyHoursExclusiveMin = 0;
-export const updateTopicFinishDateResponseRoleLeadWeeklyHoursMax = 168;
+export const updateTopicFinishDateResponseRoleOneLeadWeeklyHoursExclusiveMin = 0;
+export const updateTopicFinishDateResponseRoleOneLeadWeeklyHoursMax = 168;
 
-export const updateTopicFinishDateResponseRoleLeadDailyBusinessTasksItemNameMax = 120;
+export const updateTopicFinishDateResponseRoleOneLeadDailyBusinessTasksItemNameMax = 120;
 
-export const updateTopicFinishDateResponseRoleLeadDailyBusinessTasksItemPercentMin = 0;
-export const updateTopicFinishDateResponseRoleLeadDailyBusinessTasksItemPercentMax = 100;
+export const updateTopicFinishDateResponseRoleOneLeadDailyBusinessTasksItemPercentMin = 0;
+export const updateTopicFinishDateResponseRoleOneLeadDailyBusinessTasksItemPercentMax = 100;
 
-export const updateTopicFinishDateResponseRoleDeputyOneDailyBusinessPercentMin = 0;
-export const updateTopicFinishDateResponseRoleDeputyOneDailyBusinessPercentMax = 100;
+export const updateTopicFinishDateResponseRoleOneDeputyOneDailyBusinessPercentMin = 0;
+export const updateTopicFinishDateResponseRoleOneDeputyOneDailyBusinessPercentMax = 100;
 
-export const updateTopicFinishDateResponseRoleDeputyOneWeeklyHoursExclusiveMin = 0;
-export const updateTopicFinishDateResponseRoleDeputyOneWeeklyHoursMax = 168;
+export const updateTopicFinishDateResponseRoleOneDeputyOneWeeklyHoursExclusiveMin = 0;
+export const updateTopicFinishDateResponseRoleOneDeputyOneWeeklyHoursMax = 168;
 
-export const updateTopicFinishDateResponseRoleDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const updateTopicFinishDateResponseRoleOneDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const updateTopicFinishDateResponseRoleDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const updateTopicFinishDateResponseRoleDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const updateTopicFinishDateResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const updateTopicFinishDateResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
 export const updateTopicFinishDateResponseCreatorDailyBusinessPercentMin = 0;
 export const updateTopicFinishDateResponseCreatorDailyBusinessPercentMax = 100;
@@ -3085,7 +3090,7 @@ export const UpdateTopicFinishDateResponse = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "documentationUrl": zod.string().url().max(updateTopicFinishDateResponseDocumentationUrlMax).nullish(),
-  "department": zod.object({
+  "department": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "serviceHead": zod.object({
@@ -3097,11 +3102,11 @@ export const UpdateTopicFinishDateResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(updateTopicFinishDateResponseDepartmentServiceHeadDailyBusinessPercentMin).max(updateTopicFinishDateResponseDepartmentServiceHeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(updateTopicFinishDateResponseDepartmentServiceHeadWeeklyHoursExclusiveMin).max(updateTopicFinishDateResponseDepartmentServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(updateTopicFinishDateResponseDepartmentOneServiceHeadDailyBusinessPercentMin).max(updateTopicFinishDateResponseDepartmentOneServiceHeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(updateTopicFinishDateResponseDepartmentOneServiceHeadWeeklyHoursExclusiveMin).max(updateTopicFinishDateResponseDepartmentOneServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(updateTopicFinishDateResponseDepartmentServiceHeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(updateTopicFinishDateResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMin).max(updateTopicFinishDateResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(updateTopicFinishDateResponseDepartmentOneServiceHeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(updateTopicFinishDateResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin).max(updateTopicFinishDateResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "serviceHeadDeputy": zod.union([zod.object({
@@ -3113,15 +3118,15 @@ export const UpdateTopicFinishDateResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(updateTopicFinishDateResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMin).max(updateTopicFinishDateResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(updateTopicFinishDateResponseDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(updateTopicFinishDateResponseDepartmentServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(updateTopicFinishDateResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin).max(updateTopicFinishDateResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(updateTopicFinishDateResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(updateTopicFinishDateResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(updateTopicFinishDateResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(updateTopicFinishDateResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(updateTopicFinishDateResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(updateTopicFinishDateResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(updateTopicFinishDateResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(updateTopicFinishDateResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()])
-}),
-  "role": zod.object({
+}),zod.null()]),
+  "role": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
@@ -3135,11 +3140,11 @@ export const UpdateTopicFinishDateResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(updateTopicFinishDateResponseRoleLeadDailyBusinessPercentMin).max(updateTopicFinishDateResponseRoleLeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(updateTopicFinishDateResponseRoleLeadWeeklyHoursExclusiveMin).max(updateTopicFinishDateResponseRoleLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(updateTopicFinishDateResponseRoleOneLeadDailyBusinessPercentMin).max(updateTopicFinishDateResponseRoleOneLeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(updateTopicFinishDateResponseRoleOneLeadWeeklyHoursExclusiveMin).max(updateTopicFinishDateResponseRoleOneLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(updateTopicFinishDateResponseRoleLeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(updateTopicFinishDateResponseRoleLeadDailyBusinessTasksItemPercentMin).max(updateTopicFinishDateResponseRoleLeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(updateTopicFinishDateResponseRoleOneLeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(updateTopicFinishDateResponseRoleOneLeadDailyBusinessTasksItemPercentMin).max(updateTopicFinishDateResponseRoleOneLeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "deputy": zod.union([zod.object({
@@ -3151,16 +3156,16 @@ export const UpdateTopicFinishDateResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(updateTopicFinishDateResponseRoleDeputyOneDailyBusinessPercentMin).max(updateTopicFinishDateResponseRoleDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(updateTopicFinishDateResponseRoleDeputyOneWeeklyHoursExclusiveMin).max(updateTopicFinishDateResponseRoleDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(updateTopicFinishDateResponseRoleOneDeputyOneDailyBusinessPercentMin).max(updateTopicFinishDateResponseRoleOneDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(updateTopicFinishDateResponseRoleOneDeputyOneWeeklyHoursExclusiveMin).max(updateTopicFinishDateResponseRoleOneDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(updateTopicFinishDateResponseRoleDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(updateTopicFinishDateResponseRoleDeputyOneDailyBusinessTasksItemPercentMin).max(updateTopicFinishDateResponseRoleDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(updateTopicFinishDateResponseRoleOneDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(updateTopicFinishDateResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMin).max(updateTopicFinishDateResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "memberCount": zod.number().int().optional(),
   "memberIds": zod.array(zod.string()).optional()
-}),
+}),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
@@ -3306,59 +3311,63 @@ export const ValidateTopicParams = zod.object({
   "topicId": zod.coerce.string()
 })
 
+
+
 export const validateTopicBodyNoteMax = 1000;
 
 
 
 export const ValidateTopicBody = zod.object({
+  "departmentId": zod.string().min(1).optional(),
+  "roleId": zod.string().min(1).optional(),
   "note": zod.string().max(validateTopicBodyNoteMax).nullish()
 })
 
 export const validateTopicResponseDocumentationUrlMax = 2048;
 
-export const validateTopicResponseDepartmentServiceHeadDailyBusinessPercentMin = 0;
-export const validateTopicResponseDepartmentServiceHeadDailyBusinessPercentMax = 100;
+export const validateTopicResponseDepartmentOneServiceHeadDailyBusinessPercentMin = 0;
+export const validateTopicResponseDepartmentOneServiceHeadDailyBusinessPercentMax = 100;
 
-export const validateTopicResponseDepartmentServiceHeadWeeklyHoursExclusiveMin = 0;
-export const validateTopicResponseDepartmentServiceHeadWeeklyHoursMax = 168;
+export const validateTopicResponseDepartmentOneServiceHeadWeeklyHoursExclusiveMin = 0;
+export const validateTopicResponseDepartmentOneServiceHeadWeeklyHoursMax = 168;
 
-export const validateTopicResponseDepartmentServiceHeadDailyBusinessTasksItemNameMax = 120;
+export const validateTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemNameMax = 120;
 
-export const validateTopicResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMin = 0;
-export const validateTopicResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMax = 100;
+export const validateTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin = 0;
+export const validateTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax = 100;
 
-export const validateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMin = 0;
-export const validateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMax = 100;
+export const validateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin = 0;
+export const validateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax = 100;
 
-export const validateTopicResponseDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
-export const validateTopicResponseDepartmentServiceHeadDeputyOneWeeklyHoursMax = 168;
+export const validateTopicResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
+export const validateTopicResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursMax = 168;
 
-export const validateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const validateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const validateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const validateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const validateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const validateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
-export const validateTopicResponseRoleLeadDailyBusinessPercentMin = 0;
-export const validateTopicResponseRoleLeadDailyBusinessPercentMax = 100;
+export const validateTopicResponseRoleOneLeadDailyBusinessPercentMin = 0;
+export const validateTopicResponseRoleOneLeadDailyBusinessPercentMax = 100;
 
-export const validateTopicResponseRoleLeadWeeklyHoursExclusiveMin = 0;
-export const validateTopicResponseRoleLeadWeeklyHoursMax = 168;
+export const validateTopicResponseRoleOneLeadWeeklyHoursExclusiveMin = 0;
+export const validateTopicResponseRoleOneLeadWeeklyHoursMax = 168;
 
-export const validateTopicResponseRoleLeadDailyBusinessTasksItemNameMax = 120;
+export const validateTopicResponseRoleOneLeadDailyBusinessTasksItemNameMax = 120;
 
-export const validateTopicResponseRoleLeadDailyBusinessTasksItemPercentMin = 0;
-export const validateTopicResponseRoleLeadDailyBusinessTasksItemPercentMax = 100;
+export const validateTopicResponseRoleOneLeadDailyBusinessTasksItemPercentMin = 0;
+export const validateTopicResponseRoleOneLeadDailyBusinessTasksItemPercentMax = 100;
 
-export const validateTopicResponseRoleDeputyOneDailyBusinessPercentMin = 0;
-export const validateTopicResponseRoleDeputyOneDailyBusinessPercentMax = 100;
+export const validateTopicResponseRoleOneDeputyOneDailyBusinessPercentMin = 0;
+export const validateTopicResponseRoleOneDeputyOneDailyBusinessPercentMax = 100;
 
-export const validateTopicResponseRoleDeputyOneWeeklyHoursExclusiveMin = 0;
-export const validateTopicResponseRoleDeputyOneWeeklyHoursMax = 168;
+export const validateTopicResponseRoleOneDeputyOneWeeklyHoursExclusiveMin = 0;
+export const validateTopicResponseRoleOneDeputyOneWeeklyHoursMax = 168;
 
-export const validateTopicResponseRoleDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const validateTopicResponseRoleOneDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const validateTopicResponseRoleDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const validateTopicResponseRoleDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const validateTopicResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const validateTopicResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
 export const validateTopicResponseCreatorDailyBusinessPercentMin = 0;
 export const validateTopicResponseCreatorDailyBusinessPercentMax = 100;
@@ -3413,7 +3422,7 @@ export const ValidateTopicResponse = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "documentationUrl": zod.string().url().max(validateTopicResponseDocumentationUrlMax).nullish(),
-  "department": zod.object({
+  "department": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "serviceHead": zod.object({
@@ -3425,11 +3434,11 @@ export const ValidateTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(validateTopicResponseDepartmentServiceHeadDailyBusinessPercentMin).max(validateTopicResponseDepartmentServiceHeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(validateTopicResponseDepartmentServiceHeadWeeklyHoursExclusiveMin).max(validateTopicResponseDepartmentServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(validateTopicResponseDepartmentOneServiceHeadDailyBusinessPercentMin).max(validateTopicResponseDepartmentOneServiceHeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(validateTopicResponseDepartmentOneServiceHeadWeeklyHoursExclusiveMin).max(validateTopicResponseDepartmentOneServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(validateTopicResponseDepartmentServiceHeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(validateTopicResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMin).max(validateTopicResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(validateTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(validateTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin).max(validateTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "serviceHeadDeputy": zod.union([zod.object({
@@ -3441,15 +3450,15 @@ export const ValidateTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(validateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMin).max(validateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(validateTopicResponseDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(validateTopicResponseDepartmentServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(validateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin).max(validateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(validateTopicResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(validateTopicResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(validateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(validateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(validateTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(validateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(validateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(validateTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()])
-}),
-  "role": zod.object({
+}),zod.null()]),
+  "role": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
@@ -3463,11 +3472,11 @@ export const ValidateTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(validateTopicResponseRoleLeadDailyBusinessPercentMin).max(validateTopicResponseRoleLeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(validateTopicResponseRoleLeadWeeklyHoursExclusiveMin).max(validateTopicResponseRoleLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(validateTopicResponseRoleOneLeadDailyBusinessPercentMin).max(validateTopicResponseRoleOneLeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(validateTopicResponseRoleOneLeadWeeklyHoursExclusiveMin).max(validateTopicResponseRoleOneLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(validateTopicResponseRoleLeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(validateTopicResponseRoleLeadDailyBusinessTasksItemPercentMin).max(validateTopicResponseRoleLeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(validateTopicResponseRoleOneLeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(validateTopicResponseRoleOneLeadDailyBusinessTasksItemPercentMin).max(validateTopicResponseRoleOneLeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "deputy": zod.union([zod.object({
@@ -3479,16 +3488,16 @@ export const ValidateTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(validateTopicResponseRoleDeputyOneDailyBusinessPercentMin).max(validateTopicResponseRoleDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(validateTopicResponseRoleDeputyOneWeeklyHoursExclusiveMin).max(validateTopicResponseRoleDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(validateTopicResponseRoleOneDeputyOneDailyBusinessPercentMin).max(validateTopicResponseRoleOneDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(validateTopicResponseRoleOneDeputyOneWeeklyHoursExclusiveMin).max(validateTopicResponseRoleOneDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(validateTopicResponseRoleDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(validateTopicResponseRoleDeputyOneDailyBusinessTasksItemPercentMin).max(validateTopicResponseRoleDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(validateTopicResponseRoleOneDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(validateTopicResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMin).max(validateTopicResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "memberCount": zod.number().int().optional(),
   "memberIds": zod.array(zod.string()).optional()
-}),
+}),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
@@ -3588,61 +3597,65 @@ export const ValidateTopicBreakGlassParams = zod.object({
   "topicId": zod.coerce.string()
 })
 
+
+
 export const validateTopicBreakGlassBodyReasonMin = 20;
 export const validateTopicBreakGlassBodyReasonMax = 2000;
 
 export const validateTopicBreakGlassBodyNotifyResponsibleDefault = true;
 
 export const ValidateTopicBreakGlassBody = zod.object({
+  "departmentId": zod.string().min(1).optional(),
+  "roleId": zod.string().min(1).optional(),
   "reason": zod.string().min(validateTopicBreakGlassBodyReasonMin).max(validateTopicBreakGlassBodyReasonMax),
   "notifyResponsible": zod.boolean().default(validateTopicBreakGlassBodyNotifyResponsibleDefault)
 })
 
 export const validateTopicBreakGlassResponseDocumentationUrlMax = 2048;
 
-export const validateTopicBreakGlassResponseDepartmentServiceHeadDailyBusinessPercentMin = 0;
-export const validateTopicBreakGlassResponseDepartmentServiceHeadDailyBusinessPercentMax = 100;
+export const validateTopicBreakGlassResponseDepartmentOneServiceHeadDailyBusinessPercentMin = 0;
+export const validateTopicBreakGlassResponseDepartmentOneServiceHeadDailyBusinessPercentMax = 100;
 
-export const validateTopicBreakGlassResponseDepartmentServiceHeadWeeklyHoursExclusiveMin = 0;
-export const validateTopicBreakGlassResponseDepartmentServiceHeadWeeklyHoursMax = 168;
+export const validateTopicBreakGlassResponseDepartmentOneServiceHeadWeeklyHoursExclusiveMin = 0;
+export const validateTopicBreakGlassResponseDepartmentOneServiceHeadWeeklyHoursMax = 168;
 
-export const validateTopicBreakGlassResponseDepartmentServiceHeadDailyBusinessTasksItemNameMax = 120;
+export const validateTopicBreakGlassResponseDepartmentOneServiceHeadDailyBusinessTasksItemNameMax = 120;
 
-export const validateTopicBreakGlassResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMin = 0;
-export const validateTopicBreakGlassResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMax = 100;
+export const validateTopicBreakGlassResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin = 0;
+export const validateTopicBreakGlassResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax = 100;
 
-export const validateTopicBreakGlassResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMin = 0;
-export const validateTopicBreakGlassResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMax = 100;
+export const validateTopicBreakGlassResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin = 0;
+export const validateTopicBreakGlassResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax = 100;
 
-export const validateTopicBreakGlassResponseDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
-export const validateTopicBreakGlassResponseDepartmentServiceHeadDeputyOneWeeklyHoursMax = 168;
+export const validateTopicBreakGlassResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
+export const validateTopicBreakGlassResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursMax = 168;
 
-export const validateTopicBreakGlassResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const validateTopicBreakGlassResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const validateTopicBreakGlassResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const validateTopicBreakGlassResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const validateTopicBreakGlassResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const validateTopicBreakGlassResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
-export const validateTopicBreakGlassResponseRoleLeadDailyBusinessPercentMin = 0;
-export const validateTopicBreakGlassResponseRoleLeadDailyBusinessPercentMax = 100;
+export const validateTopicBreakGlassResponseRoleOneLeadDailyBusinessPercentMin = 0;
+export const validateTopicBreakGlassResponseRoleOneLeadDailyBusinessPercentMax = 100;
 
-export const validateTopicBreakGlassResponseRoleLeadWeeklyHoursExclusiveMin = 0;
-export const validateTopicBreakGlassResponseRoleLeadWeeklyHoursMax = 168;
+export const validateTopicBreakGlassResponseRoleOneLeadWeeklyHoursExclusiveMin = 0;
+export const validateTopicBreakGlassResponseRoleOneLeadWeeklyHoursMax = 168;
 
-export const validateTopicBreakGlassResponseRoleLeadDailyBusinessTasksItemNameMax = 120;
+export const validateTopicBreakGlassResponseRoleOneLeadDailyBusinessTasksItemNameMax = 120;
 
-export const validateTopicBreakGlassResponseRoleLeadDailyBusinessTasksItemPercentMin = 0;
-export const validateTopicBreakGlassResponseRoleLeadDailyBusinessTasksItemPercentMax = 100;
+export const validateTopicBreakGlassResponseRoleOneLeadDailyBusinessTasksItemPercentMin = 0;
+export const validateTopicBreakGlassResponseRoleOneLeadDailyBusinessTasksItemPercentMax = 100;
 
-export const validateTopicBreakGlassResponseRoleDeputyOneDailyBusinessPercentMin = 0;
-export const validateTopicBreakGlassResponseRoleDeputyOneDailyBusinessPercentMax = 100;
+export const validateTopicBreakGlassResponseRoleOneDeputyOneDailyBusinessPercentMin = 0;
+export const validateTopicBreakGlassResponseRoleOneDeputyOneDailyBusinessPercentMax = 100;
 
-export const validateTopicBreakGlassResponseRoleDeputyOneWeeklyHoursExclusiveMin = 0;
-export const validateTopicBreakGlassResponseRoleDeputyOneWeeklyHoursMax = 168;
+export const validateTopicBreakGlassResponseRoleOneDeputyOneWeeklyHoursExclusiveMin = 0;
+export const validateTopicBreakGlassResponseRoleOneDeputyOneWeeklyHoursMax = 168;
 
-export const validateTopicBreakGlassResponseRoleDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const validateTopicBreakGlassResponseRoleOneDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const validateTopicBreakGlassResponseRoleDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const validateTopicBreakGlassResponseRoleDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const validateTopicBreakGlassResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const validateTopicBreakGlassResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
 export const validateTopicBreakGlassResponseCreatorDailyBusinessPercentMin = 0;
 export const validateTopicBreakGlassResponseCreatorDailyBusinessPercentMax = 100;
@@ -3697,7 +3710,7 @@ export const ValidateTopicBreakGlassResponse = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "documentationUrl": zod.string().url().max(validateTopicBreakGlassResponseDocumentationUrlMax).nullish(),
-  "department": zod.object({
+  "department": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "serviceHead": zod.object({
@@ -3709,11 +3722,11 @@ export const ValidateTopicBreakGlassResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(validateTopicBreakGlassResponseDepartmentServiceHeadDailyBusinessPercentMin).max(validateTopicBreakGlassResponseDepartmentServiceHeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(validateTopicBreakGlassResponseDepartmentServiceHeadWeeklyHoursExclusiveMin).max(validateTopicBreakGlassResponseDepartmentServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(validateTopicBreakGlassResponseDepartmentOneServiceHeadDailyBusinessPercentMin).max(validateTopicBreakGlassResponseDepartmentOneServiceHeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(validateTopicBreakGlassResponseDepartmentOneServiceHeadWeeklyHoursExclusiveMin).max(validateTopicBreakGlassResponseDepartmentOneServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(validateTopicBreakGlassResponseDepartmentServiceHeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(validateTopicBreakGlassResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMin).max(validateTopicBreakGlassResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(validateTopicBreakGlassResponseDepartmentOneServiceHeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(validateTopicBreakGlassResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin).max(validateTopicBreakGlassResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "serviceHeadDeputy": zod.union([zod.object({
@@ -3725,15 +3738,15 @@ export const ValidateTopicBreakGlassResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(validateTopicBreakGlassResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMin).max(validateTopicBreakGlassResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(validateTopicBreakGlassResponseDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(validateTopicBreakGlassResponseDepartmentServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(validateTopicBreakGlassResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin).max(validateTopicBreakGlassResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(validateTopicBreakGlassResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(validateTopicBreakGlassResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(validateTopicBreakGlassResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(validateTopicBreakGlassResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(validateTopicBreakGlassResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(validateTopicBreakGlassResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(validateTopicBreakGlassResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(validateTopicBreakGlassResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()])
-}),
-  "role": zod.object({
+}),zod.null()]),
+  "role": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
@@ -3747,11 +3760,11 @@ export const ValidateTopicBreakGlassResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(validateTopicBreakGlassResponseRoleLeadDailyBusinessPercentMin).max(validateTopicBreakGlassResponseRoleLeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(validateTopicBreakGlassResponseRoleLeadWeeklyHoursExclusiveMin).max(validateTopicBreakGlassResponseRoleLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(validateTopicBreakGlassResponseRoleOneLeadDailyBusinessPercentMin).max(validateTopicBreakGlassResponseRoleOneLeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(validateTopicBreakGlassResponseRoleOneLeadWeeklyHoursExclusiveMin).max(validateTopicBreakGlassResponseRoleOneLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(validateTopicBreakGlassResponseRoleLeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(validateTopicBreakGlassResponseRoleLeadDailyBusinessTasksItemPercentMin).max(validateTopicBreakGlassResponseRoleLeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(validateTopicBreakGlassResponseRoleOneLeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(validateTopicBreakGlassResponseRoleOneLeadDailyBusinessTasksItemPercentMin).max(validateTopicBreakGlassResponseRoleOneLeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "deputy": zod.union([zod.object({
@@ -3763,16 +3776,16 @@ export const ValidateTopicBreakGlassResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(validateTopicBreakGlassResponseRoleDeputyOneDailyBusinessPercentMin).max(validateTopicBreakGlassResponseRoleDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(validateTopicBreakGlassResponseRoleDeputyOneWeeklyHoursExclusiveMin).max(validateTopicBreakGlassResponseRoleDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(validateTopicBreakGlassResponseRoleOneDeputyOneDailyBusinessPercentMin).max(validateTopicBreakGlassResponseRoleOneDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(validateTopicBreakGlassResponseRoleOneDeputyOneWeeklyHoursExclusiveMin).max(validateTopicBreakGlassResponseRoleOneDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(validateTopicBreakGlassResponseRoleDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(validateTopicBreakGlassResponseRoleDeputyOneDailyBusinessTasksItemPercentMin).max(validateTopicBreakGlassResponseRoleDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(validateTopicBreakGlassResponseRoleOneDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(validateTopicBreakGlassResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMin).max(validateTopicBreakGlassResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "memberCount": zod.number().int().optional(),
   "memberIds": zod.array(zod.string()).optional()
-}),
+}),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
@@ -3878,49 +3891,49 @@ export const AssignTopicBody = zod.object({
 
 export const assignTopicResponseDocumentationUrlMax = 2048;
 
-export const assignTopicResponseDepartmentServiceHeadDailyBusinessPercentMin = 0;
-export const assignTopicResponseDepartmentServiceHeadDailyBusinessPercentMax = 100;
+export const assignTopicResponseDepartmentOneServiceHeadDailyBusinessPercentMin = 0;
+export const assignTopicResponseDepartmentOneServiceHeadDailyBusinessPercentMax = 100;
 
-export const assignTopicResponseDepartmentServiceHeadWeeklyHoursExclusiveMin = 0;
-export const assignTopicResponseDepartmentServiceHeadWeeklyHoursMax = 168;
+export const assignTopicResponseDepartmentOneServiceHeadWeeklyHoursExclusiveMin = 0;
+export const assignTopicResponseDepartmentOneServiceHeadWeeklyHoursMax = 168;
 
-export const assignTopicResponseDepartmentServiceHeadDailyBusinessTasksItemNameMax = 120;
+export const assignTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemNameMax = 120;
 
-export const assignTopicResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMin = 0;
-export const assignTopicResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMax = 100;
+export const assignTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin = 0;
+export const assignTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax = 100;
 
-export const assignTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMin = 0;
-export const assignTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMax = 100;
+export const assignTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin = 0;
+export const assignTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax = 100;
 
-export const assignTopicResponseDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
-export const assignTopicResponseDepartmentServiceHeadDeputyOneWeeklyHoursMax = 168;
+export const assignTopicResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin = 0;
+export const assignTopicResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursMax = 168;
 
-export const assignTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const assignTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const assignTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const assignTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const assignTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const assignTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
-export const assignTopicResponseRoleLeadDailyBusinessPercentMin = 0;
-export const assignTopicResponseRoleLeadDailyBusinessPercentMax = 100;
+export const assignTopicResponseRoleOneLeadDailyBusinessPercentMin = 0;
+export const assignTopicResponseRoleOneLeadDailyBusinessPercentMax = 100;
 
-export const assignTopicResponseRoleLeadWeeklyHoursExclusiveMin = 0;
-export const assignTopicResponseRoleLeadWeeklyHoursMax = 168;
+export const assignTopicResponseRoleOneLeadWeeklyHoursExclusiveMin = 0;
+export const assignTopicResponseRoleOneLeadWeeklyHoursMax = 168;
 
-export const assignTopicResponseRoleLeadDailyBusinessTasksItemNameMax = 120;
+export const assignTopicResponseRoleOneLeadDailyBusinessTasksItemNameMax = 120;
 
-export const assignTopicResponseRoleLeadDailyBusinessTasksItemPercentMin = 0;
-export const assignTopicResponseRoleLeadDailyBusinessTasksItemPercentMax = 100;
+export const assignTopicResponseRoleOneLeadDailyBusinessTasksItemPercentMin = 0;
+export const assignTopicResponseRoleOneLeadDailyBusinessTasksItemPercentMax = 100;
 
-export const assignTopicResponseRoleDeputyOneDailyBusinessPercentMin = 0;
-export const assignTopicResponseRoleDeputyOneDailyBusinessPercentMax = 100;
+export const assignTopicResponseRoleOneDeputyOneDailyBusinessPercentMin = 0;
+export const assignTopicResponseRoleOneDeputyOneDailyBusinessPercentMax = 100;
 
-export const assignTopicResponseRoleDeputyOneWeeklyHoursExclusiveMin = 0;
-export const assignTopicResponseRoleDeputyOneWeeklyHoursMax = 168;
+export const assignTopicResponseRoleOneDeputyOneWeeklyHoursExclusiveMin = 0;
+export const assignTopicResponseRoleOneDeputyOneWeeklyHoursMax = 168;
 
-export const assignTopicResponseRoleDeputyOneDailyBusinessTasksItemNameMax = 120;
+export const assignTopicResponseRoleOneDeputyOneDailyBusinessTasksItemNameMax = 120;
 
-export const assignTopicResponseRoleDeputyOneDailyBusinessTasksItemPercentMin = 0;
-export const assignTopicResponseRoleDeputyOneDailyBusinessTasksItemPercentMax = 100;
+export const assignTopicResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMin = 0;
+export const assignTopicResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMax = 100;
 
 export const assignTopicResponseCreatorDailyBusinessPercentMin = 0;
 export const assignTopicResponseCreatorDailyBusinessPercentMax = 100;
@@ -3975,7 +3988,7 @@ export const AssignTopicResponse = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "documentationUrl": zod.string().url().max(assignTopicResponseDocumentationUrlMax).nullish(),
-  "department": zod.object({
+  "department": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "serviceHead": zod.object({
@@ -3987,11 +4000,11 @@ export const AssignTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(assignTopicResponseDepartmentServiceHeadDailyBusinessPercentMin).max(assignTopicResponseDepartmentServiceHeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(assignTopicResponseDepartmentServiceHeadWeeklyHoursExclusiveMin).max(assignTopicResponseDepartmentServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(assignTopicResponseDepartmentOneServiceHeadDailyBusinessPercentMin).max(assignTopicResponseDepartmentOneServiceHeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(assignTopicResponseDepartmentOneServiceHeadWeeklyHoursExclusiveMin).max(assignTopicResponseDepartmentOneServiceHeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(assignTopicResponseDepartmentServiceHeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(assignTopicResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMin).max(assignTopicResponseDepartmentServiceHeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(assignTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(assignTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMin).max(assignTopicResponseDepartmentOneServiceHeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "serviceHeadDeputy": zod.union([zod.object({
@@ -4003,15 +4016,15 @@ export const AssignTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(assignTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMin).max(assignTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(assignTopicResponseDepartmentServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(assignTopicResponseDepartmentServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(assignTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMin).max(assignTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(assignTopicResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursExclusiveMin).max(assignTopicResponseDepartmentOneServiceHeadDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(assignTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(assignTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(assignTopicResponseDepartmentServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(assignTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(assignTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMin).max(assignTopicResponseDepartmentOneServiceHeadDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()])
-}),
-  "role": zod.object({
+}),zod.null()]),
+  "role": zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "departmentId": zod.string(),
@@ -4025,11 +4038,11 @@ export const AssignTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(assignTopicResponseRoleLeadDailyBusinessPercentMin).max(assignTopicResponseRoleLeadDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(assignTopicResponseRoleLeadWeeklyHoursExclusiveMin).max(assignTopicResponseRoleLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(assignTopicResponseRoleOneLeadDailyBusinessPercentMin).max(assignTopicResponseRoleOneLeadDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(assignTopicResponseRoleOneLeadWeeklyHoursExclusiveMin).max(assignTopicResponseRoleOneLeadWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(assignTopicResponseRoleLeadDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(assignTopicResponseRoleLeadDailyBusinessTasksItemPercentMin).max(assignTopicResponseRoleLeadDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(assignTopicResponseRoleOneLeadDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(assignTopicResponseRoleOneLeadDailyBusinessTasksItemPercentMin).max(assignTopicResponseRoleOneLeadDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),
   "deputy": zod.union([zod.object({
@@ -4041,16 +4054,16 @@ export const AssignTopicResponse = zod.object({
   "status": zod.enum(['active', 'disabled']).optional(),
   "isCio": zod.boolean().optional(),
   "authProvider": zod.string().nullish(),
-  "dailyBusinessPercent": zod.number().int().min(assignTopicResponseRoleDeputyOneDailyBusinessPercentMin).max(assignTopicResponseRoleDeputyOneDailyBusinessPercentMax).optional(),
-  "weeklyHours": zod.number().gt(assignTopicResponseRoleDeputyOneWeeklyHoursExclusiveMin).max(assignTopicResponseRoleDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
+  "dailyBusinessPercent": zod.number().int().min(assignTopicResponseRoleOneDeputyOneDailyBusinessPercentMin).max(assignTopicResponseRoleOneDeputyOneDailyBusinessPercentMax).optional(),
+  "weeklyHours": zod.number().gt(assignTopicResponseRoleOneDeputyOneWeeklyHoursExclusiveMin).max(assignTopicResponseRoleOneDeputyOneWeeklyHoursMax).nullish().describe('Contracted weekly hours; null when not entered.'),
   "dailyBusinessTasks": zod.array(zod.object({
-  "name": zod.string().min(1).max(assignTopicResponseRoleDeputyOneDailyBusinessTasksItemNameMax),
-  "percent": zod.number().int().min(assignTopicResponseRoleDeputyOneDailyBusinessTasksItemPercentMin).max(assignTopicResponseRoleDeputyOneDailyBusinessTasksItemPercentMax)
+  "name": zod.string().min(1).max(assignTopicResponseRoleOneDeputyOneDailyBusinessTasksItemNameMax),
+  "percent": zod.number().int().min(assignTopicResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMin).max(assignTopicResponseRoleOneDeputyOneDailyBusinessTasksItemPercentMax)
 })).describe('Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total.')
 }),zod.null()]).optional(),
   "memberCount": zod.number().int().optional(),
   "memberIds": zod.array(zod.string()).optional()
-}),
+}),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({

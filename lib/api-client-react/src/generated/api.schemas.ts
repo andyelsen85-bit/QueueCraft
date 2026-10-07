@@ -363,7 +363,8 @@ export interface CalendarTopic {
   priority: TopicPriority;
   status: TopicStatus;
   departmentName: string;
-  roleId: string;
+  /** @nullable */
+  roleId: string | null;
   /** @nullable */
   targetDate: string | null;
   /** @nullable */
@@ -383,8 +384,8 @@ export interface Topic {
      * @nullable
      */
   documentationUrl?: string | null;
-  department: Department;
-  role: Role;
+  department: Department | null;
+  role: Role | null;
   priority: TopicPriority;
   status: TopicStatus;
   creator: Member;
@@ -472,8 +473,16 @@ export interface TopicInput {
      * @nullable
      */
   documentationUrl?: string | null;
-  departmentId: string;
-  roleId: string;
+  /**
+     * @minLength 1
+     * @nullable
+     */
+  departmentId?: string | null;
+  /**
+     * @minLength 1
+     * @nullable
+     */
+  roleId?: string | null;
   priority: TopicPriority;
   /** @nullable */
   targetDate?: string | null;
@@ -508,7 +517,16 @@ export interface TopicUpdate {
      * @nullable
      */
   documentationUrl?: string | null;
-  roleId?: string;
+  /**
+     * @minLength 1
+     * @nullable
+     */
+  departmentId?: string | null;
+  /**
+     * @minLength 1
+     * @nullable
+     */
+  roleId?: string | null;
   priority?: TopicPriority;
   /** @nullable */
   estimatedStartDate?: string | null;
@@ -530,6 +548,10 @@ export interface TopicUpdate {
 }
 
 export interface ValidationInput {
+  /** @minLength 1 */
+  departmentId?: string;
+  /** @minLength 1 */
+  roleId?: string;
   /**
      * @maxLength 1000
      * @nullable
@@ -538,6 +560,10 @@ export interface ValidationInput {
 }
 
 export interface BreakGlassValidationInput {
+  /** @minLength 1 */
+  departmentId?: string;
+  /** @minLength 1 */
+  roleId?: string;
   /**
      * @minLength 20
      * @maxLength 2000

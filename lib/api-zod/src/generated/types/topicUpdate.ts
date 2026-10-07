@@ -24,7 +24,16 @@ export interface TopicUpdate {
      * @nullable
      */
   documentationUrl?: string | null;
-  roleId?: string;
+  /**
+     * @minLength 1
+     * @nullable
+     */
+  departmentId?: string | null;
+  /**
+     * @minLength 1
+     * @nullable
+     */
+  roleId?: string | null;
   priority?: TopicPriority;
   /** @nullable */
   estimatedStartDate?: Date | null;

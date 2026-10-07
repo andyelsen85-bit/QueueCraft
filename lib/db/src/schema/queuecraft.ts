@@ -159,10 +159,8 @@ export const topicsTable = pgTable("topics", {
   description: text("description").notNull(),
   documentationUrl: text("documentation_url"),
   departmentId: text("department_id")
-    .notNull()
     .references(() => departmentsTable.id),
   roleId: text("role_id")
-    .notNull()
     .references(() => rolesTable.id),
   priority: topicPriorityEnum("priority").notNull(),
   status: topicStatusEnum("status").notNull().default("pending_validation"),

@@ -7,6 +7,10 @@
  */
 
 export interface BreakGlassValidationInput {
+  /** @minLength 1 */
+  departmentId?: string;
+  /** @minLength 1 */
+  roleId?: string;
   /**
      * @minLength 20
      * @maxLength 2000

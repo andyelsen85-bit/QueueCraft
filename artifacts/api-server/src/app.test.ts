@@ -1111,6 +1111,113 @@ describe("QueueCraft security and preference flows", () => {
     await db.delete(topicsTable).where(eq(topicsTable.id, created.body.id));
   });
 
+  test("unassigned topics require complete authorized routing before approval, and transfers preserve approval", async () => {
+    const manager = request.agent(app);
+    await manager.get("/api/session").expect(200);
+    const managerCsrf = (await manager.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const id = randomUUID();
+    const email = `routing-member-${id}@example.invalid`;
+    const password = `Temporary-${randomUUID()}`;
+    const member = await manager.post("/api/directory/members")
+      .set("x-csrf-token", managerCsrf)
+      .send({ name: "Routing test member", email, password }).expect(201);
+    const creator = request.agent(app);
+    await creator.post("/api/auth/local").send({ username: email, password }).expect(200);
+    const creatorCsrf = (await creator.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const departmentId = `routing-dept-${id}`;
+    const roleId = `routing-role-${id}`;
+    const topicIds: string[] = [];
+    const create = async (routing: Record<string, unknown> = {}) => {
+      const response = await creator.post("/api/topics").set("x-csrf-token", creatorCsrf)
+        .send({ title: `Routing test ${randomUUID()}`, description: "Routing regression fixture", priority: "P3", ...routing }).expect(201);
+      topicIds.push(response.body.id);
+      return response.body;
+    };
+    try {
+      const topic = await create();
+      assert.equal(topic.department, null);
+      assert.equal(topic.role, null);
+      assert.equal(topic.status, "pending_validation");
+      const detail = (await creator.get(`/api/topics/${topic.id}`).expect(200)).body;
+      assert.deepEqual(detail.milestones, []);
+      assert.ok(Array.isArray(detail.activity));
+      assert.deepEqual(detail.allocations, []);
+      const partial = await create({ departmentId: "dept-platform" });
+      assert.equal(partial.department.id, "dept-platform");
+      assert.equal(partial.role, null);
+      const queue = await manager.get("/api/validation-queue").expect(200);
+      assert.ok(queue.body.some((entry: { id: string }) => entry.id === topic.id));
+      const calendar = await creator.get("/api/calendar/topics").expect(200);
+      assert.equal(calendar.body.find((entry: { id: string }) => entry.id === topic.id).roleId, null);
+      await creator.get("/api/my-work").expect(200);
+      await manager.get("/api/dashboard/summary").expect(200);
+      await creator.patch(`/api/topics/${topic.id}`).set("x-csrf-token", creatorCsrf)
+        .send({ description: "Unassigned topics remain editable" }).expect(200);
+      await creator.post("/api/topics").set("x-csrf-token", creatorCsrf)
+        .send({ title: "Invalid routing", description: "Role without department", priority: "P3", roleId: "role-ci-validation" }).expect(400);
+      await manager.post(`/api/topics/${topic.id}/validate`).set("x-csrf-token", managerCsrf).send({}).expect(400);
+      await manager.post(`/api/topics/${topic.id}/validate`).set("x-csrf-token", managerCsrf)
+        .send({ departmentId: "dept-platform" }).expect(400);
+      await creator.post(`/api/topics/${topic.id}/validate`).set("x-csrf-token", creatorCsrf)
+        .send({ departmentId: "dept-platform", roleId: "role-ci-validation" }).expect(403);
+      assert.equal((await creator.get(`/api/topics/${topic.id}`).expect(200)).body.department, null);
+      const approved = (await manager.post(`/api/topics/${topic.id}/validate`).set("x-csrf-token", managerCsrf)
+        .send({ departmentId: "dept-platform", roleId: "role-ci-validation", note: "Route and approve atomically" }).expect(200)).body;
+      assert.equal(approved.department.id, "dept-platform");
+      assert.equal(approved.role.id, "role-ci-validation");
+      assert.equal(approved.status, "open");
+      await creator.patch(`/api/topics/${topic.id}`).set("x-csrf-token", creatorCsrf)
+        .send({ departmentId: null, roleId: null }).expect(400);
+      await db.insert(departmentsTable).values({ id: departmentId, name: "Routing destination", serviceHeadId: member.body.id });
+      await db.insert(rolesTable).values({ id: roleId, name: "Routing destination role", departmentId, leadId: member.body.id });
+      await creator.patch(`/api/topics/${topic.id}`).set("x-csrf-token", creatorCsrf)
+        .send({ departmentId, roleId: "role-ci-validation" }).expect(400);
+      for (const status of ["open", "in_progress", "completed", "closed"]) {
+        if (status !== "open") await creator.patch(`/api/topics/${topic.id}`).set("x-csrf-token", creatorCsrf)
+          .send({ status, completionSummary: "Regression work complete" }).expect(200);
+        const before = (await creator.get(`/api/topics/${topic.id}`).expect(200)).body;
+        const toDestination = before.department.id !== departmentId;
+        const moved = (await creator.patch(`/api/topics/${topic.id}`).set("x-csrf-token", creatorCsrf)
+          .send({ departmentId: toDestination ? departmentId : "dept-platform", roleId: toDestination ? roleId : "role-ci-validation" }).expect(200)).body;
+        assert.equal(moved.status, status);
+        assert.equal(moved.validatedAt, approved.validatedAt);
+        assert.equal(moved.validator.id, approved.validator.id);
+        assert.equal(moved.validationReason, approved.validationReason);
+        assert.equal(moved.validationMode, approved.validationMode);
+        assert.equal(moved.completedAt, before.completedAt);
+        assert.equal((await creator.get(`/api/topics/${topic.id}`).expect(200)).body.department.id, moved.department.id);
+      }
+      const triaged = await manager.patch(`/api/topics/${partial.id}`).set("x-csrf-token", managerCsrf)
+        .send({ departmentId: null, roleId: null }).expect(200);
+      assert.equal(triaged.body.department, null);
+      await manager.patch(`/api/topics/${partial.id}`).set("x-csrf-token", managerCsrf)
+        .send({ departmentId: "dept-platform", roleId: "role-ci-validation" }).expect(200);
+      const urgent = await create({ departmentId: null, roleId: null });
+      const reason = "Urgent routing regression requires exceptional approval";
+      await manager.post(`/api/topics/${urgent.id}/validation-break-glass`).set("x-csrf-token", managerCsrf)
+        .send({ reason }).expect(400);
+      await manager.post(`/api/topics/${urgent.id}/validation-break-glass`).set("x-csrf-token", managerCsrf)
+        .send({ reason, departmentId }).expect(400);
+      await manager.post(`/api/topics/${urgent.id}/validation-break-glass`).set("x-csrf-token", managerCsrf)
+        .send({ reason, departmentId, roleId: "role-ci-validation" }).expect(400);
+      const exceptional = await manager.post(`/api/topics/${urgent.id}/validation-break-glass`).set("x-csrf-token", managerCsrf)
+        .send({ reason, departmentId, roleId }).expect(200);
+      assert.equal(exceptional.body.validationMode, "break_glass");
+      assert.equal(exceptional.body.department.id, departmentId);
+      assert.equal(exceptional.body.role.id, roleId);
+    } finally {
+      if (topicIds.length) {
+        await db.delete(notificationOutboxTable).where(inArray(notificationOutboxTable.topicId, topicIds));
+        await db.delete(activityTable).where(inArray(activityTable.topicId, topicIds));
+        await db.delete(topicsTable).where(inArray(topicsTable.id, topicIds));
+      }
+      await db.delete(rolesTable).where(eq(rolesTable.id, roleId));
+      await db.delete(departmentsTable).where(eq(departmentsTable.id, departmentId));
+      await db.execute(sql`DELETE FROM user_sessions WHERE sess ->> 'userId' = ${member.body.id}`);
+      // The immutable audit retains this synthetic actor until the disposable test database is dropped.
+    }
+  });
+
   test("members can create milestones across departments without gaining topic management access", async () => {
     const manager = request.agent(app);
     const session = await manager.get("/api/session").expect(200);

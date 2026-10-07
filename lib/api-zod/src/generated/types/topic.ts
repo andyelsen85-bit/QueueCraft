@@ -23,8 +23,8 @@ export interface Topic {
      * @nullable
      */
   documentationUrl?: string | null;
-  department: Department;
-  role: Role;
+  department: Department | null;
+  role: Role | null;
   priority: TopicPriority;
   status: TopicStatus;
   creator: Member;

@@ -53,7 +53,7 @@ export function Validation() {
                     </div>
                     <div className="flex items-center gap-4 text-sm font-mono bg-muted/50 p-2 rounded-sm inline-flex">
                       <div>
-                        <span className="text-muted-foreground">Req Dept:</span> <span className="font-semibold">{t.department.name}</span>
+                        <span className="text-muted-foreground">Req Dept:</span> <span className="font-semibold">{t.department?.name ?? "Not assigned — select during review"}</span>
                       </div>
                       <div className="w-px h-4 bg-border" />
                       <div>

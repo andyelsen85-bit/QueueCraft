@@ -7,6 +7,10 @@ import {
   useListRoles,
   useGetTopicFilterPreferences,
   useUpdateTopicFilterPreferences,
+  getGetValidationQueueQueryKey,
+  getGetMyWorkQueryKey,
+  getGetDashboardSummaryQueryKey,
+  getListCalendarTopicsQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -65,8 +69,8 @@ const createSchema = z
         return false;
       }
     }, "Enter a valid HTTP or HTTPS URL without credentials"),
-    departmentId: z.string().min(1),
-    roleId: z.string().min(1),
+    departmentId: z.string(),
+    roleId: z.string(),
     priority: z.enum(["P1", "P2", "P3", "P4"]),
     targetDate: z.string().optional().nullable(),
     estimatedStartDate: z.string().optional().nullable(),
@@ -208,10 +212,10 @@ export function Topics() {
             (statusOrder[right.status] ?? 99);
           break;
         case "department":
-          comparison = compareText(left.department.name, right.department.name);
+          comparison = compareText(left.department?.name ?? "Not assigned", right.department?.name ?? "Not assigned");
           break;
         case "role":
-          comparison = compareText(left.role.name, right.role.name);
+          comparison = compareText(left.role?.name ?? "Not assigned", right.role?.name ?? "Not assigned");
           break;
         case "createdAt":
           comparison = left.createdAt.localeCompare(right.createdAt);
@@ -351,6 +355,8 @@ export function Topics() {
       {
         data: {
           ...data,
+          departmentId: data.departmentId || null,
+          roleId: data.roleId || null,
           documentationUrl: data.documentationUrl.trim() || null,
           targetDate: data.targetDate || null,
           estimatedStartDate: data.estimatedStartDate || null,
@@ -364,6 +370,10 @@ export function Topics() {
           setOpenCreate(false);
           form.reset();
           queryClient.invalidateQueries({ queryKey: getListTopicsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetValidationQueueQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetMyWorkQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getListCalendarTopicsQueryKey() });
           setLocation(`/topics/${newTopic.id}`);
         },
       },
@@ -416,10 +426,13 @@ export function Topics() {
                     name="departmentId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Department</FormLabel>
+                        <FormLabel>Department (optional)</FormLabel>
                         <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
+                          onValueChange={(value) => {
+                            field.onChange(value === "__unassigned__" ? "" : value);
+                            form.setValue("roleId", "");
+                          }}
+                          value={field.value || "__unassigned__"}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -427,6 +440,7 @@ export function Topics() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value="__unassigned__">Not assigned</SelectItem>
                             {sortedDepartments.map((d) => (
                               <SelectItem key={d.id} value={d.id}>
                                 {d.name}
@@ -443,10 +457,10 @@ export function Topics() {
                     name="roleId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Role Assignment</FormLabel>
+                        <FormLabel>Role Assignment (optional)</FormLabel>
                         <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
+                          onValueChange={(value) => field.onChange(value === "__unassigned__" ? "" : value)}
+                          value={field.value || "__unassigned__"}
                           disabled={!watchDept}
                         >
                           <FormControl>
@@ -455,6 +469,7 @@ export function Topics() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value="__unassigned__">Not assigned</SelectItem>
                             {createFilteredRoles.map((r) => (
                               <SelectItem key={r.id} value={r.id}>
                                 {r.name}
@@ -474,6 +489,9 @@ export function Topics() {
                       : "Topic could not be saved."}
                   </p>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  You may leave department and role unassigned. Both must be selected before this topic can be validated.
+                </p>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField
@@ -842,10 +860,10 @@ export function Topics() {
                     </h3>
                     <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground font-mono">
                       <span className="font-medium text-foreground">
-                        {t.department.name}
+                        {t.department?.name ?? "Not assigned"}
                       </span>
                       <span>/</span>
-                      <span>{t.role.name}</span>
+                      <span>{t.role?.name ?? "Not assigned"}</span>
                       <span>•</span>
                       <span>
                          Created {formatDate(t.createdAt)}

@@ -23,8 +23,16 @@ export interface TopicInput {
      * @nullable
      */
   documentationUrl?: string | null;
-  departmentId: string;
-  roleId: string;
+  /**
+     * @minLength 1
+     * @nullable
+     */
+  departmentId?: string | null;
+  /**
+     * @minLength 1
+     * @nullable
+     */
+  roleId?: string | null;
   priority: TopicPriority;
   /** @nullable */
   targetDate?: Date | null;
