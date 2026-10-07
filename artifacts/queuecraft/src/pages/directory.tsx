@@ -587,6 +587,7 @@ export function Directory() {
       setMemberActionMessage("Member and permissions saved.");
       invalidateDirectory();
       queryClient.invalidateQueries({ queryKey: getGetOccupancyOverviewQueryKey() });
+      queryClient.invalidateQueries({ queryKey: ["/api/occupancy/availability"] });
     } catch (saveError) {
       setMemberActionError(
         saveError instanceof Error

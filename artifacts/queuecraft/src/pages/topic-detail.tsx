@@ -217,6 +217,7 @@ export function TopicDetail() {
       queryKey: getGetOccupancyOverviewQueryKey(),
     });
     queryClient.invalidateQueries({ queryKey: getGetOccupancyForecastQueryKey() });
+    queryClient.invalidateQueries({ queryKey: ["/api/occupancy/availability"] });
     queryClient.invalidateQueries({ queryKey: getGetMyWorkQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetDashboardActivityQueryKey() });
@@ -1773,6 +1774,7 @@ export function TopicDetail() {
                             ?.allocations.map((allocation) => allocation.member) ?? []),
                         ].map((member) => [member.id, member] as const)).values())}
                         values={editMilestoneAllocations}
+                        excludeMilestoneId={editMilestone?.id}
                         beginDate={editMilestoneForm.watch("beginDate")}
                         targetDate={editMilestoneForm.watch("targetDate")}
                         deferredUntilValidation={isPendingValidation}

@@ -23,6 +23,7 @@ import {
   topicsTable,
 } from "@workspace/db";
 import { hashLocalPassword } from "../services/local-password";
+import { memberAvailability } from "../lib/member-availability";
 import {
   AddTopicCollaboratorBody,
   AddTopicCollaboratorParams,
@@ -39,6 +40,8 @@ import {
   GetDashboardActivityQueryParams,
   GetDashboardActivityResponse,
   GetDashboardSummaryResponse,
+  GetOccupancyAvailabilityQueryParams,
+  GetOccupancyAvailabilityResponse,
   GetMyWorkResponse,
   GetSessionResponse,
   GetTopicParams,
@@ -2695,6 +2698,33 @@ function occupancyAllocationsByMember(snapshot: Awaited<ReturnType<typeof loadSn
   }
   return result;
 }
+
+router.get("/occupancy/availability", async (req, res): Promise<void> => {
+  const rawStart = String(req.query.startDate ?? "");
+  const rawEnd = String(req.query.endDate ?? "");
+  const parsed = GetOccupancyAvailabilityQueryParams.safeParse({
+    ...req.query, startDate: new Date(rawStart), endDate: new Date(rawEnd),
+  });
+  if (!parsed.success) {
+    res.status(400).json({ error: "Valid startDate and endDate are required" });
+    return;
+  }
+  const startDate = dateOnly(parsed.data.startDate);
+  const endDate = dateOnly(parsed.data.endDate);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(rawStart) || !/^\d{4}-\d{2}-\d{2}$/.test(rawEnd) ||
+    startDate !== rawStart || endDate !== rawEnd || !startDate || !endDate || startDate > endDate ||
+    Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`) > 3660 * 86400000) {
+    res.status(400).json({ error: "Select an ordered date range of at most ten years" });
+    return;
+  }
+  const snapshot = await loadSnapshot();
+  const allocations = occupancyAllocationsByMember(snapshot);
+  res.json(GetOccupancyAvailabilityResponse.parse(snapshot.members.map((member) => ({
+    memberId: member.id,
+    ...memberAvailability(member.dailyBusinessPercent, member.weeklyHours,
+      allocations.get(member.id) ?? [], startDate, endDate, parsed.data.excludeMilestoneId),
+  }))));
+});
 
 router.get("/occupancy/overview", async (req, res): Promise<void> => {
   const parsed = GetOccupancyOverviewQueryParams.safeParse({

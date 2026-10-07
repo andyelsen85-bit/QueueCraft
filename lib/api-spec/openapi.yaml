@@ -469,6 +469,27 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/OccupancyOverview" }
+  /occupancy/availability:
+    get:
+      operationId: getOccupancyAvailability
+      tags: [dashboard]
+      summary: Get date-specific member capacity excluding a milestone being edited
+      parameters:
+        - $ref: "#/components/parameters/StartDate"
+        - $ref: "#/components/parameters/EndDate"
+        - name: excludeMilestoneId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Capacity before the proposed allocation, using inclusive working days
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MemberAvailability" }
+        "400":
+          description: Invalid date range
   /occupancy/forecast:
     get:
       operationId: getOccupancyForecast
@@ -1379,6 +1400,28 @@ components:
           type: ["string", "null"]
           format: date
         note: { type: string, minLength: 1, maxLength: 2000 }
+    AvailabilitySegment:
+      type: object
+      required: [startDate, endDate, workingDays, milestoneAllocationPercent, availablePercent]
+      properties:
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        workingDays: { type: integer }
+        milestoneAllocationPercent: { type: number }
+        availablePercent: { type: number }
+    MemberAvailability:
+      type: object
+      required: [memberId, weeklyHours, dailyBusinessPercent, workingDays, minimumAvailablePercent, availableHours, segments]
+      properties:
+        memberId: { type: string }
+        weeklyHours: { type: ["number", "null"] }
+        dailyBusinessPercent: { type: number }
+        workingDays: { type: integer }
+        minimumAvailablePercent: { type: ["number", "null"] }
+        availableHours: { type: ["number", "null"] }
+        segments:
+          type: array
+          items: { $ref: "#/components/schemas/AvailabilitySegment" }
     TopicAllocation:
       type: object
       required: [topicId, member, allocationPercent]

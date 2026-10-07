@@ -4555,6 +4555,33 @@ export const GetOccupancyOverviewResponse = zod.array(GetOccupancyOverviewRespon
 
 
 /**
+ * @summary Get date-specific member capacity excluding a milestone being edited
+ */
+export const GetOccupancyAvailabilityQueryParams = zod.object({
+  "startDate": zod.date(),
+  "endDate": zod.date(),
+  "excludeMilestoneId": zod.coerce.string().optional()
+})
+
+export const GetOccupancyAvailabilityResponseItem = zod.object({
+  "memberId": zod.string(),
+  "weeklyHours": zod.number().nullable(),
+  "dailyBusinessPercent": zod.number(),
+  "workingDays": zod.number().int(),
+  "minimumAvailablePercent": zod.number().nullable(),
+  "availableHours": zod.number().nullable(),
+  "segments": zod.array(zod.object({
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date(),
+  "workingDays": zod.number().int(),
+  "milestoneAllocationPercent": zod.number(),
+  "availablePercent": zod.number()
+}))
+})
+export const GetOccupancyAvailabilityResponse = zod.array(GetOccupancyAvailabilityResponseItem)
+
+
+/**
  * @summary Get weekly occupancy for active members in a planning range
  */
 export const GetOccupancyForecastQueryParams = zod.object({

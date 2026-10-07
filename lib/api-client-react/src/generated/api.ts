@@ -31,6 +31,7 @@ import type {
   DepartmentUpdate,
   FinishDateUpdate,
   GetDashboardActivityParams,
+  GetOccupancyAvailabilityParams,
   GetOccupancyForecastParams,
   GetOccupancyOverviewParams,
   HealthStatus,
@@ -38,6 +39,7 @@ import type {
   ListTopicsParams,
   LocalPasswordReset,
   Member,
+  MemberAvailability,
   MemberInput,
   MemberPermissions,
   MemberUpdate,
@@ -2310,6 +2312,90 @@ export function useGetOccupancyOverview<TData = Awaited<ReturnType<typeof getOcc
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetOccupancyOverviewQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOccupancyAvailabilityUrl = (params: GetOccupancyAvailabilityParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/occupancy/availability?${stringifiedParams}` : `/api/occupancy/availability`
+}
+
+/**
+ * @summary Get date-specific member capacity excluding a milestone being edited
+ */
+export const getOccupancyAvailability = async (params: GetOccupancyAvailabilityParams, options?: Parameters<typeof customFetch>[1]): Promise<MemberAvailability[]> => {
+
+  return customFetch<MemberAvailability[]>(getGetOccupancyAvailabilityUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOccupancyAvailabilityQueryKey = (params?: GetOccupancyAvailabilityParams,) => {
+    return [
+    `/api/occupancy/availability`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOccupancyAvailabilityQueryOptions = <TData = Awaited<ReturnType<typeof getOccupancyAvailability>>, TError = ErrorType<void>>(params: GetOccupancyAvailabilityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOccupancyAvailability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOccupancyAvailabilityQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOccupancyAvailability>>> = ({ signal }) => getOccupancyAvailability(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOccupancyAvailability>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOccupancyAvailabilityQueryResult = NonNullable<Awaited<ReturnType<typeof getOccupancyAvailability>>>
+export type GetOccupancyAvailabilityQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get date-specific member capacity excluding a milestone being edited
+ */
+
+export function useGetOccupancyAvailability<TData = Awaited<ReturnType<typeof getOccupancyAvailability>>, TError = ErrorType<void>>(
+ params: GetOccupancyAvailabilityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOccupancyAvailability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOccupancyAvailabilityQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

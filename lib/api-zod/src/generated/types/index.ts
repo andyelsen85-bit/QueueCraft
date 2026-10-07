@@ -8,6 +8,7 @@
 
 export * from './activity';
 export * from './assignmentInput';
+export * from './availabilitySegment';
 export * from './breakGlassValidationInput';
 export * from './calendarMilestone';
 export * from './calendarTopic';
@@ -24,6 +25,7 @@ export * from './error';
 export * from './finishDateRevision';
 export * from './finishDateUpdate';
 export * from './getDashboardActivityParams';
+export * from './getOccupancyAvailabilityParams';
 export * from './getOccupancyForecastParams';
 export * from './getOccupancyOverviewParams';
 export * from './groupCount';
@@ -33,6 +35,7 @@ export * from './listDependencyCandidatesParams';
 export * from './listTopicsParams';
 export * from './localPasswordReset';
 export * from './member';
+export * from './memberAvailability';
 export * from './memberInput';
 export * from './memberPermissions';
 export * from './memberStatus';

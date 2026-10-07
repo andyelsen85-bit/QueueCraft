@@ -698,6 +698,27 @@ export interface FinishDateUpdate {
   note: string;
 }
 
+export interface AvailabilitySegment {
+  startDate: string;
+  endDate: string;
+  workingDays: number;
+  milestoneAllocationPercent: number;
+  availablePercent: number;
+}
+
+export interface MemberAvailability {
+  memberId: string;
+  /** @nullable */
+  weeklyHours: number | null;
+  dailyBusinessPercent: number;
+  workingDays: number;
+  /** @nullable */
+  minimumAvailablePercent: number | null;
+  /** @nullable */
+  availableHours: number | null;
+  segments: AvailabilitySegment[];
+}
+
 export interface TopicAllocationInput {
   memberId: string;
   /**
@@ -852,6 +873,12 @@ topicId?: string;
 export type GetOccupancyOverviewParams = {
 startDate: StartDateParameter;
 endDate: EndDateParameter;
+};
+
+export type GetOccupancyAvailabilityParams = {
+startDate: StartDateParameter;
+endDate: EndDateParameter;
+excludeMilestoneId?: string;
 };
 
 export type GetOccupancyForecastParams = {
