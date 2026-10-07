@@ -1249,7 +1249,7 @@ export function Directory() {
         open={memberDialog.open}
         onOpenChange={(open) => setMemberDialog({ open })}
       >
-        <DialogContent>
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>
               {memberDialog.id ? "Edit member" : "Create member"}
@@ -1342,9 +1342,10 @@ export function Directory() {
                   </p>
                 ) : (
                   memberDraft.dailyBusinessTasks.map((task, index) => (
-                    <div key={index} className="flex flex-wrap items-center gap-2">
+                    <div key={index} className="grid grid-cols-[5rem_auto_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_5rem_auto_auto_auto]">
                       <Input
                         data-testid={`input-bau-task-name-${index}`}
+                        className="col-span-4 min-w-0 sm:col-span-1"
                         aria-label={`BAU task ${index + 1} name`}
                         placeholder="Task name"
                         value={task.name}
@@ -1370,7 +1371,7 @@ export function Directory() {
                         }}
                       />
                       <span className="text-muted-foreground">%</span>
-                      <span className="text-xs text-muted-foreground" aria-live="polite">
+                      <span className="whitespace-nowrap text-xs text-muted-foreground" aria-live="polite">
                         {weeklyHoursLabel(memberDraft.weeklyHours.trim() ? Number(memberDraft.weeklyHours) : null, task.percent)}
                       </span>
                       <Button
