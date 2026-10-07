@@ -24,6 +24,13 @@ export interface Member {
      * @maximum 100
      */
   dailyBusinessPercent?: number;
+  /**
+     * Contracted weekly hours; null when not entered.
+     * @maximum 168
+     * @exclusiveMinimum 0
+     * @nullable
+     */
+  weeklyHours?: number | null;
   /** Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total. */
   dailyBusinessTasks: DailyBusinessTask[];
 }

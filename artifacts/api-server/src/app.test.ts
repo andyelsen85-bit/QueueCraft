@@ -492,6 +492,28 @@ describe("QueueCraft security and preference flows", () => {
     assert.equal((restored.tables.topics[0] as { dependsOnTopicId: string | null }).dependsOnTopicId, null);
   });
 
+  test("older contractless backups retain unknown hours and preserve historical schema upgrades", () => {
+    for (const legacyDependencies of [false, true]) {
+      const manifest = BACKUP_MANIFEST.map((entry) => ({
+        ...entry,
+        columns: entry.columns.filter((column) =>
+          !(entry.name === "members" && column.key === "weeklyHours") &&
+          !(legacyDependencies && entry.name === "topics" && column.key === "dependsOnTopicId")),
+      }));
+      const backup = {
+        format: BACKUP_FORMAT, version: BACKUP_VERSION, manifest,
+        fingerprint: createHash("sha256").update(JSON.stringify(manifest)).digest("hex"),
+        tables: Object.fromEntries(manifest.map(({ name }) => [
+          name, name === "members" ? [{ id: "older-member", name: "Older contract" }] : [],
+        ])),
+      };
+      const upgraded = validateBackup(backup);
+      assert.equal((upgraded.tables.members[0] as { weeklyHours: number | null }).weeklyHours, null);
+      assert.equal(upgraded.fingerprint, BACKUP_FINGERPRINT);
+      assert.throws(() => validateBackup({ ...backup, fingerprint: "tampered" }), /manifest/);
+    }
+  });
+
   test("maps topic allocation changes to their notification action", () => {
     assert.equal(notificationAction("Topic allocations replaced"), "topic.allocations_replaced");
   });
@@ -656,6 +678,20 @@ describe("QueueCraft security and preference flows", () => {
         { name: "Reporting", percent: 15 },
       ]);
       assert.equal(created.body.dailyBusinessPercent, 35);
+      assert.equal(created.body.weeklyHours, null);
+      const contracted = await agent.patch(`/api/directory/members/${memberId}`)
+        .set("x-csrf-token", csrf.body.csrfToken)
+        .send({ weeklyHours: 37.5 }).expect(200);
+      assert.equal(contracted.body.weeklyHours, 37.5);
+      assert.equal(contracted.body.dailyBusinessPercent, 35);
+      for (const weeklyHours of [0, -1, 168.01, "40"]) {
+        await agent.patch(`/api/directory/members/${memberId}`)
+          .set("x-csrf-token", csrf.body.csrfToken)
+          .send({ weeklyHours }).expect(400);
+        await agent.post("/api/directory/members")
+          .set("x-csrf-token", csrf.body.csrfToken)
+          .send({ name: "Invalid contract", email: `invalid-${randomUUID()}@example.invalid`, weeklyHours }).expect(400);
+      }
 
       const unrelated = await agent
         .patch(`/api/directory/members/${memberId}`)
@@ -663,6 +699,7 @@ describe("QueueCraft security and preference flows", () => {
         .send({ title: "Unrelated update" })
         .expect(200);
       assert.equal(unrelated.body.title, "Unrelated update");
+      assert.equal(unrelated.body.weeklyHours, 37.5);
       assert.deepEqual(unrelated.body.dailyBusinessTasks, created.body.dailyBusinessTasks);
       assert.equal(unrelated.body.dailyBusinessPercent, 35);
 
@@ -720,6 +757,14 @@ describe("QueueCraft security and preference flows", () => {
       assert.deepEqual(row.dailyBusinessTasks, restored.body.dailyBusinessTasks);
       assert.deepEqual(row.member.dailyBusinessTasks, restored.body.dailyBusinessTasks);
       assert.equal(row.dailyBusinessPercent, 25);
+      assert.equal(row.member.weeklyHours, 37.5);
+      const listed = await agent.get("/api/directory/members").expect(200);
+      assert.equal(listed.body.find((member: { id: string }) => member.id === memberId).weeklyHours, 37.5);
+      const clearedContract = await agent.patch(`/api/directory/members/${memberId}`)
+        .set("x-csrf-token", csrf.body.csrfToken)
+        .send({ weeklyHours: null }).expect(200);
+      assert.equal(clearedContract.body.weeklyHours, null);
+      assert.equal(clearedContract.body.dailyBusinessPercent, 25);
     } finally {
       await db.delete(membersTable).where(eq(membersTable.id, memberId));
     }

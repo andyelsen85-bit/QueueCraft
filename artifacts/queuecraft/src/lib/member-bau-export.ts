@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { formatHours, weeklyAllocationHours } from "./contract-hours";
 
 export type BauExportMember = {
   id: string;
@@ -6,6 +7,7 @@ export type BauExportMember = {
   title?: string | null;
   email: string;
   dailyBusinessPercent?: number | null;
+  weeklyHours?: number | null;
   dailyBusinessTasks: Array<{ name: string; percent: number }>;
 };
 
@@ -35,13 +37,18 @@ function csvText(value: string) {
 }
 
 export function buildMemberBauCsv(members: readonly BauExportMember[]) {
-  const rows = ["Member,Title,Email,Total BAU (%),BAU task,Task BAU (%)"];
+  const rows = ["Member,Title,Email,Contract hours/week,Total BAU (%),Total BAU (hours/week),BAU task,Task BAU (%),Task BAU (hours/week)"];
+  const hours = (member: BauExportMember, percentage: number) => {
+    const result = weeklyAllocationHours(member.weeklyHours, percentage);
+    return result == null ? "" : Math.round(result * 100) / 100;
+  };
   for (const member of orderedMembers(members)) {
     const tasks = tasksFor(member);
     for (const task of tasks.length ? tasks : [null]) {
       rows.push([
         csvText(member.name), csvText(member.title || "Member"), csvText(member.email),
-        member.dailyBusinessPercent ?? 0, csvText(task?.name ?? ""), task?.percent ?? "",
+        member.weeklyHours ?? "", member.dailyBusinessPercent ?? 0, hours(member, member.dailyBusinessPercent ?? 0),
+        csvText(task?.name ?? ""), task?.percent ?? "", task ? hours(member, task.percent) : "",
       ].join(","));
     }
   }
@@ -119,9 +126,10 @@ export function buildMemberBauPdf(members: readonly BauExportMember[], fonts: Pd
     header();
   }
   function memberHeading(member: BauExportMember, continued = false) {
-    const name = lines(member.name, contentWidth - 100, 12, true);
-    const detail = lines(`${member.title || "Member"} · ${member.email}`, contentWidth - 100, 8);
-    const blockHeight = 31 + name.length * 15 + detail.length * 11 + (continued ? 13 : 0);
+    const name = lines(member.name, contentWidth - 130, 12, true);
+    const contract = member.weeklyHours == null ? "Not entered" : `${formatHours(member.weeklyHours)} h/week`;
+    const detail = lines(`${member.title || "Member"} · ${member.email}\nContract: ${contract}`, contentWidth - 130, 8);
+    const blockHeight = Math.max(78, 31 + name.length * 15 + detail.length * 11 + (continued ? 13 : 0));
     if (y + blockHeight + 45 > bottom) newPage();
     pdf.setFillColor(241, 245, 249);
     pdf.rect(margin, y, contentWidth, blockHeight, "F");
@@ -135,9 +143,12 @@ export function buildMemberBauPdf(members: readonly BauExportMember[], fonts: Pd
     pdf.rect(width - margin - 82, y + 48, 68, 4, "F");
     pdf.setFillColor(249, 115, 22);
     pdf.rect(width - margin - 82, y + 48, 68 * Math.min(100, Math.max(0, member.dailyBusinessPercent ?? 0)) / 100, 4, "F");
+    const weekly = weeklyAllocationHours(member.weeklyHours, member.dailyBusinessPercent ?? 0);
+    text(weekly == null ? "Hours unset" : `${formatHours(weekly)} h/week`, width - margin - 82, y + 67, 8, true);
     y += blockHeight + 10;
     text("BAU TASK", margin + 12, y, 7, true, [100, 116, 139]);
-    text("ALLOCATION", width - margin - 70, y, 7, true, [100, 116, 139]);
+    text("ALLOC. (%)", width - margin - 125, y, 7, true, [100, 116, 139]);
+    text("HOURS/WK", width - margin - 68, y, 7, true, [100, 116, 139]);
     y += 12;
   }
 
@@ -160,7 +171,7 @@ export function buildMemberBauPdf(members: readonly BauExportMember[], fonts: Pd
       y += 32;
     }
     tasks.forEach((task, index) => {
-      const wrapped = lines(task.name, contentWidth - 105, 9);
+      const wrapped = lines(task.name, contentWidth - 165, 9);
       let offset = 0;
       do {
         if (bottom - y < 30) {
@@ -175,7 +186,9 @@ export function buildMemberBauPdf(members: readonly BauExportMember[], fonts: Pd
           pdf.rect(margin, y, contentWidth, rowHeight, "F");
         }
         chunk.forEach((line, lineIndex) => text(line, margin + 12, y + 16 + lineIndex * 13, 9));
-        text(percent(task.percent), width - margin - 65, y + 16, 9, true);
+        text(percent(task.percent), width - margin - 120, y + 16, 9, true);
+        const hours = weeklyAllocationHours(member.weeklyHours, task.percent);
+        text(hours == null ? "—" : formatHours(hours), width - margin - 65, y + 16, 9, true);
         pdf.setDrawColor(226, 232, 240);
         pdf.line(margin, y + rowHeight, width - margin, y + rowHeight);
         y += rowHeight;

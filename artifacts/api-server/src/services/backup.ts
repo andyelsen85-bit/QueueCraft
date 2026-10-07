@@ -90,6 +90,24 @@ export function validateBackup(value: unknown): QueueCraftBackup {
   if (!c.tables || typeof c.tables !== "object" || Array.isArray(c.tables))
     throw new Error("Backup tables must be an object");
   const inputManifest = c.manifest as typeof BACKUP_MANIFEST | undefined;
+  // Upgrade genuine older backups without assuming a full-time contract.
+  const oldMemberManifest = Array.isArray(inputManifest) && inputManifest.find((entry) => entry.name === "members");
+  if (oldMemberManifest && Array.isArray(oldMemberManifest.columns) &&
+    !oldMemberManifest.columns.some((column) => column.key === "weeklyHours") &&
+    c.fingerprint === createHash("sha256").update(JSON.stringify(inputManifest)).digest("hex")) {
+    const members = (c.tables as Record<string, unknown>).members;
+    if (!Array.isArray(members) || members.some((row) => !row || typeof row !== "object" || Array.isArray(row))) {
+      throw new Error("Backup table members contains an invalid row");
+    }
+    const hoursColumn = BACKUP_MANIFEST.find((entry) => entry.name === "members")!.columns.find((column) => column.key === "weeklyHours")!;
+    const manifest = inputManifest!.map((entry) => entry.name !== "members" ? entry : {
+      ...entry, columns: [...entry.columns, hoursColumn].sort((a, b) => a.name.localeCompare(b.name)),
+    });
+    return validateBackup({
+      ...c, manifest, fingerprint: createHash("sha256").update(JSON.stringify(manifest)).digest("hex"),
+      tables: { ...(c.tables as Record<string, unknown>), members: members.map((row) => ({ ...row, weeklyHours: null })) },
+    });
+  }
   const currentManifest = JSON.stringify(inputManifest) === JSON.stringify(BACKUP_MANIFEST)
     && c.fingerprint === BACKUP_FINGERPRINT;
   // Accept both earlier v2 shapes: the pre-digest backup, and the first

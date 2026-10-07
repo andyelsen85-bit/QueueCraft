@@ -1192,6 +1192,7 @@ router.post("/directory/members", async (req, res): Promise<void> => {
         cioOverride: body.data.isCio ? true : null,
         dailyBusinessTasks: dailyBusiness.tasks,
         dailyBusinessPercent: dailyBusiness.percent,
+        weeklyHours: body.data.weeklyHours ?? null,
       })
       .returning();
     for (const department of snapshot.departments) {

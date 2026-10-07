@@ -101,6 +101,7 @@ import {
 } from "lucide-react";
 import { occupancyStyle } from "@/lib/occupancy";
 import { MilestoneAllocationFields } from "@/components/milestone-allocation-fields";
+import { milestoneHoursLabel } from "@/lib/contract-hours";
 
 import {
   DropdownMenu,
@@ -1156,7 +1157,7 @@ export function TopicDetail() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Left Column */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="min-w-0 lg:col-span-2 space-y-6">
           <Card>
             <CardHeader className="pb-4 border-b border-border/50">
               <CardTitle className="text-lg flex items-center justify-between">
@@ -1382,6 +1383,8 @@ export function TopicDetail() {
                             <MilestoneAllocationFields
                               participants={allocParticipants}
                               values={milestoneAllocations}
+                              beginDate={milestoneForm.watch("beginDate")}
+                              targetDate={milestoneForm.watch("targetDate")}
                               deferredUntilValidation={isPendingValidation}
                               onChange={(memberId, value) =>
                                 setMilestoneAllocations((current) => ({ ...current, [memberId]: value }))}
@@ -1453,10 +1456,10 @@ export function TopicDetail() {
                       {topic.milestones.map((m) => (
                         <div
                           key={m.id}
-                          className="p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center hover:bg-muted/30 transition-colors"
+                          className="min-w-0 p-4 flex flex-col gap-3 hover:bg-muted/30 transition-colors"
                         >
-                          <div className="flex-1">
-                            <div className="font-semibold">{m.title}</div>
+                          <div className="min-w-0">
+                            <div className="font-semibold break-words">{m.title}</div>
                             {m.description && (
                               <div className="text-sm text-muted-foreground mt-1">
                                 {m.description}
@@ -1468,7 +1471,7 @@ export function TopicDetail() {
                                   ?? "another milestone"}
                               </p>
                             )}
-                            <div className="flex gap-4 mt-2 text-xs font-mono text-muted-foreground">
+                            <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2 text-xs font-mono text-muted-foreground">
                               {m.beginDate && (
                                 <span className="flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />{" "}
@@ -1487,18 +1490,22 @@ export function TopicDetail() {
                                   {m.assignee.name}
                                 </span>
                               )}
-                              {m.allocations.map((allocation) => (
+                            </div>
+                            <div className="flex flex-wrap gap-2 mt-2 text-xs font-mono">
+                               {m.allocations.map((allocation) => (
                                 <span
                                   key={allocation.member.id}
-                                  className="rounded-sm border px-1 font-semibold"
+                                   className="max-w-full break-words rounded-sm border px-2 py-1 font-semibold"
                                   style={occupancyStyle(allocation.allocationPercent)}
                                 >
                                   {allocation.member.name}: {allocation.allocationPercent}%
+                                   {" · "}{allocation.member.weeklyHours == null ? "Contract hours unset" :
+                                     milestoneHoursLabel(allocation.member.weeklyHours, allocation.allocationPercent, m.beginDate, m.targetDate)}
                                 </span>
                               ))}
                             </div>
                           </div>
-                          <div className="flex items-center gap-3 shrink-0">
+                           <div className="flex flex-wrap items-center justify-end gap-3">
                             <StatusBadge status={m.status} label={m.status === "completed" ? "Done" : undefined} />
                             {!isPendingValidation && canManageMilestones && (
                               <Select
@@ -1538,6 +1545,7 @@ export function TopicDetail() {
                                     variant="ghost"
                                     size="icon"
                                     className="h-8 w-8"
+                                     aria-label={`Actions for ${m.title}`}
                                   >
                                     <MoreHorizontal className="h-4 w-4" />
                                   </Button>
@@ -1717,6 +1725,8 @@ export function TopicDetail() {
                             ?.allocations.map((allocation) => allocation.member) ?? []),
                         ].map((member) => [member.id, member] as const)).values())}
                         values={editMilestoneAllocations}
+                        beginDate={editMilestoneForm.watch("beginDate")}
+                        targetDate={editMilestoneForm.watch("targetDate")}
                         deferredUntilValidation={isPendingValidation}
                         onChange={(memberId, value) =>
                           setEditMilestoneAllocations((current) => ({ ...current, [memberId]: value }))}

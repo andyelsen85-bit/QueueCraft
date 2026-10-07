@@ -1,4 +1,5 @@
 import * as React from "react";
+import { weeklyHoursLabel } from "@/lib/contract-hours";
 import {
   useGetOccupancyOverview,
   getGetOccupancyOverviewQueryKey,
@@ -480,12 +481,13 @@ export function Occupancy() {
                                 style={occupancyStyle(task.percent)}
                               >
                                 {task.percent}%
+                                <span className="ml-1 text-xs font-normal">· {weeklyHoursLabel(overview.member.weeklyHours, task.percent)}</span>
                               </span>
                             </div>
                           ))}
                           <div className="flex items-center justify-between px-1 pt-1 text-xs font-mono text-muted-foreground">
                             <span>BAU subtotal</span>
-                            <span>{overview.dailyBusinessPercent}%</span>
+                            <span>{overview.dailyBusinessPercent}% · {weeklyHoursLabel(overview.member.weeklyHours, overview.dailyBusinessPercent)}</span>
                           </div>
                         </div>
                       )}

@@ -2,6 +2,7 @@ import {
   boolean,
   check,
   date,
+  doublePrecision,
   integer,
   jsonb,
   pgEnum,
@@ -64,6 +65,7 @@ export const membersTable = pgTable(
     status: memberStatusEnum("status").notNull().default("active"),
     isCio: boolean("is_cio").notNull().default(false),
     cioOverride: boolean("cio_override"),
+    weeklyHours: doublePrecision("weekly_hours"),
     dailyBusinessPercent: integer("daily_business_percent")
       .notNull()
       .default(0),
@@ -80,6 +82,7 @@ export const membersTable = pgTable(
       .defaultNow(),
   },
   (table) => [
+    check("members_weekly_hours_range", sql`${table.weeklyHours} > 0 and ${table.weeklyHours} <= 168`),
     check(
       "members_daily_business_percent_range",
       sql`${table.dailyBusinessPercent} between 0 and 100`,

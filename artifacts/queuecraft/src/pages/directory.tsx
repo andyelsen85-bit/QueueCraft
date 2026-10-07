@@ -57,6 +57,7 @@ import {
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { downloadMemberBauCsv, downloadMemberBauPdf } from "@/lib/member-bau-export";
+import { formatHours, weeklyHoursLabel } from "@/lib/contract-hours";
 
 type MemberDraft = {
   name: string;
@@ -69,6 +70,7 @@ type MemberDraft = {
   headDepartmentIds: string[];
   deputyDepartmentIds: string[];
   dailyBusinessTasks: DailyBusinessTask[];
+  weeklyHours: string;
 };
 type DailyBusinessTask = { name: string; percent: number };
 
@@ -121,6 +123,7 @@ const emptyMember: MemberDraft = {
   headDepartmentIds: [],
   deputyDepartmentIds: [],
   dailyBusinessTasks: [],
+  weeklyHours: "",
 };
 const emptyDepartment: DepartmentDraft = {
   name: "",
@@ -445,6 +448,10 @@ export function Directory() {
     queryClient.invalidateQueries({ queryKey: getListDepartmentsQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListRolesQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListMembersQueryKey() });
+    queryClient.invalidateQueries({ predicate: (query) => {
+      const path = query.queryKey[0];
+      return typeof path === "string" && (path.startsWith("/api/topics") || path.startsWith("/api/occupancy"));
+    } });
   };
 
   const openMember = (member?: NonNullable<typeof members>[number]) => {
@@ -461,6 +468,7 @@ export function Directory() {
             name: member.name,
             email: member.email,
             title: member.title ?? "",
+            weeklyHours: member.weeklyHours == null ? "" : String(member.weeklyHours),
             externalSubject:
               current?.externalSubject ?? "",
             accountType: current?.authProvider === "local" ? "local" : "external",
@@ -526,6 +534,11 @@ export function Directory() {
       setMemberActionError("Local account passwords must be at least 12 characters.");
       return;
     }
+    const weeklyHours = memberDraft.weeklyHours.trim() === "" ? null : Number(memberDraft.weeklyHours);
+    if (weeklyHours !== null && (!Number.isFinite(weeklyHours) || weeklyHours <= 0 || weeklyHours > 168)) {
+      setMemberActionError("Weekly contract hours must be greater than 0 and no more than 168, or left empty.");
+      return;
+    }
     const dailyBusinessTasks = memberDraft.dailyBusinessTasks.map((task) => ({
       name: task.name.trim(),
       percent: Number(task.percent),
@@ -551,6 +564,7 @@ export function Directory() {
       name: memberDraft.name.trim(),
       email: memberDraft.email.trim(),
       title: memberDraft.title.trim() || null,
+      weeklyHours,
       ...(!memberDialog.id
         ? { externalSubject: memberDraft.accountType === "external" ? memberDraft.externalSubject.trim() || null : null }
         : memberDraft.accountType === "external" && memberDraft.externalSubject.trim()
@@ -1106,6 +1120,7 @@ export function Directory() {
                             <p className="font-semibold break-words">{member.name}</p>
                             <p className="text-sm text-muted-foreground break-words">
                               {member.title || "Member"}
+                              {member.weeklyHours != null && ` · ${formatHours(member.weeklyHours)} h/week contract`}
                             </p>
                           </div>
                           <p className="min-w-0 text-xs text-muted-foreground font-mono break-all">
@@ -1116,12 +1131,16 @@ export function Directory() {
                           <p className="text-sm font-medium">
                             <span className="text-muted-foreground text-xs uppercase mr-1">BAU:</span>
                             {(member.dailyBusinessPercent ?? 0)}%
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              {weeklyHoursLabel(member.weeklyHours, member.dailyBusinessPercent ?? 0)}
+                            </span>
                           </p>
                           {member.dailyBusinessTasks.length > 0 && (
                             <ul className="flex flex-wrap gap-1.5" aria-label={`BAU tasks for ${member.name}`}>
                               {member.dailyBusinessTasks.map((task, index) => (
                                 <li key={index} className="max-w-full break-words rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
                                   {task.name}
+                                  <span className="ml-1">· {task.percent}% · {weeklyHoursLabel(member.weeklyHours, task.percent)}</span>
                                 </li>
                               ))}
                             </ul>
@@ -1308,6 +1327,13 @@ export function Directory() {
                 }
               />
             </Field>}
+            <Field label="Contracted weekly hours">
+              <Input id="member-weekly-hours" data-testid="input-member-weekly-hours" aria-label="Contracted weekly hours"
+                type="number" min="0.01" max="168" step="0.01" placeholder="e.g. 40 or 37.5"
+                value={memberDraft.weeklyHours}
+                onChange={(event) => setMemberDraft({ ...memberDraft, weeklyHours: event.target.value })} />
+              <p className="text-xs text-muted-foreground">Hours per week in this member’s contract. Leave empty if unknown; no default is assumed.</p>
+            </Field>
             <Field label="Daily Business Tasks (BAU)">
               <div className="space-y-2">
                 {memberDraft.dailyBusinessTasks.length === 0 ? (
@@ -1316,7 +1342,7 @@ export function Directory() {
                   </p>
                 ) : (
                   memberDraft.dailyBusinessTasks.map((task, index) => (
-                    <div key={index} className="flex items-center gap-2">
+                    <div key={index} className="flex flex-wrap items-center gap-2">
                       <Input
                         data-testid={`input-bau-task-name-${index}`}
                         aria-label={`BAU task ${index + 1} name`}
@@ -1344,6 +1370,9 @@ export function Directory() {
                         }}
                       />
                       <span className="text-muted-foreground">%</span>
+                      <span className="text-xs text-muted-foreground" aria-live="polite">
+                        {weeklyHoursLabel(memberDraft.weeklyHours.trim() ? Number(memberDraft.weeklyHours) : null, task.percent)}
+                      </span>
                       <Button
                         type="button"
                         variant="ghost"
@@ -1361,7 +1390,7 @@ export function Directory() {
                     </div>
                   ))
                 )}
-                <div className="flex items-center justify-between pt-1">
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                   <Button
                     type="button"
                     variant="outline"
@@ -1377,6 +1406,8 @@ export function Directory() {
                   </Button>
                   <span className={`text-sm font-medium ${memberDraft.dailyBusinessTasks.reduce((sum, task) => sum + (Number(task.percent) || 0), 0) > 100 ? "text-destructive" : "text-muted-foreground"}`}>
                     Total: {memberDraft.dailyBusinessTasks.reduce((sum, task) => sum + (Number(task.percent) || 0), 0)}%
+                    {" · "}{weeklyHoursLabel(memberDraft.weeklyHours.trim() ? Number(memberDraft.weeklyHours) : null,
+                      memberDraft.dailyBusinessTasks.reduce((sum, task) => sum + (Number(task.percent) || 0), 0))}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">Names must be unique; percentages must total 100% or less.</p>

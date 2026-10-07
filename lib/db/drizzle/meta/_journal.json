@@ -169,6 +169,13 @@
       "when": 1790679995052,
       "tag": "0023_spicy_rictor",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791353021675,
+      "tag": "0024_modern_the_liberteens",
+      "breakpoints": true
     }
   ]
 }

@@ -818,6 +818,7 @@ components:
         isCio: { type: boolean }
         authProvider: { type: ["string", "null"] }
         dailyBusinessPercent: { type: integer, minimum: 0, maximum: 100 }
+        weeklyHours: { type: ["number", "null"], exclusiveMinimum: 0, maximum: 168, description: "Contracted weekly hours; null when not entered." }
         dailyBusinessTasks:
           description: "Optional named BAU tasks. Names are trimmed; when dailyBusinessPercent is also supplied, its value must equal the task total."
           type: array
@@ -830,6 +831,7 @@ components:
         name: { type: string, minLength: 2, maxLength: 120 }
         email: { type: string, format: email, maxLength: 254 }
         title: { type: ["string", "null"], maxLength: 160 }
+        weeklyHours: { type: ["number", "null"], exclusiveMinimum: 0, maximum: 168 }
         externalSubject: { type: ["string", "null"], maxLength: 255 }
         isCio: { type: boolean, default: false }
         password: { type: string, minLength: 12, maxLength: 256 }
@@ -852,6 +854,7 @@ components:
         name: { type: string, minLength: 2, maxLength: 120 }
         email: { type: string, format: email, maxLength: 254 }
         title: { type: ["string", "null"], maxLength: 160 }
+        weeklyHours: { type: ["number", "null"], exclusiveMinimum: 0, maximum: 168 }
         externalSubject: { type: ["string", "null"], maxLength: 255 }
         status: { type: string, enum: [active, disabled] }
         isCio: { type: boolean }

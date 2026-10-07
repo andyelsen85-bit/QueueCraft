@@ -1,0 +1,2 @@
+ALTER TABLE "members" ADD COLUMN "weekly_hours" double precision;--> statement-breakpoint
+ALTER TABLE "members" ADD CONSTRAINT "members_weekly_hours_range" CHECK ("members"."weekly_hours" > 0 and "members"."weekly_hours" <= 168);

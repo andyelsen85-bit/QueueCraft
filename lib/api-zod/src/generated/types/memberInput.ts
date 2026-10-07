@@ -21,6 +21,12 @@ export interface MemberInput {
      */
   title?: string | null;
   /**
+     * @maximum 168
+     * @exclusiveMinimum 0
+     * @nullable
+     */
+  weeklyHours?: number | null;
+  /**
      * @maxLength 255
      * @nullable
      */

@@ -6,7 +6,7 @@ import { buildMemberBauCsv, buildMemberBauPdf, type BauExportMember } from "./me
 const sample: BauExportMember[] = [
   {
     id: "z", name: "Zoë Müller", title: "Operations specialist", email: "zoe@example.invalid",
-    dailyBusinessPercent: 45,
+    dailyBusinessPercent: 45, weeklyHours: 37.5,
     dailyBusinessTasks: [
       { name: 'Service support, including "priority" requests', percent: 25 },
       { name: "Documentation\nand reporting", percent: 20 },
@@ -18,13 +18,14 @@ const sample: BauExportMember[] = [
 
 test("CSV includes every member, task allocation, legacy BAU, and Unicode with correct quoting", () => {
   const csv = buildMemberBauCsv(sample);
-  assert.ok(csv.startsWith("\uFEFFMember,Title,Email,Total BAU (%),BAU task,Task BAU (%)\r\n"));
+  assert.ok(csv.startsWith("\uFEFFMember,Title,Email,Contract hours/week,Total BAU (%),Total BAU (hours/week),BAU task,Task BAU (%),Task BAU (hours/week)\r\n"));
   assert.ok(csv.indexOf('"Ben Example"') < csv.indexOf('"Élodie André"'));
   assert.ok(csv.indexOf('"Élodie André"') < csv.indexOf('"Zoë Müller"'));
   assert.ok(csv.includes('"Standard Operations",15'));
-  assert.ok(csv.includes('"ben@example.invalid",0,"",'));
-  assert.ok(csv.includes('"Service support, including ""priority"" requests",25'));
-  assert.ok(csv.includes('"Documentation\nand reporting",20'));
+  assert.ok(csv.includes('"ben@example.invalid",,0,,"",,'));
+  assert.ok(csv.includes('"Service support, including ""priority"" requests",25,9.38'));
+  assert.ok(csv.includes('"Documentation\nand reporting",20,7.5'));
+  assert.ok(csv.includes('"zoe@example.invalid",37.5,45,16.88,'));
 });
 
 test("CSV neutralizes formulas in user-controlled member and task text", () => {
