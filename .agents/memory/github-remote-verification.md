@@ -16,3 +16,11 @@ Git object uploads can hit the connector proxy's per-project request limit befor
 **Why:** Concurrent blob uploads were rejected by the proxy while the GitHub connection remained authorized.
 
 **How to apply:** Upload blobs sequentially or with bounded concurrency, verify their hashes, and update the branch only after the exact tree and commit have been verified.
+
+## Complete source payloads
+
+Validate source blob hashes before uploading, and read large payloads in bounded chunks rather than relying on a requested output budget.
+
+**Why:** Programmatic shell output was capped despite a larger requested budget, silently shortening Base64 payloads. Pipe reads can also return partial blocks.
+
+**How to apply:** Use bounded full-block reads for piped content and verify the Git blob hash of the decoded, reassembled bytes before uploading. A successful shell call alone does not prove that all bytes were returned.
