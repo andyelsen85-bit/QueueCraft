@@ -71,6 +71,7 @@ catalogs:
       version: 3.25.76
 
 overrides:
+  '@tailwindcss/typography>postcss-selector-parser': 7.1.6
   esbuild>@esbuild/darwin-arm64: '-'
   esbuild>@esbuild/darwin-x64: '-'
   esbuild>@esbuild/freebsd-arm64: '-'
@@ -2055,8 +2056,8 @@ packages:
   dom-helpers@5.2.1:
     resolution: {integrity: sha512-nRCa7CK3VTrM2NmGkIy4cbK7IZlgBE/PYMn55rrXefr5xXDP0LdtfPnblFDoVdcAfslJ7or6iqAUnx0CCGIWQA==}
 
-  dompurify@3.4.15:
-    resolution: {integrity: sha512-EUBjM+B+lkDE41iE82DDSCfkoPGfXx8IxFxPMjNzm/Uk4xDet77rTN9wqlxlVg71kK7XGuUMv6wUxJUwwv+Xyw==}
+  dompurify@3.4.16:
+    resolution: {integrity: sha512-sqo+pNp3qRhCIpbgRi1y8Tgk27Bo2Ry7w0dC1NBeNTdZChWjz9Xb/KOoZbRP/R6pQZ80Qw8YhXw13hWWBbMRnQ==}
 
   drizzle-kit@0.31.10:
     resolution: {integrity: sha512-7OZcmQUrdGI+DUNNsKBn1aW8qSoKuTH7d0mYgSP8bAzdFzKoovxEFnoGQp2dVs82EOJeYycqRtciopszwUf8bw==}
@@ -2781,8 +2782,8 @@ packages:
     resolution: {integrity: sha512-8OEwKp5juEvb/MjpIc4hjqfgCNysrS94RIOMXYvpYCdm/jglrKEiAYmiumbmGhCvs+IcInsphYDFwqrjr7398w==}
     hasBin: true
 
-  postcss-selector-parser@6.0.10:
-    resolution: {integrity: sha512-IQ7TZdoaqbT+LCpShg46jnZVlhWD2w6iQYAcYXfHARZ7X1t/UGhhceQDs5X0cGqKvYlHNOuv7Oa1xmb0oQuA3w==}
+  postcss-selector-parser@7.1.6:
+    resolution: {integrity: sha512-7qASPzhKF2l2KLboRZux8CCTRMdGiV08vWmyKzPz22qZ7ZjQBOeY7rNzNoCLSUiftJ7HUq0GERHmxw/t0dCdMw==}
     engines: {node: '>=4'}
 
   postcss@8.5.28:
@@ -2820,8 +2821,8 @@ packages:
   prop-types@15.8.1:
     resolution: {integrity: sha512-oj87CgZICdulUohogVAR7AjlC0327U4el4L6eAvOqCeudMDVU0NThNaV+b9Df4dXgSP1gXMTnPdhfe/2qDH5cg==}
 
-  proxy-addr@2.0.7:
-    resolution: {integrity: sha512-llQsMLSUDUPT44jdrU/O37qlnifitDP+ZwrmmZcoSKyLKvtZxpyV0n2/bD/N4tBAAZ/gJEdZU7KMraoK1+XYAg==}
+  proxy-addr@2.0.8:
+    resolution: {integrity: sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==}
     engines: {node: '>= 0.10'}
 
   pump@3.0.4:
@@ -3063,8 +3064,8 @@ packages:
       '@types/react':
         optional: true
 
-  source-map-js@1.2.1:
-    resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
+  source-map-js@1.2.2:
+    resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
     engines: {node: '>=0.10.0'}
 
   split2@4.2.0:
@@ -4393,7 +4394,7 @@ snapshots:
       jiti: 2.7.0
       lightningcss: 1.32.0
       magic-string: 0.30.21
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
       tailwindcss: 4.3.3
 
   '@tailwindcss/oxide-linux-x64-gnu@4.3.3':
@@ -4409,7 +4410,7 @@ snapshots:
 
   '@tailwindcss/typography@0.5.20(tailwindcss@4.3.3)':
     dependencies:
-      postcss-selector-parser: 6.0.10
+      postcss-selector-parser: 7.1.6
       tailwindcss: 4.3.3
 
   '@tailwindcss/vite@4.3.3(vite@7.3.6(@types/node@25.9.6)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.15)(yaml@2.9.0))':
@@ -4849,7 +4850,7 @@ snapshots:
       '@babel/runtime': 7.29.7
       csstype: 3.2.3
 
-  dompurify@3.4.15:
+  dompurify@3.4.16:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
     optional: true
@@ -5000,7 +5001,7 @@ snapshots:
       on-finished: 2.4.1
       once: 1.4.0
       parseurl: 1.3.3
-      proxy-addr: 2.0.7
+      proxy-addr: 2.0.8
       qs: 6.16.0
       range-parser: 1.3.0
       router: 2.2.0
@@ -5222,7 +5223,7 @@ snapshots:
     optionalDependencies:
       canvg: 3.0.11
       core-js: 3.50.0
-      dompurify: 3.4.15
+      dompurify: 3.4.16
       html2canvas: 1.4.1
 
   ldapts@8.2.0:
@@ -5511,7 +5512,7 @@ snapshots:
       sonic-boom: 4.2.1
       thread-stream: 3.1.0
 
-  postcss-selector-parser@6.0.10:
+  postcss-selector-parser@7.1.6:
     dependencies:
       cssesc: 3.0.0
       util-deprecate: 1.0.2
@@ -5520,7 +5521,7 @@ snapshots:
     dependencies:
       nanoid: 3.3.18
       picocolors: 1.1.1
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
 
   postgres-array@2.0.0: {}
 
@@ -5546,7 +5547,7 @@ snapshots:
       object-assign: 4.1.1
       react-is: 16.13.1
 
-  proxy-addr@2.0.7:
+  proxy-addr@2.0.8:
     dependencies:
       forwarded: 0.2.0
       ipaddr.js: 1.9.1
@@ -5800,7 +5801,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
-  source-map-js@1.2.1: {}
+  source-map-js@1.2.2: {}
 
   split2@4.2.0: {}
 
