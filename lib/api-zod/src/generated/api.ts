@@ -2176,6 +2176,8 @@ export const ListCalendarTopicsResponseItem = zod.object({
   "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "departmentName": zod.string(),
   "roleId": zod.string().nullable(),
+  "canEditDates": zod.boolean(),
+  "dependsOnTopicId": zod.string().nullable(),
   "targetDate": zod.coerce.date().nullable(),
   "estimatedStartDate": zod.coerce.date().nullable(),
   "estimatedFinishDate": zod.coerce.date().nullable(),
@@ -2186,6 +2188,8 @@ export const ListCalendarTopicsResponseItem = zod.object({
   "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']),
   "beginDate": zod.coerce.date().nullable(),
   "targetDate": zod.coerce.date().nullable(),
+  "canEditDates": zod.boolean(),
+  "dependsOnMilestoneId": zod.string().nullable(),
   "assignedMemberIds": zod.array(zod.string())
 }))
 })

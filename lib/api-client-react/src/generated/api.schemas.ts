@@ -354,6 +354,9 @@ export interface CalendarMilestone {
   beginDate: string | null;
   /** @nullable */
   targetDate: string | null;
+  canEditDates: boolean;
+  /** @nullable */
+  dependsOnMilestoneId: string | null;
   assignedMemberIds: string[];
 }
 
@@ -365,6 +368,9 @@ export interface CalendarTopic {
   departmentName: string;
   /** @nullable */
   roleId: string | null;
+  canEditDates: boolean;
+  /** @nullable */
+  dependsOnTopicId: string | null;
   /** @nullable */
   targetDate: string | null;
   /** @nullable */

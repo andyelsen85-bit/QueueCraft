@@ -17,6 +17,9 @@ export interface CalendarTopic {
   departmentName: string;
   /** @nullable */
   roleId: string | null;
+  canEditDates: boolean;
+  /** @nullable */
+  dependsOnTopicId: string | null;
   /** @nullable */
   targetDate: Date | null;
   /** @nullable */

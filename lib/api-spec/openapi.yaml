@@ -1030,7 +1030,7 @@ components:
           format: date
     CalendarMilestone:
       type: object
-      required: [id, title, status, beginDate, targetDate, assignedMemberIds]
+      required: [id, title, status, beginDate, targetDate, assignedMemberIds, canEditDates, dependsOnMilestoneId]
       properties:
         id: { type: string }
         title: { type: string }
@@ -1038,12 +1038,14 @@ components:
           $ref: "#/components/schemas/MilestoneStatus"
         beginDate: { type: ["string", "null"], format: date }
         targetDate: { type: ["string", "null"], format: date }
+        canEditDates: { type: boolean }
+        dependsOnMilestoneId: { type: ["string", "null"] }
         assignedMemberIds:
           type: array
           items: { type: string }
     CalendarTopic:
       type: object
-      required: [id, title, priority, status, departmentName, roleId, targetDate, estimatedStartDate, estimatedFinishDate, assignedMemberIds, milestones]
+      required: [id, title, priority, status, departmentName, roleId, targetDate, estimatedStartDate, estimatedFinishDate, assignedMemberIds, milestones, canEditDates, dependsOnTopicId]
       properties:
         id: { type: string }
         title: { type: string }
@@ -1053,6 +1055,8 @@ components:
           $ref: "#/components/schemas/TopicStatus"
         departmentName: { type: string }
         roleId: { type: ["string", "null"] }
+        canEditDates: { type: boolean }
+        dependsOnTopicId: { type: ["string", "null"] }
         targetDate: { type: ["string", "null"], format: date }
         estimatedStartDate: { type: ["string", "null"], format: date }
         estimatedFinishDate: { type: ["string", "null"], format: date }

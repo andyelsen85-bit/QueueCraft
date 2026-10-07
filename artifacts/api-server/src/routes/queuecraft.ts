@@ -1867,7 +1867,7 @@ router.delete("/directory/roles/:roleId", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/calendar/topics", async (_req, res): Promise<void> => {
+router.get("/calendar/topics", async (req, res): Promise<void> => {
   const snapshot = await loadSnapshot();
   const milestonesByTopic = new Map<string, typeof snapshot.milestones>();
   const topicMembers = new Map<string, Set<string>>();
@@ -1903,6 +1903,8 @@ router.get("/calendar/topics", async (_req, res): Promise<void> => {
     status: topic.status,
     departmentName: snapshot.buildTopic(topic).department?.name ?? "Not assigned",
     roleId: topic.roleId,
+    canEditDates: canManageTopic(currentUserId(req), topic, snapshot),
+    dependsOnTopicId: topic.dependsOnTopicId,
     targetDate: topic.targetDate,
     estimatedStartDate: topic.estimatedStartDate,
     estimatedFinishDate: topic.estimatedFinishDate,
@@ -1913,6 +1915,8 @@ router.get("/calendar/topics", async (_req, res): Promise<void> => {
       status: milestone.status,
       beginDate: milestone.beginDate,
       targetDate: milestone.targetDate,
+      canEditDates: canManageTopic(currentUserId(req), topic, snapshot),
+      dependsOnMilestoneId: milestone.dependsOnMilestoneId,
       assignedMemberIds: [...(milestoneMembers.get(milestone.id) ?? [])],
     })),
   }))));

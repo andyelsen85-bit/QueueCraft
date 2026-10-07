@@ -1377,6 +1377,10 @@ describe("QueueCraft security and preference flows", () => {
         const detail = await ordinary.get(`/api/topics/${topic.body.id}`).expect(200);
         assert.ok(detail.body.milestones.some((entry: { id: string }) => entry.id === milestone.body.id));
         assert.equal(detail.body.status, status);
+        const calendar = await ordinary.get("/api/calendar/topics").expect(200);
+        const calendarTopic = calendar.body.find((entry: { id: string }) => entry.id === topic.body.id);
+        assert.equal(calendarTopic.canEditDates, false);
+        assert.equal(calendarTopic.milestones.find((entry: { id: string }) => entry.id === milestone.body.id).canEditDates, false);
         await ordinary.patch(`/api/milestones/${milestone.body.id}`).set("x-csrf-token", ordinaryCsrf)
           .send({ title: "Unauthorized edit" }).expect(403);
         await ordinary.delete(`/api/milestones/${milestone.body.id}`).set("x-csrf-token", ordinaryCsrf).expect(403);
@@ -2298,10 +2302,14 @@ describe("QueueCraft security and preference flows", () => {
       assert.equal(row.roleId, "role-ci-validation");
       assert.equal(row.estimatedStartDate, null);
       assert.equal(row.estimatedFinishDate, null);
+      assert.equal(row.canEditDates, true);
+      assert.equal(row.dependsOnTopicId, null);
       assert.equal(row.milestones.length, 1);
       assert.equal(row.milestones[0].id, milestone.body.id);
       assert.equal(row.milestones[0].beginDate.slice(0, 10), "2044-01-08");
       assert.equal(row.milestones[0].targetDate.slice(0, 10), "2044-01-10");
+      assert.equal(row.milestones[0].canEditDates, true);
+      assert.equal(row.milestones[0].dependsOnMilestoneId, null);
     } finally {
       await agent.delete(`/api/topics/${created.body.id}`).set("x-csrf-token", csrf).expect(204);
     }

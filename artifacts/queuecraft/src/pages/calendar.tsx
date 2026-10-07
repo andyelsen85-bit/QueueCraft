@@ -5,7 +5,9 @@ import { Link } from "wouter"
 import { useListCalendarTopics, useListMembers, useListRoles } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { PriorityBadge, StatusBadge } from "@/components/badges"
+import { PriorityBadge } from "@/components/badges"
+import { DateEditDialog, DateHandles, isoDay, type EditRequest } from "@/components/calendar-date-editing"
+import { downloadCalendarCsv, downloadCalendarPdf, selectCalendarExport } from "@/lib/calendar-export"
 
 const safeDate = (dateStr?: string | null) => {
   if (!dateStr) return null;
@@ -28,7 +30,7 @@ const overlapsMonth = (range: DateRange, start: Date, end: Date) =>
   !isBefore(range.end, start) && !isAfter(range.start, end);
 
 const DAY_WIDTH = 28;
-const LABEL_WIDTH = 192;
+const LABEL_WIDTH = 256;
 const MONTH_COUNT = 13; // Selected month plus the following 12 months.
 
 const getBarColors = (status: string) => {
@@ -46,11 +48,28 @@ const getBarColors = (status: string) => {
   }
 };
 
+const LEGEND = ["not_started", "open", "in_progress", "pending_validation", "returned", "completed", "blocked", "rejected", "closed"];
+
+function StatusLegend() {
+  return (
+    <ul aria-label="Bar color legend" className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+      {LEGEND.map((status) => (
+        <li key={status} className="flex items-center gap-1.5">
+          <span aria-hidden="true" className={`inline-block h-3 w-5 rounded-sm border ${getBarColors(status)}`} />
+          <span className="capitalize">{status.replaceAll("_", " ")}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function TimelineCells({
-  days, rangeStart, rangeEnd, range, status, title, href, milestone = false,
+  days, rangeStart, rangeEnd, range, status, title, href, milestone = false, onEdit, startUnset, endUnset,
 }: {
   days: Date[]; rangeStart: Date; rangeEnd: Date; range: DateRange | null;
   status: string; title: string; href: string; milestone?: boolean;
+  startUnset?: boolean; endUnset?: boolean;
+  onEdit?: (start: Date, end: Date, handle: "start" | "end") => void;
 }) {
   const visible = range && overlapsMonth(range, rangeStart, rangeEnd);
   const startIdx = visible ? differenceInCalendarDays(
@@ -75,10 +94,15 @@ function TimelineCells({
               ${isAfter(range.end, rangeEnd) ? 'rounded-r-none border-r-0' : 'rounded-r-md'}
               ${getBarColors(status)}`}
             title={`${title}\n${format(range.start, "MMM d, yyyy")} - ${format(range.end, "MMM d, yyyy")}`}
+            aria-label={`${title}. ${status.replaceAll("_", " ")}. ${format(range.start, "MMM d, yyyy")} to ${format(range.end, "MMM d, yyyy")}.`}
           >
             <span className="truncate text-[11px] font-semibold leading-none">{title}</span>
           </Link>
         </div>
+      )}
+      {visible && onEdit && (
+        <DateHandles range={range} rangeStart={rangeStart} rangeEnd={rangeEnd} label={title} onCommit={onEdit}
+          startUnset={startUnset} endUnset={endUnset} />
       )}
     </div>
   );
@@ -89,6 +113,10 @@ export function Calendar() {
   const [roleId, setRoleId] = React.useState("");
   const [memberId, setMemberId] = React.useState("");
   const [expandedTopics, setExpandedTopics] = React.useState<Record<string, boolean>>({});
+  const [editRequest, setEditRequest] = React.useState<EditRequest | null>(null);
+  const [scope, setScope] = React.useState<"current" | "all">("current");
+  const [exporting, setExporting] = React.useState(false);
+  const [exportError, setExportError] = React.useState<string | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const { data: topics, isLoading, isError, refetch } = useListCalendarTopics();
   const { data: roles, isLoading: rolesLoading, isError: rolesError, refetch: refetchRoles } = useListRoles();
@@ -154,6 +182,69 @@ export function Calendar() {
       });
   }, [topics, roleId, memberId, rangeStart, rangeEnd]);
 
+  const requestTopicEdit = (topic: NonNullable<typeof topics>[number], start: Date, end: Date, handle: "start" | "end") => {
+    const rs = topic.estimatedStartDate?.slice(0, 10) ?? null;
+    const rf = topic.estimatedFinishDate?.slice(0, 10) ?? null;
+    const shown = dateRange(topic.estimatedStartDate, topic.estimatedFinishDate ?? topic.targetDate);
+    const sChanged = handle === "start" && (!shown || !isSameDay(start, shown.start));
+    const fChanged = handle === "end" && (!shown || !isSameDay(end, shown.end));
+    const full = (topics ?? []).find((t) => t.id === topic.id) ?? topic;
+    const latest = full.milestones.reduce<string | null>((m, ms) => {
+      const t = ms.targetDate?.slice(0, 10) ?? null;
+      return t && (!m || t > m) ? t : m;
+    }, null);
+    setEditRequest({
+      kind: "topic", id: topic.id, topicId: topic.id, title: topic.title, rawStart: rs, rawFinish: rf,
+      start: sChanged ? isoDay(start) : rs ?? "", finish: fChanged ? isoDay(end) : rf ?? "",
+      latestMilestoneTarget: latest, committedFinish: topic.targetDate?.slice(0, 10) ?? null,
+    });
+  };
+  const requestMilestoneEdit = (topicId: string, milestone: { id: string; title: string; beginDate: string | null; targetDate: string | null; range: DateRange | null }, start: Date, end: Date, handle: "start" | "end") => {
+    const rs = milestone.beginDate?.slice(0, 10) ?? null;
+    const rf = milestone.targetDate?.slice(0, 10) ?? null;
+    const r = milestone.range;
+    const sChanged = handle === "start" && (!r || !isSameDay(start, r.start));
+    const fChanged = handle === "end" && (!r || !isSameDay(end, r.end));
+    setEditRequest({
+      kind: "milestone", id: milestone.id, topicId, title: milestone.title, rawStart: rs, rawFinish: rf,
+      start: sChanged ? isoDay(start) : rs ?? "", finish: fChanged ? isoDay(end) : rf ?? "",
+      latestMilestoneTarget: null, committedFinish: null,
+    });
+  };
+
+  const scopeLabel = scope === "current" ? "Current calendar" : "All schedules";
+  const exportSelection = React.useMemo(() => selectCalendarExport(topics ?? [], {
+    roleId, memberId, period: scope === "current" ? { start: rangeStart, end: rangeEnd } : undefined,
+  }), [topics, roleId, memberId, scope, rangeStart, rangeEnd]);
+  const exportDisabled = isLoading || isError || exporting || exportSelection.length === 0;
+  const runExport = async (kind: "csv" | "pdf") => {
+    if (!topics) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      const period = scope === "current" ? { start: rangeStart, end: rangeEnd } : undefined;
+      const selected = exportSelection;
+      if (selected.length === 0) throw new Error("Nothing to export for this selection.");
+      const options = {
+        title: "Topic Calendar",
+        roleNames: Object.fromEntries((roles ?? []).map((role) => [role.id, role.name])),
+        memberNames: Object.fromEntries((members ?? []).map((member) => [member.id, member.name])),
+        period,
+        filterLabel: [
+          scopeLabel,
+          `Role: ${roleId ? sortedRoles.find((role) => role.id === roleId)?.name ?? roleId : "All roles"}`,
+          `Member: ${memberId ? sortedMembers.find((member) => member.id === memberId)?.name ?? memberId : "All members"}`,
+        ].join("; "),
+      };
+      if (kind === "csv") downloadCalendarCsv(selected, options);
+      else await downloadCalendarPdf(selected, options);
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : "Export failed.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   React.useLayoutEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollLeft = 0;
   }, [month]);
@@ -216,12 +307,29 @@ export function Calendar() {
               className="h-9 rounded-md border bg-card px-3 text-sm font-medium text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Select start month" />
           </label>
+          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            Export scope
+            <select value={scope} onChange={(event) => setScope(event.target.value as "current" | "all")}
+              className="h-9 w-44 rounded-md border bg-card px-3 text-sm font-medium text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Export scope">
+              <option value="current">Current calendar</option>
+              <option value="all">All schedules</option>
+            </select>
+          </label>
+          <Button variant="outline" size="sm" disabled={exportDisabled} onClick={() => void runExport("csv")}>Export CSV</Button>
+          <Button variant="outline" size="sm" disabled={exportDisabled} onClick={() => void runExport("pdf")}>
+            {exporting ? "Exporting..." : "Export A0 PDF"}
+          </Button>
         </div>
       </div>
+      {exportError && <p role="alert" className="shrink-0 text-sm text-destructive">{exportError}</p>}
+      <div className="shrink-0"><StatusLegend /></div>
+
+      <DateEditDialog edit={editRequest} onClose={() => setEditRequest(null)} />
 
       <Card className="flex-1 min-w-0 overflow-hidden flex flex-col">
         <CardContent className="p-0 min-w-0 flex flex-col flex-1 overflow-hidden">
-           <div ref={scrollRef} className="flex-1 overflow-auto bg-muted/5 max-h-[calc(100vh-16rem)] min-h-[400px]">
+           <div ref={scrollRef} data-calendar-scroll className="flex-1 overflow-auto bg-muted/5 max-h-[calc(100vh-16rem)] min-h-[400px]">
               <div className="relative flex flex-col" style={{ width: LABEL_WIDTH + days.length * DAY_WIDTH }}>
                {todayLeft !== null && (
                  <div className="pointer-events-none absolute inset-y-0 z-[15] w-1 bg-black dark:bg-white"
@@ -293,8 +401,8 @@ export function Calendar() {
                       (!topic.topicRange && topic.milestones.length > 0);
                    return (
                      <React.Fragment key={topic.id}>
-                       <div className="flex h-16 border-b hover:bg-muted/30 group">
-                           <div className="sticky left-0 z-20 flex shrink-0 flex-col justify-center overflow-hidden border-r bg-card px-3 transition-colors group-hover:bg-muted/50 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]"
+                       <div className="flex min-h-16 border-b hover:bg-muted/30 group">
+                           <div className="sticky left-0 z-20 flex shrink-0 flex-col justify-center border-r bg-card px-3 transition-colors group-hover:bg-muted/50 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] dark:shadow-[1px_0_0_0_rgba(255,255,255,0.05)]"
                              style={{ width: LABEL_WIDTH }}>
                            <div className="flex min-w-0 items-center gap-1">
                              {topic.milestones.length ? (
@@ -314,17 +422,19 @@ export function Calendar() {
                                </span>
                              )}
                            </div>
-                           <div className="flex items-center gap-1 pl-7">
+                           <div className="flex items-start gap-1 py-1.5 pl-7">
                              <div className="scale-[0.8] origin-left"><PriorityBadge priority={topic.priority} /></div>
-                             <div className="scale-[0.8] origin-left -ml-2"><StatusBadge status={topic.status} /></div>
-                             <span className="truncate text-[10px] text-muted-foreground">
-                                {topic.topicRange ? topic.departmentName : "Dated milestones"}
+                             <span className="min-w-0 break-words text-[10px] text-muted-foreground">
+                                 {topic.departmentName}
                              </span>
                            </div>
                          </div>
                           <TimelineCells days={days} rangeStart={rangeStart} rangeEnd={rangeEnd}
                            range={topic.topicRange} status={topic.status}
-                           title={topic.title} href={`/topics/${topic.id}`} />
+                           title={topic.title} href={`/topics/${topic.id}`}
+                            startUnset={!topic.estimatedStartDate}
+                            endUnset={!topic.estimatedFinishDate && !topic.targetDate}
+                            onEdit={topic.canEditDates ? (s, e, handle) => requestTopicEdit(topic, s, e, handle) : undefined} />
                        </div>
                        {expanded && topic.milestones.map((milestone) => (
                          <div key={milestone.id} className="flex h-12 border-b bg-muted/10">
@@ -339,13 +449,15 @@ export function Calendar() {
                                <div className="truncate text-[10px] text-muted-foreground">
                                  {milestone.range
                                    ? `${format(milestone.range.start, "MMM d")} – ${format(milestone.range.end, "MMM d")}`
-                                   : "No dates planned"} · {milestone.status.replaceAll("_", " ")}
+                                   : "No dates planned"}
                                </div>
                              </div>
                            </div>
                             <TimelineCells days={days} rangeStart={rangeStart} rangeEnd={rangeEnd}
                              range={milestone.range} status={milestone.status}
-                             title={milestone.title} href={`/topics/${topic.id}`} milestone />
+                             title={milestone.title} href={`/topics/${topic.id}`} milestone
+                              startUnset={!milestone.beginDate} endUnset={!milestone.targetDate}
+                              onEdit={milestone.canEditDates ? (s, e, handle) => requestMilestoneEdit(topic.id, milestone, s, e, handle) : undefined} />
                          </div>
                        ))}
                      </React.Fragment>
