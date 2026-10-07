@@ -14,3 +14,9 @@ Calendar exports serve two purposes: DIN A0 printing and feeding topics, milesto
 **Why:** The user explicitly described these uses.
 
 **How to apply:** Preserve a machine-readable export with actual dates and topic/milestone relationships alongside a printable report; do not replace both with a screenshot.
+
+The calendar PDF must contain topics only, not milestones. The CSV retains milestone detail.
+
+**Why:** The user found the PDF too heavy with milestones and explicitly requested topics only.
+
+**How to apply:** Keep milestone rows and dates out of the PDF rendering and automatic timeline bounds; retain them in the CSV and interactive calendar.

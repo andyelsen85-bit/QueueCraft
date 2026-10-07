@@ -2,11 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
 import type { CalendarTopic } from "@workspace/api-client-react";
-import { buildCalendarCsv, buildCalendarPdf, selectCalendarExport } from "./calendar-export";
+import { buildCalendarCsv, buildCalendarPdf, selectCalendarExport, UNASSIGNED_DEPARTMENT } from "./calendar-export";
 
 const sample: CalendarTopic = {
   id: "topic-parent", title: 'Élodie, "Infrastructure"', priority: "P2", status: "open",
-  departmentName: "Opérations & infrastructure", roleId: "role-infra",
+  departmentId: "dept-infra", departmentName: "Opérations & infrastructure", roleId: "role-infra",
   targetDate: "2027-01-31T00:00:00.000Z", estimatedStartDate: "2027-01-01T00:00:00.000Z",
   estimatedFinishDate: "2027-01-20T00:00:00.000Z", assignedMemberIds: ["member-parent"],
   canEditDates: true, dependsOnTopicId: "topic-prerequisite",
@@ -37,6 +37,25 @@ test("calendar export preserves independent member filtering and parent context"
   assert.equal(parent[0].milestones.length, 0);
   assert.equal(selectCalendarExport([sample], { roleId: "another-role", memberId: "" }).length, 0);
   assert.equal(selectCalendarExport([sample], { roleId: "", memberId: "nobody" }).length, 0);
+});
+
+test("department filtering uses IDs, combines with role/member/period and handles unassigned topics", () => {
+  const other: CalendarTopic = { ...sample, id: "other-department", departmentId: "dept-other" };
+  const unassigned: CalendarTopic = { ...sample, id: "unassigned", departmentId: null, departmentName: "Not assigned", roleId: null };
+  const topics = [sample, other, unassigned];
+  const selected = selectCalendarExport(topics, {
+    departmentId: "dept-infra", roleId: "role-infra", memberId: "member-child", period,
+  });
+  assert.deepEqual(selected.map(topic => topic.id), [sample.id]);
+  assert.equal(selected[0].contextOnly, true);
+  assert.deepEqual(selected[0].milestones.map(row => row.id), ["milestone-match"]);
+  assert.equal(selectCalendarExport(topics, { departmentId: "missing", roleId: "", memberId: "" }).length, 0);
+  assert.equal(selectCalendarExport(topics, { departmentId: "dept-infra", roleId: "another", memberId: "" }).length, 0);
+  assert.deepEqual(selectCalendarExport(topics, { departmentId: UNASSIGNED_DEPARTMENT, roleId: "", memberId: "" })
+    .map(topic => topic.id), ["unassigned"]);
+  assert.equal(selectCalendarExport(topics, { departmentId: "", roleId: "", memberId: "" }).length, 3);
+  assert.ok(!buildCalendarCsv(selected).includes('"other-department"'));
+  assert.ok(buildCalendarCsv(selected).includes('"milestone","milestone-match"'));
 });
 
 test("all schedules export includes undated and future milestones, independently of expansion", () => {
@@ -73,7 +92,7 @@ test("CSV neutralizes formulas and preserves multiline text safely", () => {
   assert.ok(csv.includes('"Line one\nLine two"'));
 });
 
-test("A0 PDF is landscape, Unicode-capable, includes all rows and paginates", () => {
+test("A0 PDF is landscape, Unicode-capable, includes all topics and paginates without milestone rows", () => {
   const regular = readFileSync(new URL("../../public/fonts/DejaVuSans.ttf", import.meta.url)).toString("base64");
   const bold = readFileSync(new URL("../../public/fonts/DejaVuSans-Bold.ttf", import.meta.url)).toString("base64");
   const many = Array.from({ length: 70 }, (_, i) => ({
@@ -84,9 +103,25 @@ test("A0 PDF is landscape, Unicode-capable, includes all rows and paginates", ()
     { regular, bold }, { period }, new Date("2026-10-07T12:00:00Z"));
   assert.ok(Math.abs(pdf.internal.pageSize.getWidth() - 3370.39) < 1);
   assert.ok(Math.abs(pdf.internal.pageSize.getHeight() - 2383.94) < 1);
-  assert.ok(pdf.getNumberOfPages() >= 4);
+  assert.equal(pdf.getNumberOfPages(), 2);
   assert.ok(pdf.output().startsWith("%PDF-"));
   if (process.env.CALENDAR_EXPORT_TEST_OUTPUT) {
     writeFileSync(process.env.CALENDAR_EXPORT_TEST_OUTPUT, Buffer.from(pdf.output("arraybuffer")));
   }
+});
+
+test("PDF output and date range are independent of milestone content; CSV retains it", () => {
+  const regular = readFileSync(new URL("../../public/fonts/DejaVuSans.ttf", import.meta.url)).toString("base64");
+  const bold = readFileSync(new URL("../../public/fonts/DejaVuSans-Bold.ttf", import.meta.url)).toString("base64");
+  const generated = new Date("2026-10-07T12:00:00Z");
+  const withMilestones = selectCalendarExport([sample], { roleId: "", memberId: "" });
+  const withoutMilestones = [{ ...withMilestones[0], milestones: [] }];
+  const output = (topics: typeof withMilestones) => {
+    const pdf = buildCalendarPdf(topics, { regular, bold }, {}, generated);
+    pdf.setFileId("0123456789abcdef0123456789abcdef");
+    pdf.setCreationDate(generated);
+    return pdf.output();
+  };
+  assert.equal(output(withMilestones), output(withoutMilestones));
+  assert.ok(buildCalendarCsv(withMilestones).includes('"milestone-future"'));
 });

@@ -1916,6 +1916,7 @@ router.get("/calendar/topics", async (req, res): Promise<void> => {
     priority: topic.priority,
     status: topic.status,
     departmentName: snapshot.buildTopic(topic).department?.name ?? "Not assigned",
+    departmentId: topic.departmentId,
     roleId: topic.roleId,
     canEditDates: canManageTopic(currentUserId(req), topic, snapshot),
     dependsOnTopicId: topic.dependsOnTopicId,

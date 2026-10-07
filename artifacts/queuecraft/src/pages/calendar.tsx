@@ -2,12 +2,12 @@ import * as React from "react"
 import { addMonths, differenceInCalendarDays, eachDayOfInterval, endOfMonth, format, isBefore, isAfter, isSameDay, isWeekend, startOfMonth } from "date-fns"
 import { ChevronRight, Target } from "lucide-react"
 import { Link } from "wouter"
-import { useListCalendarTopics, useListMembers, useListRoles } from "@workspace/api-client-react"
+import { useListCalendarTopics, useListDepartments, useListMembers, useListRoles } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { PriorityBadge } from "@/components/badges"
 import { DateEditDialog, DateHandles, isoDay, type EditRequest } from "@/components/calendar-date-editing"
-import { downloadCalendarCsv, downloadCalendarPdf, selectCalendarExport } from "@/lib/calendar-export"
+import { downloadCalendarCsv, downloadCalendarPdf, matchesCalendarDepartment, selectCalendarExport, UNASSIGNED_DEPARTMENT } from "@/lib/calendar-export"
 
 const safeDate = (dateStr?: string | null) => {
   if (!dateStr) return null;
@@ -110,6 +110,7 @@ function TimelineCells({
 
 export function Calendar() {
   const [month, setMonth] = React.useState(() => startOfMonth(new Date()));
+  const [departmentId, setDepartmentId] = React.useState("");
   const [roleId, setRoleId] = React.useState("");
   const [memberId, setMemberId] = React.useState("");
   const [expandedTopics, setExpandedTopics] = React.useState<Record<string, boolean>>({});
@@ -119,12 +120,28 @@ export function Calendar() {
   const [exportError, setExportError] = React.useState<string | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const { data: topics, isLoading, isError, refetch } = useListCalendarTopics();
+  const { data: departments, isLoading: departmentsLoading, isError: departmentsError, refetch: refetchDepartments } = useListDepartments();
   const { data: roles, isLoading: rolesLoading, isError: rolesError, refetch: refetchRoles } = useListRoles();
   const { data: members, isLoading: membersLoading, isError: membersError, refetch: refetchMembers } = useListMembers();
   const sortedRoles = React.useMemo(
     () => [...(roles ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
     [roles],
   );
+  const sortedDepartments = React.useMemo(() => {
+    const names = new Map<string, string>();
+    for (const topic of topics ?? []) {
+      if (topic.departmentId) names.set(topic.departmentId, topic.departmentName);
+    }
+    for (const department of departments ?? []) names.set(department.id, department.name);
+    return [...names].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [departments, topics]);
+  const availableRoles = React.useMemo(() => sortedRoles.filter(role => !departmentId ||
+    (departmentId !== UNASSIGNED_DEPARTMENT &&
+      (role.departmentId === departmentId || role.departmentIds?.includes(departmentId))) ||
+    (topics ?? []).some(topic => matchesCalendarDepartment(topic, departmentId) && topic.roleId === role.id)),
+  [sortedRoles, departmentId, topics]);
+  const departmentLabel = departmentId === UNASSIGNED_DEPARTMENT ? "Not assigned"
+    : sortedDepartments.find(department => department.id === departmentId)?.name ?? "All departments";
   const sortedMembers = React.useMemo(
     () => [...(members ?? [])].filter((member) => member.id !== "local-admin")
       .sort((a, b) => a.name.localeCompare(b.name)),
@@ -145,6 +162,7 @@ export function Calendar() {
 
   const visibleTopics = React.useMemo(() => {
     return (topics ?? [])
+      .filter((topic) => matchesCalendarDepartment(topic, departmentId))
       .filter((topic) => !roleId || topic.roleId === roleId)
       .map(topic => {
         const topicAssigned = !memberId || topic.assignedMemberIds.includes(memberId);
@@ -180,7 +198,7 @@ export function Calendar() {
         if (startDiff !== 0) return startDiff;
         return a.title.localeCompare(b.title);
       });
-  }, [topics, roleId, memberId, rangeStart, rangeEnd]);
+  }, [topics, departmentId, roleId, memberId, rangeStart, rangeEnd]);
 
   const requestTopicEdit = (topic: NonNullable<typeof topics>[number], start: Date, end: Date, handle: "start" | "end") => {
     const rs = topic.estimatedStartDate?.slice(0, 10) ?? null;
@@ -214,8 +232,8 @@ export function Calendar() {
 
   const scopeLabel = scope === "current" ? "Current calendar" : "All schedules";
   const exportSelection = React.useMemo(() => selectCalendarExport(topics ?? [], {
-    roleId, memberId, period: scope === "current" ? { start: rangeStart, end: rangeEnd } : undefined,
-  }), [topics, roleId, memberId, scope, rangeStart, rangeEnd]);
+    departmentId, roleId, memberId, period: scope === "current" ? { start: rangeStart, end: rangeEnd } : undefined,
+  }), [topics, departmentId, roleId, memberId, scope, rangeStart, rangeEnd]);
   const exportDisabled = isLoading || isError || exporting || exportSelection.length === 0;
   const runExport = async (kind: "csv" | "pdf") => {
     if (!topics) return;
@@ -232,6 +250,7 @@ export function Calendar() {
         period,
         filterLabel: [
           scopeLabel,
+          `Department: ${departmentLabel}`,
           `Role: ${roleId ? sortedRoles.find((role) => role.id === roleId)?.name ?? roleId : "All roles"}`,
           `Member: ${memberId ? sortedMembers.find((member) => member.id === memberId)?.name ?? memberId : "All members"}`,
         ].join("; "),
@@ -274,13 +293,28 @@ export function Calendar() {
             {allExpanded ? "Collapse all" : "Expand all milestones"}
           </Button>
           <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            Department filter
+            <select value={departmentId} onChange={(event) => {
+              setDepartmentId(event.target.value);
+              setRoleId("");
+            }}
+              disabled={departmentsLoading || departmentsError}
+              className="h-9 w-44 rounded-md border bg-card px-3 text-sm font-medium text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              aria-label="Filter calendar by department">
+              <option value="">All departments</option>
+              <option value={UNASSIGNED_DEPARTMENT}>Not assigned</option>
+              {sortedDepartments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+            </select>
+          </label>
+          {departmentsError && <Button variant="outline" size="sm" onClick={() => void refetchDepartments()}>Retry departments</Button>}
+          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
             Role filter
             <select value={roleId} onChange={(event) => setRoleId(event.target.value)}
               disabled={rolesLoading || rolesError}
               className="h-9 w-44 rounded-md border bg-card px-3 text-sm font-medium text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
               aria-label="Filter calendar by role">
               <option value="">All roles</option>
-              {sortedRoles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+              {availableRoles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
             </select>
           </label>
           {rolesError && <Button variant="outline" size="sm" onClick={() => void refetchRoles()}>Retry roles</Button>}
@@ -318,7 +352,7 @@ export function Calendar() {
           </label>
           <Button variant="outline" size="sm" disabled={exportDisabled} onClick={() => void runExport("csv")}>Export CSV</Button>
           <Button variant="outline" size="sm" disabled={exportDisabled} onClick={() => void runExport("pdf")}>
-            {exporting ? "Exporting..." : "Export A0 PDF"}
+            {exporting ? "Exporting..." : "Export A0 PDF (topics)"}
           </Button>
         </div>
       </div>
@@ -389,11 +423,7 @@ export function Calendar() {
                  </div>
                ) : visibleTopics.length === 0 ? (
                  <div className="sticky left-0 flex h-48 w-[min(100vw,40rem)] items-center justify-center text-sm text-muted-foreground">
-                     {memberId
-                       ? `No assigned topics or milestones scheduled for ${sortedMembers.find((member) => member.id === memberId)?.name ?? "this member"}${roleId ? ` in ${sortedRoles.find((role) => role.id === roleId)?.name ?? "this role"}` : ""} in this period.`
-                       : roleId
-                         ? `No topics or milestones scheduled for ${sortedRoles.find((role) => role.id === roleId)?.name ?? "this role"} in this period.`
-                         : "No topics or milestones scheduled for this period."}
+                      {`No topics or milestones scheduled in this period for the selected filters${departmentId ? ` (${departmentLabel})` : ""}.`}
                 </div>
               ) : (
                  visibleTopics.map((topic) => {

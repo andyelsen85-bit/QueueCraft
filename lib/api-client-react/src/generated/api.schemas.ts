@@ -367,6 +367,8 @@ export interface CalendarTopic {
   status: TopicStatus;
   departmentName: string;
   /** @nullable */
+  departmentId: string | null;
+  /** @nullable */
   roleId: string | null;
   canEditDates: boolean;
   /** @nullable */

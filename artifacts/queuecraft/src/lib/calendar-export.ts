@@ -4,6 +4,12 @@ import type { CalendarTopic } from "@workspace/api-client-react";
 import { loadBauPdfFonts } from "./member-bau-export";
 
 export type CalendarExportTopic = CalendarTopic & { contextOnly: boolean };
+export const UNASSIGNED_DEPARTMENT = "__unassigned__";
+
+export function matchesCalendarDepartment(topic: Pick<CalendarTopic, "departmentId">, departmentId?: string) {
+  return !departmentId || (departmentId === UNASSIGNED_DEPARTMENT
+    ? topic.departmentId === null : topic.departmentId === departmentId);
+}
 export type CalendarExportOptions = {
   title?: string;
   roleNames?: Record<string, string>;
@@ -29,9 +35,10 @@ function overlaps(begin: string | null, end: string | null, period?: CalendarExp
 /** Filter assignments independently, retaining a parent as context for matching milestones. */
 export function selectCalendarExport(
   topics: readonly CalendarTopic[],
-  options: { roleId: string; memberId: string; period?: CalendarExportOptions["period"] },
+  options: { departmentId?: string; roleId: string; memberId: string; period?: CalendarExportOptions["period"] },
 ): CalendarExportTopic[] {
   return topics.flatMap(topic => {
+    if (!matchesCalendarDepartment(topic, options.departmentId)) return [];
     if (options.roleId && topic.roleId !== options.roleId) return [];
     const topicMatches = (!options.memberId || topic.assignedMemberIds.includes(options.memberId))
       && overlaps(topic.estimatedStartDate, topic.estimatedFinishDate ?? topic.targetDate, options.period);
@@ -107,10 +114,9 @@ export function buildCalendarPdf(
   pdf.addFont("Calendar-Bold.ttf", "Calendar", "bold");
   pdf.setFont("Calendar");
   pdf.setProperties({ title: options.title ?? "QueueCraft — Planning calendar", creator: "QueueCraft",
-    subject: "Topics and milestones — planned dates, committed finishes and status colors" });
+    subject: "Topics only — planned dates, committed finishes and status colors" });
   const allDates = topics.flatMap(topic => [
     ...(topic.contextOnly ? [] : [topic.estimatedStartDate, topic.estimatedFinishDate ?? topic.targetDate]),
-    ...topic.milestones.flatMap(milestone => [milestone.beginDate, milestone.targetDate]),
   ]).filter((date): date is string => Boolean(date)).map(dateOnly).sort();
   const start = options.period?.start ?? (allDates.length ? parseDay(allDates[0]) : startOfMonth(generated));
   const end = options.period?.end ?? (allDates.length ? parseDay(allDates.at(-1)!) : addMonths(start, 1));
@@ -127,7 +133,7 @@ export function buildCalendarPdf(
     pdf.text(options.title ?? "QueueCraft — Planning calendar", margin, 66);
     pdf.setFont("Calendar", "normal"); pdf.setFontSize(13);
     pdf.text(`${format(start, "yyyy-MM-dd")} to ${format(end, "yyyy-MM-dd")}  |  A0 landscape  |  Generated ${format(generated, "yyyy-MM-dd HH:mm")}`, margin, 94);
-    const filterLines = pdf.splitTextToSize(options.filterLabel ?? "All roles · All members", width - 2 * margin);
+    const filterLines = pdf.splitTextToSize(options.filterLabel ?? "All departments · All roles · All members", width - 2 * margin);
     pdf.text(filterLines.slice(0, 2), margin, 115);
     pdf.setFontSize(11);
     let legendX = margin;
@@ -139,7 +145,7 @@ export function buildCalendarPdf(
     }
     pdf.setFillColor(241, 245, 249); pdf.rect(margin, headerY, width - 2 * margin, bodyY - headerY, "F");
     pdf.setFont("Calendar", "bold"); pdf.setFontSize(13);
-    pdf.text("Topic / milestone · department · planned dates", margin + 12, headerY + 23);
+    pdf.text("Topic · department · planned dates", margin + 12, headerY + 23);
     pdf.setFont("Calendar", "normal"); pdf.setFontSize(10);
     for (let month = startOfMonth(start); month <= end; month = addMonths(month, 1)) {
       const offset = Math.max(0, differenceInCalendarDays(month, start));
@@ -166,10 +172,7 @@ export function buildCalendarPdf(
       finish: topic.estimatedFinishDate ?? topic.targetDate, milestone: false,
       detail: `${topic.departmentName} · ${options.roleNames?.[topic.roleId ?? ""] ?? topic.roleId ?? "Unassigned role"} · ${topic.priority}${topic.contextOnly ? " · Parent context" : ""}`,
       committed: topic.targetDate, showBar: !topic.contextOnly,
-    }, ...topic.milestones.map(milestone => ({
-      title: milestone.title, status: milestone.status, begin: milestone.beginDate, finish: milestone.targetDate,
-      milestone: true, detail: `Milestone · ${topic.title}`, committed: null, showBar: true,
-    }))];
+    }];
     for (const row of rows) {
       const indent = row.milestone ? 30 : 12;
       pdf.setFont("Calendar", row.milestone ? "normal" : "bold"); pdf.setFontSize(13);
@@ -209,10 +212,10 @@ export function buildCalendarPdf(
       }
     }
   }
-  if (!topics.length) { pdf.setFontSize(14); pdf.text("No topics or milestones match these filters.", margin + 12, bodyY + 30); }
+  if (!topics.length) { pdf.setFontSize(14); pdf.text("No topics match these filters.", margin + 12, bodyY + 30); }
   for (let page = 1; page <= pdf.getNumberOfPages(); page++) {
     pdf.setPage(page); pdf.setFont("Calendar", "normal"); pdf.setFontSize(10); pdf.setTextColor(71, 85, 105);
-    pdf.text("Topic bars use estimates (committed finish if estimate unset). Milestone bars use planned dates. Parent-context rows have no bar. Print at actual size on A0 landscape.",
+    pdf.text("Topics only. Bars use estimates (committed finish if estimate unset). Parent-context rows have no bar. Print at actual size on A0 landscape.",
       margin, height - 28);
     pdf.text(`Page ${page} of ${pdf.getNumberOfPages()}`, width - margin, height - 28, { align: "right" });
   }

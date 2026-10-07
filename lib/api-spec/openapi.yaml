@@ -1071,7 +1071,7 @@ components:
           items: { type: string }
     CalendarTopic:
       type: object
-      required: [id, title, priority, status, departmentName, roleId, targetDate, estimatedStartDate, estimatedFinishDate, assignedMemberIds, milestones, canEditDates, dependsOnTopicId]
+      required: [id, title, priority, status, departmentId, departmentName, roleId, targetDate, estimatedStartDate, estimatedFinishDate, assignedMemberIds, milestones, canEditDates, dependsOnTopicId]
       properties:
         id: { type: string }
         title: { type: string }
@@ -1080,6 +1080,7 @@ components:
         status:
           $ref: "#/components/schemas/TopicStatus"
         departmentName: { type: string }
+        departmentId: { type: ["string", "null"] }
         roleId: { type: ["string", "null"] }
         canEditDates: { type: boolean }
         dependsOnTopicId: { type: ["string", "null"] }
