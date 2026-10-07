@@ -9,6 +9,14 @@ Check the live GitHub branch through the connected API before concluding that a 
 
 **How to apply:** Compare the live branch SHA with local HEAD and inspect runs for that exact SHA. Avoid duplicate commits or credential changes solely because a shell push fails.
 
+## Push approval
+
+Do not ask again for permission to push this project's changes to GitHub main.
+
+**Why:** The user approved pushing and explicitly said, “of course do not ask again.”
+
+**How to apply:** Push completed, verified changes to main without another confirmation question. Continue verifying live remote state and avoid force pushes.
+
 ## Connector request limits
 
 Git object uploads can hit the connector proxy's per-project request limit before GitHub's own quota. Throttle batch uploads and honor `Retry-After` on HTTP 429 instead of treating the error as an authorization failure.
