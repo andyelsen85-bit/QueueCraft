@@ -165,6 +165,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Topic"
+  /calendar/schedule-preview:
+    post:
+      operationId: previewScheduleImpact
+      summary: Read-only projection of a calendar date edit
+      tags: [calendar]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchedulePreviewInput"
+      responses:
+        "200":
+          description: Projected changes; no schedule or audit data is written
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleImpact"
+        "400":
+          description: Invalid dates
+        "403":
+          description: Topic management permission required
+        "404":
+          description: Topic or milestone not found
+        "409":
+          description: Dependency rules prevent this edit
   /calendar/topics:
     get:
       operationId: listCalendarTopics
@@ -1200,6 +1226,59 @@ components:
         dependsOnTopicId:
           type: ["string", "null"]
         estimatedEffortHours: { type: ["integer", "null"], minimum: 0 }
+    SchedulePreviewInput:
+      type: object
+      required: [kind, id]
+      properties:
+        kind:
+          type: string
+          enum: [topic, milestone]
+        id:
+          type: string
+          minLength: 1
+        startDate:
+          type: string
+          format: date
+        finishDate:
+          type: string
+          format: date
+        extendTopicEstimatedFinish:
+          type: boolean
+    ScheduleImpact:
+      type: object
+      required: [changes, requiresFinishDecision, suggestedFinishDate]
+      properties:
+        changes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleImpactChange"
+        requiresFinishDecision:
+          type: boolean
+        suggestedFinishDate:
+          type: [string, "null"]
+    ScheduleImpactChange:
+      type: object
+      required: [kind, id, topicId, title, topicTitle, originalStart, originalFinish, projectedStart, projectedFinish]
+      properties:
+        kind:
+          type: string
+          enum: [topic, milestone]
+        id:
+          type: string
+        topicId:
+          type: string
+        title:
+          type: string
+        topicTitle:
+          type: string
+        originalStart:
+          type: [string, "null"]
+        originalFinish:
+          type: [string, "null"]
+        projectedStart:
+          type: [string, "null"]
+        projectedFinish:
+          type: [string, "null"]
     TopicUpdate:
       type: object
       properties:

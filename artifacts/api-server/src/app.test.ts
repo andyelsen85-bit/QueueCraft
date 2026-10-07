@@ -1381,6 +1381,10 @@ describe("QueueCraft security and preference flows", () => {
         const calendarTopic = calendar.body.find((entry: { id: string }) => entry.id === topic.body.id);
         assert.equal(calendarTopic.canEditDates, false);
         assert.equal(calendarTopic.milestones.find((entry: { id: string }) => entry.id === milestone.body.id).canEditDates, false);
+        for (const [kind, id] of [["topic", topic.body.id], ["milestone", milestone.body.id]]) {
+          await ordinary.post("/api/calendar/schedule-preview").set("x-csrf-token", ordinaryCsrf)
+            .send({ kind, id, finishDate: "2046-01-10" }).expect(403);
+        }
         await ordinary.patch(`/api/milestones/${milestone.body.id}`).set("x-csrf-token", ordinaryCsrf)
           .send({ title: "Unauthorized edit" }).expect(403);
         await ordinary.delete(`/api/milestones/${milestone.body.id}`).set("x-csrf-token", ordinaryCsrf).expect(403);
@@ -2165,6 +2169,84 @@ describe("QueueCraft security and preference flows", () => {
         .send({ dependsOnTopicId: parentB }).expect(409);
     } finally {
       for (const id of ids.reverse()) {
+        await agent.delete(`/api/topics/${id}`).set("x-csrf-token", csrf).expect(204);
+      }
+    }
+  });
+
+  test("previews topic and milestone chains without writes and revalidates stale previews", async () => {
+    const agent = request.agent(app);
+    const session = await agent.get("/api/session").expect(200);
+    const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+    const topicIds = [randomUUID(), randomUUID(), randomUUID()];
+    const milestoneIds = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+    const preview = (data: Record<string, unknown>) => agent.post("/api/calendar/schedule-preview")
+      .set("x-csrf-token", csrf).send(data);
+    const persisted = async () => ({
+      topics: await db.select().from(topicsTable).orderBy(topicsTable.id),
+      milestones: await db.select().from(milestonesTable).orderBy(milestonesTable.id),
+      activities: await db.select().from(activityTable).orderBy(activityTable.id),
+      notifications: await db.select().from(notificationOutboxTable).orderBy(notificationOutboxTable.id),
+      approvals: await db.select().from(topicFinishDateRevisionsTable).orderBy(topicFinishDateRevisionsTable.id),
+      audit: await db.select().from(auditLogTable).orderBy(auditLogTable.id),
+    });
+    try {
+      for (const [i, id] of topicIds.entries()) {
+        await db.insert(topicsTable).values({
+          id, title: `Preview topic ${i}`, description: "Read-only schedule fixture",
+          creatorId: session.body.user.id, departmentId: "dept-platform", roleId: "role-ci-validation",
+          status: "open", priority: "P3", dependsOnTopicId: i ? topicIds[i - 1] : null,
+          estimatedStartDate: ["2048-01-01", "2048-01-10", "2048-01-20"][i],
+          estimatedFinishDate: ["2048-01-10", "2048-01-20", "2048-01-30"][i],
+        });
+      }
+      for (const [i, id] of milestoneIds.entries()) {
+        await db.insert(milestonesTable).values({
+          id, topicId: i < 2 ? topicIds[0] : topicIds[i - 1], title: `Preview milestone ${i}`,
+          dependsOnMilestoneId: i === 1 ? milestoneIds[0] : null,
+          beginDate: ["2048-01-01", "2048-01-05", "2048-01-12", "2048-01-22"][i],
+          targetDate: ["2048-01-05", "2048-01-09", "2048-01-15", "2048-01-25"][i],
+        });
+      }
+      const before = await persisted();
+      const topicImpact = (await preview({ kind: "topic", id: topicIds[0], finishDate: "2048-01-13" })
+        .expect(200)).body;
+      assert.equal(topicImpact.changes.length, 5);
+      assert.deepEqual(topicImpact.changes.find((row: { id: string }) => row.id === topicIds[2]), {
+        kind: "topic", id: topicIds[2], topicId: topicIds[2], title: "Preview topic 2", topicTitle: "Preview topic 2",
+        originalStart: "2048-01-20", originalFinish: "2048-01-30",
+        projectedStart: "2048-01-23", projectedFinish: "2048-02-02",
+      });
+      const milestoneInput = { kind: "milestone", id: milestoneIds[0], finishDate: "2048-01-08" };
+      const decision = (await preview(milestoneInput).expect(200)).body;
+      assert.equal(decision.requiresFinishDecision, true);
+      assert.equal(decision.suggestedFinishDate, "2048-01-12");
+      assert.equal(decision.changes.length, 2);
+      const kept = (await preview({ ...milestoneInput, extendTopicEstimatedFinish: false }).expect(200)).body;
+      assert.equal(kept.requiresFinishDecision, false);
+      assert.equal(kept.changes.length, 2);
+      const extended = (await preview({ ...milestoneInput, extendTopicEstimatedFinish: true }).expect(200)).body;
+      assert.equal(extended.changes.length, 7);
+      assert.equal(extended.changes.find((row: { id: string }) => row.id === milestoneIds[3]).projectedFinish,
+        "2048-01-27");
+      await preview({ kind: "topic", id: topicIds[1], startDate: "2048-01-12" }).expect(409);
+      await preview({ kind: "milestone", id: milestoneIds[1], startDate: "2048-01-07" }).expect(409);
+      await preview({ kind: "topic", id: topicIds[0], finishDate: "2047-12-01" }).expect(400);
+      await preview({ kind: "topic", id: randomUUID(), finishDate: "2048-01-12" }).expect(404);
+      await agent.post("/api/calendar/schedule-preview").send(milestoneInput).expect(403);
+      assert.deepEqual(await persisted(), before, "Preview must not write schedule, activity, notification or approval data");
+
+      // Change the downstream duration after reviewing. Saving must project the live chain.
+      await db.update(milestonesTable).set({ targetDate: "2048-01-10" }).where(eq(milestonesTable.id, milestoneIds[1]));
+      const staleDecision = await agent.patch(`/api/milestones/${milestoneIds[0]}`).set("x-csrf-token", csrf)
+        .send({ targetDate: "2048-01-08" }).expect(409);
+      assert.equal(staleDecision.body.suggestedFinishDate, "2048-01-13");
+      await agent.patch(`/api/milestones/${milestoneIds[0]}`).set("x-csrf-token", csrf)
+        .send({ targetDate: "2048-01-08", extendTopicEstimatedFinish: true }).expect(200);
+      const saved = (await db.select().from(topicsTable).where(eq(topicsTable.id, topicIds[2])))[0];
+      assert.equal(saved.estimatedFinishDate, "2048-02-02");
+    } finally {
+      for (const id of [...topicIds].reverse()) {
         await agent.delete(`/api/topics/${id}`).set("x-csrf-token", csrf).expect(204);
       }
     }

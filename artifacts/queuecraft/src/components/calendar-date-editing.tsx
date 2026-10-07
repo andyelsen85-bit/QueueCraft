@@ -2,7 +2,7 @@ import * as React from "react"
 import { addDays, differenceInCalendarDays, format, isAfter, isBefore } from "date-fns"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
-import { useUpdateMilestone, useUpdateTopic } from "@workspace/api-client-react"
+import { useUpdateMilestone, useUpdateTopic, usePreviewScheduleImpact, type ScheduleImpact } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -195,6 +195,9 @@ function EditForm({ edit, onClose, onSaving }: { edit: EditRequest; onClose: () 
   const queryClient = useQueryClient()
   const updateTopic = useUpdateTopic()
   const updateMilestone = useUpdateMilestone()
+  const previewSchedule = usePreviewScheduleImpact()
+  const [impact, setImpact] = React.useState<ScheduleImpact | null>(null)
+  const [reviewedOptions, setReviewedOptions] = React.useState<{ extend?: boolean; finishValue?: string; skipTopicCheck?: boolean }>({})
   const [start, setStart] = React.useState(edit.start)
   const [finish, setFinish] = React.useState(edit.finish)
   const [error, setError] = React.useState<string | null>(null)
@@ -203,7 +206,7 @@ function EditForm({ edit, onClose, onSaving }: { edit: EditRequest; onClose: () 
   const [pending, setPending] = React.useState(false)
   const busy = React.useRef(false)
 
-  const submit = async (opts: { extend?: boolean; finishValue?: string; skipTopicCheck?: boolean } = {}) => {
+  const submit = async (opts: { extend?: boolean; finishValue?: string; skipTopicCheck?: boolean } = {}, save = false) => {
     if (busy.current) return;
     const s = start.trim()
     const f = (opts.finishValue ?? finish).trim()
@@ -225,6 +228,21 @@ function EditForm({ edit, onClose, onSaving }: { edit: EditRequest; onClose: () 
     }
     busy.current = true; setPending(true); onSaving(true); setError(null)
     try {
+      if (!save) {
+        setImpact(null)
+        const result = await previewSchedule.mutateAsync({ data: {
+          kind: edit.kind, id: edit.id,
+          ...(body.startVal !== undefined ? { startDate: body.startVal } : {}),
+          ...(body.finishVal !== undefined ? { finishDate: body.finishVal } : {}),
+          ...(opts.extend !== undefined ? { extendTopicEstimatedFinish: opts.extend } : {}),
+        } })
+        if (result.requiresFinishDecision && result.suggestedFinishDate) {
+          setDecision({ kind: "milestone", suggested: result.suggestedFinishDate })
+        } else {
+          setDecision(null); setReviewedOptions(opts); setImpact(result)
+        }
+        return
+      }
       if (edit.kind === "topic") {
         await updateTopic.mutateAsync({ topicId: edit.id, data: {
           ...(body.startVal !== undefined ? { estimatedStartDate: body.startVal } : {}),
@@ -247,6 +265,7 @@ function EditForm({ edit, onClose, onSaving }: { edit: EditRequest; onClose: () 
       })
       onClose()
     } catch (err) {
+      setImpact(null)
       const info = errInfo(err)
       if (edit.kind === "milestone" && info.status === 409 && info.data?.requiresFinishDecision === true &&
         typeof info.data.suggestedFinishDate === "string") {
@@ -273,11 +292,11 @@ function EditForm({ edit, onClose, onSaving }: { edit: EditRequest; onClose: () 
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           {edit.kind === "topic" ? "Estimated start" : "Begin date"}
-          <Input type="date" value={start} disabled={pending || !!decision} onChange={(e) => setStart(e.target.value)} data-testid="input-edit-start" />
+          <Input type="date" value={start} disabled={pending || !!decision} onChange={(e) => { setStart(e.target.value); setImpact(null) }} data-testid="input-edit-start" />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           {edit.kind === "topic" ? "Estimated finish" : "Target date"}
-          <Input type="date" value={finish} disabled={pending || !!decision} onChange={(e) => setFinish(e.target.value)} data-testid="input-edit-finish" />
+          <Input type="date" value={finish} disabled={pending || !!decision} onChange={(e) => { setFinish(e.target.value); setImpact(null) }} data-testid="input-edit-finish" />
         </label>
       </div>
       {decision?.kind === "topic" && (
@@ -301,10 +320,39 @@ function EditForm({ edit, onClose, onSaving }: { edit: EditRequest; onClose: () 
         </div>
       )}
       {error && <p className="text-sm text-destructive" role="alert" data-testid="text-edit-error">{error}</p>}
+      {impact && (
+        <section className="space-y-2" aria-label="Schedule impact" data-testid="schedule-impact-preview">
+          <h3 className="text-sm font-semibold">Schedule impact · {impact.changes.length} changed item{impact.changes.length === 1 ? "" : "s"}</h3>
+          <p className="text-xs text-muted-foreground">Nothing has been saved. Dependencies and permissions will be checked again when saving.</p>
+          {reviewedOptions.extend !== undefined && <p className="text-xs font-medium">
+            {reviewedOptions.extend ? "Extend topic estimate" : "Keep topic estimate unchanged"}
+          </p>}
+          {impact.changes.length === 0 ? <p className="text-sm">No scheduled dates will move.</p> : (
+            <div className="max-h-64 overflow-auto rounded-md border">
+              <table className="w-full text-left text-xs">
+                <thead className="sticky top-0 bg-muted"><tr>
+                  <th className="p-2">Item</th><th className="p-2">Original dates</th><th className="p-2">Projected dates</th>
+                </tr></thead>
+                <tbody>{impact.changes.map((change) => (
+                  <tr key={`${change.kind}-${change.id}`} className="border-t">
+                    <td className="p-2"><span className="font-medium">{change.title}</span>
+                      <div className="text-muted-foreground">{change.kind === "topic" ? "Topic" : `Milestone · ${change.topicTitle}`}</div>
+                    </td>
+                    <td className="p-2">{change.originalStart?.slice(0, 10) ?? "Not set"}<br />{change.originalFinish?.slice(0, 10) ?? "Not set"}</td>
+                    <td className="p-2">{change.projectedStart?.slice(0, 10) ?? "Not set"}<br />{change.projectedFinish?.slice(0, 10) ?? "Not set"}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">Dates show start / finish (begin / target for milestones). Unchanged items are omitted.</p>
+        </section>
+      )}
       <DialogFooter>
         <Button variant="outline" onClick={onClose} disabled={pending}>Cancel</Button>
-        <Button onClick={() => void submit()} disabled={pending || !!decision} data-testid="button-save-dates">
-          {pending ? "Saving..." : "Save dates"}
+        {impact && <Button variant="outline" disabled={pending} onClick={() => { setImpact(null); setDecision(null) }}>Back to dates</Button>}
+        <Button onClick={() => void submit(impact ? reviewedOptions : {}, !!impact)} disabled={pending || !!decision} data-testid="button-save-dates">
+          {pending ? (impact ? "Saving..." : "Checking...") : impact ? "Save dates" : "Review impact"}
         </Button>
       </DialogFooter>
     </>
@@ -315,7 +363,7 @@ export function DateEditDialog({ edit, onClose }: { edit: EditRequest | null; on
   const [saving, setSaving] = React.useState(false)
   return (
     <Dialog open={!!edit} onOpenChange={(open) => { if (!open && !saving) onClose() }}>
-      <DialogContent onEscapeKeyDown={(event) => { if (saving) event.preventDefault() }}
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto" onEscapeKeyDown={(event) => { if (saving) event.preventDefault() }}
         onInteractOutside={(event) => { if (saving) event.preventDefault() }}>
         {edit && <EditForm key={`${edit.kind}-${edit.id}-${edit.start}-${edit.finish}`} edit={edit} onClose={onClose} onSaving={setSaving} />}
       </DialogContent>

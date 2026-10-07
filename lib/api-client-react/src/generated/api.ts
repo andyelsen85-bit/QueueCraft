@@ -51,6 +51,8 @@ import type {
   Role,
   RoleInput,
   RoleUpdate,
+  ScheduleImpact,
+  SchedulePreviewInput,
   Session,
   Topic,
   TopicAllocation,
@@ -895,6 +897,94 @@ export const useCreateTopic = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateTopicMutationOptions(options));
+    }
+
+export const getPreviewScheduleImpactUrl = () => {
+
+
+
+
+  return `/api/calendar/schedule-preview`
+}
+
+/**
+ * @summary Read-only projection of a calendar date edit
+ */
+export const previewScheduleImpact = async (schedulePreviewInput: SchedulePreviewInput, options?: Parameters<typeof customFetch>[1]): Promise<ScheduleImpact> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ScheduleImpact>(getPreviewScheduleImpactUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(schedulePreviewInput)
+  }
+);}
+
+
+
+
+
+export const getPreviewScheduleImpactMutationKey = () => ['previewScheduleImpact'] as const;
+
+export const getPreviewScheduleImpactMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewScheduleImpact>>, TError,PreviewScheduleImpactMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewScheduleImpact>>, TError,PreviewScheduleImpactMutationVariables, TContext> => {
+
+const mutationKey = getPreviewScheduleImpactMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewScheduleImpact>>, PreviewScheduleImpactMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewScheduleImpact(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewScheduleImpactMutationResult = NonNullable<Awaited<ReturnType<typeof previewScheduleImpact>>>
+    export type PreviewScheduleImpactMutationBody = BodyType<SchedulePreviewInput>
+    export type PreviewScheduleImpactMutationError = ErrorType<void>
+    export type PreviewScheduleImpactMutationVariables = {data: BodyType<SchedulePreviewInput>}
+
+    /**
+ * @summary Read-only projection of a calendar date edit
+ */
+export const usePreviewScheduleImpact = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewScheduleImpact>>, TError,PreviewScheduleImpactMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewScheduleImpact>>,
+        TError,
+        PreviewScheduleImpactMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewScheduleImpactMutationOptions(options));
     }
 
 export const getListCalendarTopicsUrl = () => {

@@ -2167,6 +2167,37 @@ export const CreateTopicResponse = zod.object({
 
 
 /**
+ * @summary Read-only projection of a calendar date edit
+ */
+
+
+
+export const PreviewScheduleImpactBody = zod.object({
+  "kind": zod.enum(['topic', 'milestone']),
+  "id": zod.string().min(1),
+  "startDate": zod.coerce.date().optional(),
+  "finishDate": zod.coerce.date().optional(),
+  "extendTopicEstimatedFinish": zod.boolean().optional()
+})
+
+export const PreviewScheduleImpactResponse = zod.object({
+  "changes": zod.array(zod.object({
+  "kind": zod.enum(['topic', 'milestone']),
+  "id": zod.string(),
+  "topicId": zod.string(),
+  "title": zod.string(),
+  "topicTitle": zod.string(),
+  "originalStart": zod.string().nullable(),
+  "originalFinish": zod.string().nullable(),
+  "projectedStart": zod.string().nullable(),
+  "projectedFinish": zod.string().nullable()
+})),
+  "requiresFinishDecision": zod.boolean(),
+  "suggestedFinishDate": zod.string().nullable()
+})
+
+
+/**
  * @summary List all topics and their milestone schedules for the calendar
  */
 export const ListCalendarTopicsResponseItem = zod.object({

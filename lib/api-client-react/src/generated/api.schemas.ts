@@ -507,6 +507,54 @@ export interface TopicInput {
   estimatedEffortHours?: number | null;
 }
 
+export type SchedulePreviewInputKind = typeof SchedulePreviewInputKind[keyof typeof SchedulePreviewInputKind];
+
+
+export const SchedulePreviewInputKind = {
+  topic: 'topic',
+  milestone: 'milestone',
+} as const;
+
+export interface SchedulePreviewInput {
+  kind: SchedulePreviewInputKind;
+  /** @minLength 1 */
+  id: string;
+  startDate?: string;
+  finishDate?: string;
+  extendTopicEstimatedFinish?: boolean;
+}
+
+export type ScheduleImpactChangeKind = typeof ScheduleImpactChangeKind[keyof typeof ScheduleImpactChangeKind];
+
+
+export const ScheduleImpactChangeKind = {
+  topic: 'topic',
+  milestone: 'milestone',
+} as const;
+
+export interface ScheduleImpactChange {
+  kind: ScheduleImpactChangeKind;
+  id: string;
+  topicId: string;
+  title: string;
+  topicTitle: string;
+  /** @nullable */
+  originalStart: string | null;
+  /** @nullable */
+  originalFinish: string | null;
+  /** @nullable */
+  projectedStart: string | null;
+  /** @nullable */
+  projectedFinish: string | null;
+}
+
+export interface ScheduleImpact {
+  changes: ScheduleImpactChange[];
+  requiresFinishDecision: boolean;
+  /** @nullable */
+  suggestedFinishDate: string | null;
+}
+
 export interface TopicUpdate {
   /**
      * @minLength 3

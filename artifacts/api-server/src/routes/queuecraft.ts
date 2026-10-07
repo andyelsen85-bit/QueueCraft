@@ -53,6 +53,8 @@ import {
   ListTopicsQueryParams,
   ListTopicsResponse,
   ListCalendarTopicsResponse,
+  PreviewScheduleImpactBody,
+  PreviewScheduleImpactResponse,
   UpdateMilestoneBody,
   UpdateMilestoneParams,
   UpdateMilestoneResponse,
@@ -285,6 +287,20 @@ function prerequisiteComplete(
   return status === "completed" || status === "closed";
 }
 
+function dependentTopicDates(
+  dependent: { estimatedStartDate: string | null; estimatedFinishDate: string | null },
+  anchor: string,
+) {
+  if (!dependent.estimatedStartDate && dependent.estimatedFinishDate) {
+    throw new Error("Invalid dependent topic schedule");
+  }
+  const days = dependent.estimatedStartDate ? dateDistance(dependent.estimatedStartDate, anchor) : 0;
+  return {
+    days,
+    finish: dependent.estimatedFinishDate ? moveDate(dependent.estimatedFinishDate, days) : null,
+  };
+}
+
 async function shiftDependentSchedules(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   req: Request,
@@ -300,9 +316,7 @@ async function shiftDependentSchedules(
         throw new Error("Invalid dependent topic schedule");
       }
       visited.add(dependent.id);
-      const days = dependent.estimatedStartDate ? dateDistance(dependent.estimatedStartDate, anchor) : 0;
-      const finish = dependent.estimatedFinishDate
-        ? moveDate(dependent.estimatedFinishDate, days) : null;
+      const { days, finish } = dependentTopicDates(dependent, anchor);
       if (dependent.estimatedStartDate !== anchor || dependent.estimatedFinishDate !== finish) {
         await tx.update(topicsTable).set({
           estimatedStartDate: anchor,
@@ -2191,6 +2205,119 @@ router.delete("/topics/:topicId", async (req, res): Promise<void> => {
     return;
   }
   res.status(204).end();
+});
+
+// Projection uses only SELECTs. Saving continues through the normal PATCH routes
+// and their live permission checks, dependency validation and transactional locks.
+router.post("/calendar/schedule-preview", async (req, res): Promise<void> => {
+  const body = PreviewScheduleImpactBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: "Invalid schedule preview" }); return;
+  }
+  const input = body.data;
+  const snapshot = await loadSnapshot();
+  const milestone = input.kind === "milestone"
+    ? snapshot.milestones.find((row) => row.id === input.id) : undefined;
+  const topic = snapshot.topics.find((row) =>
+    row.id === (input.kind === "topic" ? input.id : milestone?.topicId));
+  if (!topic || (input.kind === "milestone" && !milestone)) {
+    res.status(404).json({ error: "Topic or milestone not found" }); return;
+  }
+  if (!requireTopicManager(req, res, topic, snapshot)) return;
+  const topicDates = new Map(snapshot.topics.map((row) => [row.id, { ...row }]));
+  const milestoneDates = new Map(snapshot.milestones.map((row) => [row.id, { ...row }]));
+  let requiresFinishDecision = false;
+  let suggestedFinishDate: string | null = null;
+  const reject = (status: number, error: string) => { res.status(status).json({ error }); };
+  const shiftChildren = (parentId: string, anchor: string, visited = new Set([parentId])) => {
+    for (const original of snapshot.topics.filter((row) => row.dependsOnTopicId === parentId)) {
+      if (visited.has(original.id)) throw new Error("Invalid dependent topic schedule");
+      visited.add(original.id);
+      const { days, finish } = dependentTopicDates(original, anchor);
+      topicDates.set(original.id, { ...original, estimatedStartDate: anchor, estimatedFinishDate: finish });
+      if (days) {
+        for (const row of snapshot.milestones.filter((entry) => entry.topicId === original.id)) {
+          milestoneDates.set(row.id, { ...row,
+            beginDate: row.beginDate ? moveDate(row.beginDate, days) : null,
+            targetDate: row.targetDate ? moveDate(row.targetDate, days) : null });
+        }
+      }
+      if (finish && finish !== original.estimatedFinishDate) shiftChildren(original.id, finish, visited);
+    }
+  };
+  try {
+    if (input.kind === "topic") {
+      const start = input.startDate === undefined ? topic.estimatedStartDate : dateOnly(input.startDate);
+      const finish = input.finishDate === undefined ? topic.estimatedFinishDate : dateOnly(input.finishDate);
+      const prerequisite = snapshot.topics.find((row) => row.id === topic.dependsOnTopicId);
+      if (prerequisite?.estimatedFinishDate && start !== topic.estimatedStartDate) {
+        reject(409, "The estimated start is set by the prerequisite's estimated finish"); return;
+      }
+      if ((topic.dependsOnTopicId && finish && !start) || (start && finish && start > finish)) {
+        reject(400, "Estimated start date must be on or before estimated finish date"); return;
+      }
+      if (!finish && topic.estimatedFinishDate &&
+        snapshot.topics.some((row) => row.dependsOnTopicId === topic.id)) {
+        reject(409, "Set an estimated finish before updating topics that depend on this one"); return;
+      }
+      const role = snapshot.roleById.get(topic.roleId ?? "");
+      if (role?.archivedAt && !["completed", "closed", "rejected"].includes(topic.status)) {
+        reject(409, "Select an active role before reopening this topic"); return;
+      }
+      topicDates.set(topic.id, { ...topic, estimatedStartDate: start, estimatedFinishDate: finish });
+      // A direct estimate edit does not move the topic's own milestones.
+      if (finish && finish !== topic.estimatedFinishDate) shiftChildren(topic.id, finish);
+    } else if (milestone) {
+      const start = input.startDate === undefined ? milestone.beginDate : dateOnly(input.startDate);
+      const finish = input.finishDate === undefined ? milestone.targetDate : dateOnly(input.finishDate);
+      if ((Boolean(start) !== Boolean(finish) && !(milestone.dependsOnMilestoneId && start && !finish)) ||
+        (start && finish && start > finish)) {
+        reject(400, "Milestone must retain both ordered begin and target dates"); return;
+      }
+      if (snapshot.milestoneAllocations.some((row) => row.milestoneId === milestone.id) && (!start || !finish)) {
+        reject(400, "Milestone allocations require begin and target dates"); return;
+      }
+      const prerequisite = snapshot.milestones.find((row) => row.id === milestone.dependsOnMilestoneId);
+      if (prerequisite?.targetDate && input.startDate !== undefined && start !== prerequisite.targetDate) {
+        reject(409, "The begin date is set by the prerequisite milestone's target date"); return;
+      }
+      const rows = snapshot.milestones.filter((row) => row.topicId === topic.id);
+      const changed = start !== milestone.beginDate || finish !== milestone.targetDate;
+      const projected = changed ? projectMilestoneDates(rows.map((row) => row.id === milestone.id
+        ? { ...row, beginDate: start, targetDate: finish } : row), milestone.id, milestone.targetDate)
+        : new Map(rows.map((row) => [row.id, row]));
+      for (const row of rows) milestoneDates.set(row.id, { ...row, ...projected.get(row.id)! });
+      const exceeds = Boolean(topic.estimatedFinishDate && [...projected.values()].some((row) =>
+        row.targetDate && row.targetDate > topic.estimatedFinishDate! &&
+        row.targetDate !== rows.find((original) => original.id === row.id)?.targetDate));
+      suggestedFinishDate = exceeds ? latestMilestoneTarget(projected.values()) : null;
+      requiresFinishDecision = exceeds && input.extendTopicEstimatedFinish === undefined;
+      if (exceeds && input.extendTopicEstimatedFinish === true) {
+        topicDates.set(topic.id, { ...topic, estimatedFinishDate: suggestedFinishDate });
+        shiftChildren(topic.id, suggestedFinishDate!);
+      }
+    }
+  } catch (error) {
+    reject(409, error instanceof Error ? error.message : "Invalid dependency schedule"); return;
+  }
+  const changes = [
+    ...snapshot.topics.flatMap((row) => {
+      const next = topicDates.get(row.id)!;
+      return row.estimatedStartDate === next.estimatedStartDate && row.estimatedFinishDate === next.estimatedFinishDate
+        ? [] : [{ kind: "topic" as const, id: row.id, topicId: row.id, title: row.title, topicTitle: row.title,
+          originalStart: row.estimatedStartDate, originalFinish: row.estimatedFinishDate,
+          projectedStart: next.estimatedStartDate, projectedFinish: next.estimatedFinishDate }];
+    }),
+    ...snapshot.milestones.flatMap((row) => {
+      const next = milestoneDates.get(row.id)!;
+      return row.beginDate === next.beginDate && row.targetDate === next.targetDate ? [] : [{
+        kind: "milestone" as const, id: row.id, topicId: row.topicId, title: row.title,
+        topicTitle: topicDates.get(row.topicId)?.title ?? row.topicId,
+        originalStart: row.beginDate, originalFinish: row.targetDate,
+        projectedStart: next.beginDate, projectedFinish: next.targetDate }];
+    }),
+  ];
+  res.json(PreviewScheduleImpactResponse.parse({ changes, requiresFinishDecision, suggestedFinishDate }));
 });
 
 router.patch("/topics/:topicId", async (req, res): Promise<void> => {
