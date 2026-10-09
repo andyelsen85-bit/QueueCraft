@@ -32,3 +32,11 @@ Validate source blob hashes before uploading, and read large payloads in bounded
 **Why:** Programmatic shell output was capped despite a larger requested budget, silently shortening Base64 payloads. Pipe reads can also return partial blocks.
 
 **How to apply:** Use bounded full-block reads for piped content and verify the Git blob hash of the decoded, reassembled bytes before uploading. A successful shell call alone does not prove that all bytes were returned.
+
+## Resumable uploads across runtime reloads
+
+Persist long-upload progress in an ignored workspace-local temporary file rather than relying solely on notebook variables or `/tmp`. Remove that file after verifying the remote branch.
+
+**Why:** A runtime reload cleared both notebook state and `/tmp` during a binary upload, while the already uploaded GitHub blobs remained intact.
+
+**How to apply:** Re-read progress before each small batch, advance it only after hash verification, and keep each execution below the aggregate file-operation budget.
