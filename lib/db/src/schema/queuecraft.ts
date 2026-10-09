@@ -18,6 +18,8 @@ import { sql } from "drizzle-orm";
 import { z } from "zod/v4";
 
 export const topicStatusEnum = pgEnum("topic_status", [
+  "pipeline",
+  "not_pursued",
   "pending_validation",
   "open",
   "in_progress",
@@ -175,6 +177,10 @@ export const topicsTable = pgTable("topics", {
   estimatedFinishDate: date("estimated_finish_date", { mode: "string" }),
   dependsOnTopicId: text("depends_on_topic_id").references((): AnyPgColumn => topicsTable.id),
   estimatedEffortHours: integer("estimated_effort_hours"),
+  pipelineWaitingFor: text("pipeline_waiting_for"),
+  pipelineReviewDate: date("pipeline_review_date", { mode: "string" }),
+  pipelineExitReason: text("pipeline_exit_reason"),
+  pipelineReviewNotifiedAt: timestamp("pipeline_review_notified_at", { withTimezone: true }),
   validationMode: validationModeEnum("validation_mode")
     .notNull()
     .default("standard"),

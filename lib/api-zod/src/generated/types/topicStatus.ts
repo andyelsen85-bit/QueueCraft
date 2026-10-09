@@ -10,6 +10,8 @@ export type TopicStatus = typeof TopicStatus[keyof typeof TopicStatus];
 
 
 export const TopicStatus = {
+  pipeline: 'pipeline',
+  not_pursued: 'not_pursued',
   pending_validation: 'pending_validation',
   open: 'open',
   in_progress: 'in_progress',

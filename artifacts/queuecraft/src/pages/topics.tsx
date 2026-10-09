@@ -79,9 +79,13 @@ const createSchema = z
     estimatedFinishDate: z.string().optional().nullable(),
     dependsOnTopicId: z.string().optional().nullable(),
     estimatedEffortHours: z.coerce.number().int().min(0).optional().nullable(),
+    creationMode: z.enum(["pending_validation", "pipeline"]),
+    pipelineWaitingFor: z.enum(["decision", "budget", "vendor", "partner_input"]).optional().nullable(),
+    pipelineReviewDate: z.string().optional().nullable(),
   })
   .refine(
     (data) =>
+      data.creationMode === "pipeline" ||
       !data.estimatedStartDate ||
       !data.estimatedFinishDate ||
       data.estimatedStartDate <= data.estimatedFinishDate,
@@ -91,7 +95,7 @@ const createSchema = z
     },
   )
   .refine(
-    (data) => !data.dependsOnTopicId || !data.estimatedFinishDate || Boolean(data.estimatedStartDate),
+    (data) => data.creationMode === "pipeline" || !data.dependsOnTopicId || !data.estimatedFinishDate || Boolean(data.estimatedStartDate),
     { message: "Set an estimated start to preserve the planned duration", path: ["estimatedStartDate"] },
   );
 
@@ -118,6 +122,7 @@ type TopicSort =
 
 const priorityOrder: Record<string, number> = { P1: 1, P2: 2, P3: 3, P4: 4 };
 const statusOrder: Record<string, number> = {
+  pipeline: 0,
   pending_validation: 1,
   open: 2,
   in_progress: 3,
@@ -125,6 +130,7 @@ const statusOrder: Record<string, number> = {
   closed: 5,
   returned: 6,
   rejected: 7,
+  not_pursued: 8,
 };
 
 export function Topics() {
@@ -305,11 +311,15 @@ export function Topics() {
       estimatedFinishDate: "",
       dependsOnTopicId: null,
       estimatedEffortHours: null,
+      creationMode: "pending_validation",
+      pipelineWaitingFor: null,
+      pipelineReviewDate: "",
     },
   });
 
   const watchDept = form.watch("departmentId");
   const watchRole = form.watch("roleId");
+  const isPipeline = form.watch("creationMode") === "pipeline";
   const selectedDepartment = departments?.find((department) => department.id === watchDept);
   const selectedRole = roles?.find((role) => role.id === watchRole);
   const opensWithoutApproval = Boolean(selectedDepartment && selectedRole && session?.user &&
@@ -360,17 +370,22 @@ export function Topics() {
   }, [filteredRoles, filtersReady, roleId, roles, saveFilters]);
 
   const onSubmit = (data: CreateFormValues) => {
+    const { creationMode, pipelineWaitingFor, pipelineReviewDate, ...rest } = data;
     createTopic.mutate(
       {
         data: {
-          ...data,
+          ...rest,
+          initialStatus: creationMode,
+          ...(creationMode === "pipeline"
+            ? { pipelineWaitingFor: pipelineWaitingFor || null, pipelineReviewDate: pipelineReviewDate || null }
+            : {}),
           departmentId: data.departmentId || null,
           roleId: data.roleId || null,
           documentationUrl: data.documentationUrl.trim() || null,
-          targetDate: data.targetDate || null,
-          estimatedStartDate: data.estimatedStartDate || null,
-          estimatedFinishDate: data.estimatedFinishDate || null,
-          dependsOnTopicId: data.dependsOnTopicId || null,
+          targetDate: creationMode === "pipeline" ? null : data.targetDate || null,
+          estimatedStartDate: creationMode === "pipeline" ? null : data.estimatedStartDate || null,
+          estimatedFinishDate: creationMode === "pipeline" ? null : data.estimatedFinishDate || null,
+          dependsOnTopicId: creationMode === "pipeline" ? null : data.dependsOnTopicId || null,
           estimatedEffortHours: data.estimatedEffortHours ?? null,
         },
       },
@@ -428,6 +443,60 @@ export function Topics() {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="creationMode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start as</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-creation-mode"><SelectValue /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="pending_validation">Standard (validation / active)</SelectItem>
+                          <SelectItem value="pipeline">Pipeline (not yet committed)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {isPipeline && (
+                  <div className="grid gap-4 sm:grid-cols-2 rounded-sm border bg-muted/20 p-4">
+                    <FormField
+                      control={form.control}
+                      name="pipelineWaitingFor"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Waiting for</FormLabel>
+                          <Select value={field.value || "none"} onValueChange={(v) => field.onChange(v === "none" ? null : v)}>
+                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">Nothing</SelectItem>
+                              <SelectItem value="decision">A decision</SelectItem>
+                              <SelectItem value="budget">Budget</SelectItem>
+                              <SelectItem value="vendor">A vendor</SelectItem>
+                              <SelectItem value="partner_input">Partner input</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="pipelineReviewDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Review date</FormLabel>
+                          <FormControl><DateField {...field} value={field.value || ""} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField
@@ -499,7 +568,9 @@ export function Topics() {
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  {!selectedDepartment || !selectedRole
+                  {isPipeline
+                    ? "Pipeline topics are not scheduled or booked. Moving to active later always needs Head or Deputy approval and a department and role."
+                    : !selectedDepartment || !selectedRole
                     ? "You may leave department and role unassigned. Both must be selected before this topic can be validated."
                     : opensWithoutApproval
                       ? "This topic will open immediately. No separate approval is required for your selected role or department."
@@ -551,16 +622,18 @@ export function Topics() {
                 <div className="rounded-sm border bg-muted/20 p-4 space-y-4">
                   <div>
                     <h3 className="text-sm font-semibold">
-                      Planning estimates
+                      {form.watch("creationMode") === "pipeline" ? "Proposal effort estimate" : "Planning estimates"}
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      Set the expected delivery window and effort. The committed
-                      finish date can later be re-scoped with a mandatory note.
+                      {form.watch("creationMode") === "pipeline"
+                        ? "Estimate proposal effort only. Delivery dates and allocations are planned after activation and validation."
+                        : "Set the expected delivery window and effort. The committed finish date can later be re-scoped with a mandatory note."}
                     </p>
                   </div>
-                  <FormField
-                    control={form.control}
-                    name="dependsOnTopicId"
+                    {form.watch("creationMode") !== "pipeline" && <>
+                    <FormField
+                      control={form.control}
+                      name="dependsOnTopicId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Starts after another topic (optional)</FormLabel>
@@ -588,7 +661,9 @@ export function Topics() {
                       </FormItem>
                     )}
                   />
-                  <div className="grid gap-4 sm:grid-cols-3">
+                  </>}
+                  <div className={form.watch("creationMode") === "pipeline" ? "grid gap-4" : "grid gap-4 sm:grid-cols-3"}>
+                    {form.watch("creationMode") !== "pipeline" && <>
                     <FormField
                       control={form.control}
                       name="estimatedStartDate"
@@ -615,6 +690,7 @@ export function Topics() {
                         </FormItem>
                       )}
                     />
+                    </>}
                     <FormField
                       control={form.control}
                       name="estimatedEffortHours"
@@ -763,6 +839,8 @@ export function Topics() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">All Statuses</SelectItem>
+              <SelectItem value="pipeline">Pipeline</SelectItem>
+              <SelectItem value="not_pursued">Not Pursued</SelectItem>
               <SelectItem value="pending_validation">
                 Pending Validation
               </SelectItem>

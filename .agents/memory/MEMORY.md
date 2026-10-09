@@ -21,3 +21,4 @@
 - [Topic routing and approval](topic-routing-policy.md) — own-scope creation skips approval; unassigned topics need routing; department transfers retain approval history.
 - [Calendar intent](calendar-intent.md) — readable departments with a status color legend; exports support DIN A0 printing and AI schedule analysis.
 - [Project priority and overbooking](project-priority-overbooking.md) — allow milestone overbooking with red negative availability; projects take priority over BAU.
+- [Pipeline decision gate](pipeline-policy.md) — activation always needs department validation; undecided proposals never reserve capacity.

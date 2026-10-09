@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { deliverPendingNotifications } from "./services/mailer";
+import { enqueuePipelineReviewReminders } from "./services/pipeline-reminders";
 import { restoreHttpsCertificate } from "./services/https-certificate";
 
 const rawPort = process.env["PORT"];
@@ -27,4 +28,8 @@ app.listen(port, (err) => {
   void restoreHttpsCertificate().catch((err) => logger.error({ err }, "HTTPS certificate restoration failed"));
   void deliverPendingNotifications();
   setInterval(() => void deliverPendingNotifications(), 30_000).unref();
+  const reviewPipeline = () => void enqueuePipelineReviewReminders()
+    .catch((err) => logger.error({ err }, "Pipeline review reminders failed"));
+  reviewPipeline();
+  setInterval(reviewPipeline, 30_000).unref();
 });

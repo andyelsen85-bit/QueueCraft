@@ -65,6 +65,8 @@ export type TopicStatus = typeof TopicStatus[keyof typeof TopicStatus];
 
 
 export const TopicStatus = {
+  pipeline: 'pipeline',
+  not_pursued: 'not_pursued',
   pending_validation: 'pending_validation',
   open: 'open',
   in_progress: 'in_progress',
@@ -383,6 +385,19 @@ export interface CalendarTopic {
   milestones: CalendarMilestone[];
 }
 
+/**
+ * @nullable
+ */
+export type TopicPipelineWaitingFor = typeof TopicPipelineWaitingFor[keyof typeof TopicPipelineWaitingFor] | null;
+
+
+export const TopicPipelineWaitingFor = {
+  decision: 'decision',
+  budget: 'budget',
+  vendor: 'vendor',
+  partner_input: 'partner_input',
+} as const;
+
 export interface Topic {
   id: string;
   title: string;
@@ -423,6 +438,12 @@ export interface Topic {
      * @nullable
      */
   estimatedEffortHours?: number | null;
+  /** @nullable */
+  pipelineWaitingFor?: TopicPipelineWaitingFor;
+  /** @nullable */
+  pipelineReviewDate?: string | null;
+  /** @nullable */
+  pipelineExitReason?: string | null;
   validationMode: ValidationMode;
   /** @nullable */
   validationReason?: string | null;
@@ -475,7 +496,33 @@ export type TopicDetail = Topic & ({
   completionSummary?: string | null;
 });
 
+export type TopicInputInitialStatus = typeof TopicInputInitialStatus[keyof typeof TopicInputInitialStatus];
+
+
+export const TopicInputInitialStatus = {
+  pipeline: 'pipeline',
+  pending_validation: 'pending_validation',
+} as const;
+
+/**
+ * @nullable
+ */
+export type TopicInputPipelineWaitingFor = typeof TopicInputPipelineWaitingFor[keyof typeof TopicInputPipelineWaitingFor] | null;
+
+
+export const TopicInputPipelineWaitingFor = {
+  decision: 'decision',
+  budget: 'budget',
+  vendor: 'vendor',
+  partner_input: 'partner_input',
+} as const;
+
 export interface TopicInput {
+  initialStatus?: TopicInputInitialStatus;
+  /** @nullable */
+  pipelineWaitingFor?: TopicInputPipelineWaitingFor;
+  /** @nullable */
+  pipelineReviewDate?: string | null;
   /**
      * @minLength 3
      * @maxLength 160
@@ -567,7 +614,29 @@ export interface ScheduleImpact {
   suggestedFinishDate: string | null;
 }
 
+/**
+ * @nullable
+ */
+export type TopicUpdatePipelineWaitingFor = typeof TopicUpdatePipelineWaitingFor[keyof typeof TopicUpdatePipelineWaitingFor] | null;
+
+
+export const TopicUpdatePipelineWaitingFor = {
+  decision: 'decision',
+  budget: 'budget',
+  vendor: 'vendor',
+  partner_input: 'partner_input',
+} as const;
+
 export interface TopicUpdate {
+  /** @nullable */
+  pipelineWaitingFor?: TopicUpdatePipelineWaitingFor;
+  /** @nullable */
+  pipelineReviewDate?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  pipelineExitReason?: string | null;
   /**
      * @minLength 3
      * @maxLength 160

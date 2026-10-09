@@ -19,6 +19,12 @@ Audit-generating test writes are not fully reversible. Keep synthetic actors ref
 
 **How to apply:** Expire temporary sessions and remove reversible fixtures, then discard the entire isolated database after the test run.
 
+Use a fresh disposable database for a complete regression pass after any failed test run.
+
+**Why:** Failed assertions can leave notification outbox rows and other fixtures behind, causing unrelated count-based checks to fail on the next run.
+
+**How to apply:** Recreate the isolated database and apply migrations rather than weakening assertions or modifying the app's real data to accommodate leftover fixtures.
+
 Run disposable PostgreSQL as a foreground server in a managed background shell task when it must survive multiple tool calls.
 
 **Why:** A server daemonized by pg_ctl from a completed shell did not survive into the next tool call, causing connection refusal.

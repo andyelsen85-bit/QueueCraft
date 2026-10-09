@@ -22,7 +22,7 @@ export function MyWork() {
 
   if (!myWork) return null
   const openTopics = <T extends { status: string }>(topics: T[]) =>
-    topics.filter((topic) => !["completed", "closed"].includes(topic.status))
+    topics.filter((topic) => !["completed", "closed", "pipeline", "not_pursued"].includes(topic.status))
   const assigned = openTopics(myWork.assigned)
   const created = openTopics(myWork.created)
   const collaborations = openTopics(myWork.collaborations)

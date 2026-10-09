@@ -10,6 +10,7 @@ import type { Member } from './member';
 import type { Role } from './role';
 import type { TopicCollaborator } from './topicCollaborator';
 import type { TopicDependency } from './topicDependency';
+import type { TopicPipelineWaitingFor } from './topicPipelineWaitingFor';
 import type { TopicPriority } from './topicPriority';
 import type { TopicStatus } from './topicStatus';
 import type { ValidationMode } from './validationMode';
@@ -54,6 +55,12 @@ export interface Topic {
      * @nullable
      */
   estimatedEffortHours?: number | null;
+  /** @nullable */
+  pipelineWaitingFor?: TopicPipelineWaitingFor;
+  /** @nullable */
+  pipelineReviewDate?: Date | null;
+  /** @nullable */
+  pipelineExitReason?: string | null;
   validationMode: ValidationMode;
   /** @nullable */
   validationReason?: string | null;

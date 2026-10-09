@@ -5,9 +5,16 @@
  * QueueCraft operations and topic-routing API
  * OpenAPI spec version: 0.1.0
  */
+import type { TopicInputInitialStatus } from './topicInputInitialStatus';
+import type { TopicInputPipelineWaitingFor } from './topicInputPipelineWaitingFor';
 import type { TopicPriority } from './topicPriority';
 
 export interface TopicInput {
+  initialStatus?: TopicInputInitialStatus;
+  /** @nullable */
+  pipelineWaitingFor?: TopicInputPipelineWaitingFor;
+  /** @nullable */
+  pipelineReviewDate?: Date | null;
   /**
      * @minLength 3
      * @maxLength 160

@@ -14,6 +14,7 @@ import {
   membersTable,
   milestonesTable,
   notificationOutboxTable,
+  notificationRulesTable,
   notificationSettingsTable,
   pool,
   roleDepartmentsTable,
@@ -25,6 +26,7 @@ import {
   topicsTable,
 } from "@workspace/db";
 import app from "./app";
+import { enqueuePipelineReviewReminders } from "./services/pipeline-reminders";
 import { getCapabilities } from "./routes/queuecraft";
 import {
   BACKUP_FINGERPRINT,
@@ -109,6 +111,116 @@ async function waitForConcurrentTopicLocks(client: Pick<typeof pool, "query">) {
   }
   throw new Error("Both concurrent topic saves must reach the write lock");
 }
+
+test("pipeline preserves identity, blocks work and always requires department validation on activation", async () => {
+  const agent = request.agent(app);
+  await agent.get("/api/session").expect(200);
+  const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+  const created = (await agent.post("/api/topics").set("x-csrf-token", csrf).send({
+    title: "Pipeline regression fixture", description: "A tentative proposal awaiting a budget decision.",
+    departmentId: "dept-platform", roleId: "role-ci-validation", priority: "P3",
+    initialStatus: "pipeline", estimatedEffortHours: 120,
+    pipelineWaitingFor: "budget", pipelineReviewDate: "2030-01-15",
+  }).expect(201)).body;
+  assert.equal(created.status, "pipeline");
+  assert.equal(created.validator, null);
+  await agent.patch(`/api/topics/${created.id}`).set("x-csrf-token", csrf)
+    .send({ status: "open" }).expect(409);
+  await agent.post(`/api/topics/${created.id}/milestones`).set("x-csrf-token", csrf)
+    .send({ title: "Premature work", description: "Must not reserve capacity",
+      beginDate: "2030-01-07", targetDate: "2030-01-11", allocations: [
+        { memberId: "member-andy", allocationPercent: 50 },
+      ] }).expect(409);
+  const activated = (await agent.patch(`/api/topics/${created.id}`).set("x-csrf-token", csrf)
+    .send({ status: "pending_validation" }).expect(200)).body;
+  assert.equal(activated.id, created.id);
+  assert.equal(activated.status, "pending_validation");
+  assert.equal(activated.estimatedEffortHours, 120);
+  assert.equal(activated.pipelineWaitingFor, "budget");
+  assert.equal(activated.validator, null);
+  await agent.patch(`/api/topics/${created.id}`).set("x-csrf-token", csrf)
+    .send({ status: "open" }).expect(409);
+  await agent.post(`/api/topics/${created.id}/validate`).set("x-csrf-token", csrf)
+    .send({ note: "Approved after activation" }).expect(200);
+  const revised = (await agent.patch(`/api/topics/${created.id}`).set("x-csrf-token", csrf)
+    .send({ description: "Approved delivery proposal with retained decision history." }).expect(200)).body;
+  assert.equal(revised.pipelineReviewDate.slice(0, 10), "2030-01-15");
+  const detail = (await agent.get(`/api/topics/${created.id}`).expect(200)).body;
+  assert.equal(detail.status, "open");
+  assert.ok(detail.activity.some((entry: any) => entry.action === "Topic created"));
+  assert.ok(detail.activity.some((entry: any) => entry.action === "Topic validated"));
+  const latest = detail.activity.find((entry: any) => entry.action === "Topic updated");
+  assert.ok(latest && !/pipelineReviewDate|pipeline review date/i.test(latest.detail));
+  await agent.delete(`/api/topics/${created.id}`).set("x-csrf-token", csrf).expect(204);
+});
+
+test("unassigned pipeline can be reviewed, requires routing to activate and a reason to stop", async () => {
+  const agent = request.agent(app);
+  await agent.get("/api/session").expect(200);
+  const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+  const created = (await agent.post("/api/topics").set("x-csrf-token", csrf).send({
+    title: "Unassigned pipeline regression", description: "Waiting for partner input",
+    priority: "P4", initialStatus: "pipeline",
+  }).expect(201)).body;
+  await agent.patch(`/api/topics/${created.id}`).set("x-csrf-token", csrf)
+    .send({ pipelineWaitingFor: "partner_input", pipelineReviewDate: "2030-02-01" }).expect(200);
+  await agent.patch(`/api/topics/${created.id}`).set("x-csrf-token", csrf)
+    .send({ status: "pending_validation" }).expect(409);
+  await agent.patch(`/api/topics/${created.id}`).set("x-csrf-token", csrf)
+    .send({ status: "not_pursued", pipelineExitReason: "  " }).expect(400);
+  const stopped = (await agent.patch(`/api/topics/${created.id}`).set("x-csrf-token", csrf)
+    .send({ status: "not_pursued", pipelineExitReason: "Partner withdrew the proposal." }).expect(200)).body;
+  assert.equal(stopped.status, "not_pursued");
+  assert.equal(stopped.pipelineExitReason, "Partner withdrew the proposal.");
+  await agent.patch(`/api/topics/${created.id}`).set("x-csrf-token", csrf)
+    .send({ status: "open" }).expect(409);
+  const calendar = (await agent.get("/api/calendar/topics").expect(200)).body;
+  assert.ok(!calendar.some((topic: any) => topic.id === created.id));
+  await agent.patch(`/api/topics/${created.id}`).set("x-csrf-token", csrf)
+    .send({ departmentId: "dept-platform", roleId: "role-ci-validation" }).expect(200);
+  await agent.delete(`/api/topics/${created.id}`).set("x-csrf-token", csrf).expect(204);
+});
+
+test("pipeline review reminders are claimed once and rearmed when the review date changes", async () => {
+  await db.insert(notificationRulesTable).values({
+    id: randomUUID(), action: "topic.pipeline_review_due", enabled: true,
+    recipientGroups: ["head_of_service", "head_of_service_deputy"],
+  }).onConflictDoUpdate({ target: notificationRulesTable.action, set: { enabled: true } });
+  const agent = request.agent(app);
+  await agent.get("/api/session").expect(200);
+  const csrf = (await agent.get("/api/auth/csrf").expect(200)).body.csrfToken;
+  const created = (await agent.post("/api/topics").set("x-csrf-token", csrf).send({
+    title: "Pipeline reminder regression", description: "Waiting for a decision",
+    departmentId: "dept-platform", roleId: "role-ci-validation", priority: "P3",
+    initialStatus: "pipeline", pipelineWaitingFor: "decision", pipelineReviewDate: "2000-01-01",
+  }).expect(201)).body;
+  const claims = await Promise.all([enqueuePipelineReviewReminders(), enqueuePipelineReviewReminders()]);
+  assert.equal(claims.reduce((sum, count) => sum + count, 0), 1);
+  const first = await db.select().from(notificationOutboxTable)
+    .where(and(eq(notificationOutboxTable.topicId, created.id),
+      eq(notificationOutboxTable.action, "topic.pipeline_review_due")));
+  assert.ok(first.length > 0);
+  assert.equal(await enqueuePipelineReviewReminders(), 0);
+  await db.update(notificationOutboxTable).set({ status: "sent", sentAt: new Date() })
+    .where(eq(notificationOutboxTable.topicId, created.id));
+  await agent.patch(`/api/topics/${created.id}`).set("x-csrf-token", csrf)
+    .send({ pipelineReviewDate: "2000-01-02" }).expect(200);
+  assert.equal(await enqueuePipelineReviewReminders(), 1);
+  const second = await db.select().from(notificationOutboxTable)
+    .where(and(eq(notificationOutboxTable.topicId, created.id),
+      eq(notificationOutboxTable.action, "topic.pipeline_review_due")));
+  assert.equal(second.length, first.length * 2);
+  await agent.patch(`/api/topics/${created.id}`).set("x-csrf-token", csrf)
+    .send({ pipelineReviewDate: "2050-01-01" }).expect(200);
+  const remaining = await db.select().from(notificationOutboxTable)
+    .where(eq(notificationOutboxTable.topicId, created.id));
+  assert.equal(remaining.filter(item => item.status === "pending").length, 0);
+  assert.equal(remaining.filter(item => item.status === "sent").length, first.length);
+  assert.equal(await enqueuePipelineReviewReminders(), 0);
+  await agent.delete(`/api/topics/${created.id}`).set("x-csrf-token", csrf).expect(204);
+  await db.update(notificationRulesTable).set({ enabled: false })
+    .where(eq(notificationRulesTable.action, "topic.pipeline_review_due"));
+});
 
 test("duplicate date saves return success without repeating dependency shifts or audit activity", async () => {
   const agent = request.agent(app);

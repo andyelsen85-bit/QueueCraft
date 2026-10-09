@@ -835,6 +835,8 @@ components:
       type: string
       enum:
         [
+          pipeline,
+          not_pursued,
           pending_validation,
           open,
           in_progress,
@@ -1180,6 +1182,9 @@ components:
             - $ref: "#/components/schemas/TopicDependency"
             - type: "null"
         estimatedEffortHours: { type: ["integer", "null"], minimum: 0 }
+        pipelineWaitingFor: { type: ["string", "null"], enum: [decision, budget, vendor, partner_input, null] }
+        pipelineReviewDate: { type: ["string", "null"], format: date }
+        pipelineExitReason: { type: ["string", "null"] }
         validationMode:
           $ref: "#/components/schemas/ValidationMode"
         validationReason:
@@ -1235,6 +1240,9 @@ components:
       type: object
       required: [title, description, priority]
       properties:
+        initialStatus: { type: string, enum: [pipeline, pending_validation], default: pending_validation }
+        pipelineWaitingFor: { type: ["string", "null"], enum: [decision, budget, vendor, partner_input, null] }
+        pipelineReviewDate: { type: ["string", "null"], format: date }
         title: { type: string, minLength: 3, maxLength: 160 }
         description: { type: string, minLength: 3, maxLength: 2000 }
         documentationUrl: { type: ["string", "null"], format: uri, maxLength: 2048 }
@@ -1312,6 +1320,9 @@ components:
     TopicUpdate:
       type: object
       properties:
+        pipelineWaitingFor: { type: ["string", "null"], enum: [decision, budget, vendor, partner_input, null] }
+        pipelineReviewDate: { type: ["string", "null"], format: date }
+        pipelineExitReason: { type: ["string", "null"], maxLength: 2000 }
         title: { type: string, minLength: 3, maxLength: 160 }
         description: { type: string, minLength: 3, maxLength: 2000 }
         documentationUrl: { type: ["string", "null"], format: uri, maxLength: 2048 }

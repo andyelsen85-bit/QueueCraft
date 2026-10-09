@@ -102,6 +102,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { PipelineActions, PipelinePanel } from "@/components/pipeline";
 import { occupancyStyle } from "@/lib/occupancy";
 import { MilestoneAllocationFields } from "@/components/milestone-allocation-fields";
 import { milestoneHoursLabel } from "@/lib/contract-hours";
@@ -700,7 +701,8 @@ export function TopicDetail() {
   const prerequisiteReady = !topic.dependency ||
     ["completed", "closed"].includes(topic.dependency.status);
   const userId = session?.user?.id;
-  const canCreateMilestones = Boolean(userId);
+  const planningInactive = ["pipeline", "not_pursued"].includes(topic.status);
+  const canCreateMilestones = Boolean(userId) && !planningInactive;
   const canManageMilestones = Boolean(userId && (
     userId === topic.creator.id ||
     userId === topic.primaryAssignee?.id ||
@@ -917,6 +919,8 @@ export function TopicDetail() {
                 </DialogContent>
               </Dialog>
             </>
+          ) : planningInactive ? (
+            canManageMilestones ? <PipelineActions topic={topic} onChanged={invalidateData} /> : null
           ) : (
             <div className="flex gap-2 w-full">
               <Select value={topic.status} onValueChange={onStatusChange}>
@@ -1275,6 +1279,8 @@ export function TopicDetail() {
             </Card>
           )}
 
+          <PipelinePanel topic={topic} onChanged={invalidateData} canEdit={canManageMilestones} />
+          {planningInactive ? null : (
           <TabsRoot defaultValue="milestones">
             <TabsList className="w-full justify-start border-b border-border bg-transparent rounded-none p-0 h-auto mb-4">
               <TabsTrigger
@@ -1885,6 +1891,7 @@ export function TopicDetail() {
               </Card>
             </TabsContent>
           </TabsRoot>
+          )}
         </div>
 
         {/* Right Column (Assignments & Rescoping) */}
@@ -1913,7 +1920,7 @@ export function TopicDetail() {
                 <Select
                   value={topic.primaryAssignee?.id ?? "none"}
                   onValueChange={onAssign}
-                  disabled={assignTopic.isPending || (isPendingValidation && !topic.primaryAssignee) ||
+                  disabled={assignTopic.isPending || planningInactive || (isPendingValidation && !topic.primaryAssignee) ||
                     (!prerequisiteReady && topic.status === "open")}
                 >
                   <SelectTrigger aria-label="Primary assignee" className="mt-3 w-full bg-background">
@@ -2087,16 +2094,19 @@ export function TopicDetail() {
             <CardHeader className="pb-4 border-b border-border/50">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">Est. Finish</CardTitle>
-                {false && !isPendingValidation && (
+                {canManageMilestones && !isPendingValidation && !["pipeline", "not_pursued"].includes(topic.status) && (
                   <Dialog open={rescopeOpen} onOpenChange={setRescopeOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" title="Revise the committed finish date">
                         <History className="h-4 w-4 mr-2" /> Re-scope
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
                         <DialogTitle>Re-scope Finish Date</DialogTitle>
+                        <p className="text-sm text-muted-foreground">
+                          Revise the committed finish date with a justification. Estimated schedule dates are edited separately.
+                        </p>
                       </DialogHeader>
                       <Form {...rescopeForm}>
                         <form
@@ -2164,6 +2174,9 @@ export function TopicDetail() {
                   No estimated finish date set.
                 </div>
               )}
+              <p className="text-sm text-muted-foreground">
+                Committed finish: {topic.targetDate ? formatDate(topic.targetDate) : "Not set"}
+              </p>
             </CardContent>
           </Card>
         </div>

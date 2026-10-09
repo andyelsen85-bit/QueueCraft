@@ -15,6 +15,7 @@ export const NOTIFICATION_ACTIONS = [
   "topic.created", "topic.updated", "topic.finish_date_changed", "topic.allocations_replaced",
   "topic.assignee_changed", "topic.validation", "topic.collaborator_added",
   "topic.milestone_added", "topic.milestone_updated", "topic.milestone_deleted",
+  "topic.pipeline_review_due",
 ] as const;
 export type NotificationAction = (typeof NOTIFICATION_ACTIONS)[number];
 export const BREAK_GLASS_NOTIFICATION_ACTION = "security.break_glass_alert";
@@ -40,6 +41,7 @@ const actionMap: Record<string, NotificationAction | undefined> = {
   "Milestone added": "topic.milestone_added",
   "Milestone updated": "topic.milestone_updated",
   "Milestone deleted": "topic.milestone_deleted",
+  "Pipeline review due": "topic.pipeline_review_due",
 };
 
 export function notificationAction(label: string) {
@@ -83,7 +85,10 @@ export async function enqueueRuleNotifications(
   ]);
   const [actor] = await executor.select({ name: membersTable.name }).from(membersTable)
     .where(eq(membersTable.id, input.actorId)).limit(1);
-  const memberIds = collectTopicNotificationMemberIds(roles, departments, roleMembers, rule.recipientGroups);
+  const memberIds = [...new Set([
+    ...collectTopicNotificationMemberIds(roles, departments, roleMembers, rule.recipientGroups),
+    ...(action === "topic.pipeline_review_due" ? [topic.creatorId] : []),
+  ])];
   if (!memberIds.length) return;
   const recipients = await executor.select().from(membersTable).where(inArray(membersTable.id, memberIds));
   const unique = new Map<string, string>();

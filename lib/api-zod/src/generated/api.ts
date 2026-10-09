@@ -55,7 +55,7 @@ export const GetSessionResponse = zod.object({
   "topicFilters": zod.object({
   "departmentId": zod.string().nullish(),
   "roleId": zod.string().nullish(),
-  "status": zod.union([zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),zod.null()]).optional(),
+  "status": zod.union([zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),zod.null()]).optional(),
   "priority": zod.union([zod.enum(['P1', 'P2', 'P3', 'P4']),zod.null()]).optional()
 }).optional()
 })
@@ -67,7 +67,7 @@ export const GetSessionResponse = zod.object({
 export const GetTopicFilterPreferencesResponse = zod.object({
   "departmentId": zod.string().nullish(),
   "roleId": zod.string().nullish(),
-  "status": zod.union([zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),zod.null()]).optional(),
+  "status": zod.union([zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),zod.null()]).optional(),
   "priority": zod.union([zod.enum(['P1', 'P2', 'P3', 'P4']),zod.null()]).optional()
 })
 
@@ -78,14 +78,14 @@ export const GetTopicFilterPreferencesResponse = zod.object({
 export const UpdateTopicFilterPreferencesBody = zod.object({
   "departmentId": zod.string().nullish(),
   "roleId": zod.string().nullish(),
-  "status": zod.union([zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),zod.null()]).optional(),
+  "status": zod.union([zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),zod.null()]).optional(),
   "priority": zod.union([zod.enum(['P1', 'P2', 'P3', 'P4']),zod.null()]).optional()
 })
 
 export const UpdateTopicFilterPreferencesResponse = zod.object({
   "departmentId": zod.string().nullish(),
   "roleId": zod.string().nullish(),
-  "status": zod.union([zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),zod.null()]).optional(),
+  "status": zod.union([zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),zod.null()]).optional(),
   "priority": zod.union([zod.enum(['P1', 'P2', 'P3', 'P4']),zod.null()]).optional()
 })
 
@@ -675,7 +675,7 @@ export const GetMyWorkResponse = zod.object({
   "memberIds": zod.array(zod.string()).optional()
 }),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -739,10 +739,13 @@ export const GetMyWorkResponse = zod.object({
   "dependency": zod.union([zod.object({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "estimatedFinishDate": zod.coerce.date().nullable()
 }),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(getMyWorkResponseCreatedItemEstimatedEffortHoursMin).nullish(),
+  "pipelineWaitingFor": zod.union([zod.literal('decision'),zod.literal('budget'),zod.literal('vendor'),zod.literal('partner_input'),zod.literal(null)]).nullish(),
+  "pipelineReviewDate": zod.coerce.date().nullish(),
+  "pipelineExitReason": zod.string().nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
   "validator": zod.union([zod.object({
@@ -848,7 +851,7 @@ export const GetMyWorkResponse = zod.object({
   "memberIds": zod.array(zod.string()).optional()
 }),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -912,10 +915,13 @@ export const GetMyWorkResponse = zod.object({
   "dependency": zod.union([zod.object({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "estimatedFinishDate": zod.coerce.date().nullable()
 }),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(getMyWorkResponseAssignedItemEstimatedEffortHoursMin).nullish(),
+  "pipelineWaitingFor": zod.union([zod.literal('decision'),zod.literal('budget'),zod.literal('vendor'),zod.literal('partner_input'),zod.literal(null)]).nullish(),
+  "pipelineReviewDate": zod.coerce.date().nullish(),
+  "pipelineExitReason": zod.string().nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
   "validator": zod.union([zod.object({
@@ -1068,7 +1074,7 @@ export const GetMyWorkResponse = zod.object({
   "memberIds": zod.array(zod.string()).optional()
 }),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1132,10 +1138,13 @@ export const GetMyWorkResponse = zod.object({
   "dependency": zod.union([zod.object({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "estimatedFinishDate": zod.coerce.date().nullable()
 }),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(getMyWorkResponseCollaborationsItemEstimatedEffortHoursMin).nullish(),
+  "pipelineWaitingFor": zod.union([zod.literal('decision'),zod.literal('budget'),zod.literal('vendor'),zod.literal('partner_input'),zod.literal(null)]).nullish(),
+  "pipelineReviewDate": zod.coerce.date().nullish(),
+  "pipelineExitReason": zod.string().nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
   "validator": zod.union([zod.object({
@@ -1241,7 +1250,7 @@ export const GetMyWorkResponse = zod.object({
   "memberIds": zod.array(zod.string()).optional()
 }),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1305,10 +1314,13 @@ export const GetMyWorkResponse = zod.object({
   "dependency": zod.union([zod.object({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "estimatedFinishDate": zod.coerce.date().nullable()
 }),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(getMyWorkResponseValidationQueueItemEstimatedEffortHoursMin).nullish(),
+  "pipelineWaitingFor": zod.union([zod.literal('decision'),zod.literal('budget'),zod.literal('vendor'),zod.literal('partner_input'),zod.literal(null)]).nullish(),
+  "pipelineReviewDate": zod.coerce.date().nullish(),
+  "pipelineExitReason": zod.string().nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
   "validator": zod.union([zod.object({
@@ -1518,7 +1530,7 @@ export const GetValidationQueueResponseItem = zod.object({
   "memberIds": zod.array(zod.string()).optional()
 }),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1582,10 +1594,13 @@ export const GetValidationQueueResponseItem = zod.object({
   "dependency": zod.union([zod.object({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "estimatedFinishDate": zod.coerce.date().nullable()
 }),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(getValidationQueueResponseEstimatedEffortHoursMin).nullish(),
+  "pipelineWaitingFor": zod.union([zod.literal('decision'),zod.literal('budget'),zod.literal('vendor'),zod.literal('partner_input'),zod.literal(null)]).nullish(),
+  "pipelineReviewDate": zod.coerce.date().nullish(),
+  "pipelineExitReason": zod.string().nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
   "validator": zod.union([zod.object({
@@ -1621,7 +1636,7 @@ export const listTopicsQueryLimitMax = 100;
 
 
 export const ListTopicsQueryParams = zod.object({
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']).optional(),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']).optional(),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']).optional(),
   "departmentId": zod.coerce.string().optional(),
   "roleId": zod.coerce.string().optional(),
@@ -1809,7 +1824,7 @@ export const ListTopicsResponseItem = zod.object({
   "memberIds": zod.array(zod.string()).optional()
 }),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1873,10 +1888,13 @@ export const ListTopicsResponseItem = zod.object({
   "dependency": zod.union([zod.object({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "estimatedFinishDate": zod.coerce.date().nullable()
 }),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(listTopicsResponseEstimatedEffortHoursMin).nullish(),
+  "pipelineWaitingFor": zod.union([zod.literal('decision'),zod.literal('budget'),zod.literal('vendor'),zod.literal('partner_input'),zod.literal(null)]).nullish(),
+  "pipelineReviewDate": zod.coerce.date().nullish(),
+  "pipelineExitReason": zod.string().nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
   "validator": zod.union([zod.object({
@@ -1906,6 +1924,7 @@ export const ListTopicsResponse = zod.array(ListTopicsResponseItem)
 /**
  * @summary Create a topic
  */
+export const createTopicBodyInitialStatusDefault = `pending_validation`;
 export const createTopicBodyTitleMin = 3;
 export const createTopicBodyTitleMax = 160;
 
@@ -1921,6 +1940,9 @@ export const createTopicBodyEstimatedEffortHoursMin = 0;
 
 
 export const CreateTopicBody = zod.object({
+  "initialStatus": zod.enum(['pipeline', 'pending_validation']).default(createTopicBodyInitialStatusDefault),
+  "pipelineWaitingFor": zod.union([zod.literal('decision'),zod.literal('budget'),zod.literal('vendor'),zod.literal('partner_input'),zod.literal(null)]).nullish(),
+  "pipelineReviewDate": zod.coerce.date().nullish(),
   "title": zod.string().min(createTopicBodyTitleMin).max(createTopicBodyTitleMax),
   "description": zod.string().min(createTopicBodyDescriptionMin).max(createTopicBodyDescriptionMax),
   "documentationUrl": zod.string().url().max(createTopicBodyDocumentationUrlMax).nullish(),
@@ -2115,7 +2137,7 @@ export const CreateTopicResponse = zod.object({
   "memberIds": zod.array(zod.string()).optional()
 }),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -2179,10 +2201,13 @@ export const CreateTopicResponse = zod.object({
   "dependency": zod.union([zod.object({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "estimatedFinishDate": zod.coerce.date().nullable()
 }),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(createTopicResponseEstimatedEffortHoursMin).nullish(),
+  "pipelineWaitingFor": zod.union([zod.literal('decision'),zod.literal('budget'),zod.literal('vendor'),zod.literal('partner_input'),zod.literal(null)]).nullish(),
+  "pipelineReviewDate": zod.coerce.date().nullish(),
+  "pipelineExitReason": zod.string().nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
   "validator": zod.union([zod.object({
@@ -2246,7 +2271,7 @@ export const ListCalendarTopicsResponseItem = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "departmentName": zod.string(),
   "departmentId": zod.string().nullable(),
   "roleId": zod.string().nullable(),
@@ -2280,7 +2305,7 @@ export const ListDependencyCandidatesQueryParams = zod.object({
 export const ListDependencyCandidatesResponseItem = zod.object({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "estimatedFinishDate": zod.coerce.date().nullable()
 })
 export const ListDependencyCandidatesResponse = zod.array(ListDependencyCandidatesResponseItem)
@@ -2536,7 +2561,7 @@ export const GetTopicResponse = zod.object({
   "memberIds": zod.array(zod.string()).optional()
 }),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -2600,10 +2625,13 @@ export const GetTopicResponse = zod.object({
   "dependency": zod.union([zod.object({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "estimatedFinishDate": zod.coerce.date().nullable()
 }),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(getTopicResponseOneEstimatedEffortHoursMin).nullish(),
+  "pipelineWaitingFor": zod.union([zod.literal('decision'),zod.literal('budget'),zod.literal('vendor'),zod.literal('partner_input'),zod.literal(null)]).nullish(),
+  "pipelineReviewDate": zod.coerce.date().nullish(),
+  "pipelineExitReason": zod.string().nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
   "validator": zod.union([zod.object({
@@ -2751,6 +2779,8 @@ export const UpdateTopicParams = zod.object({
   "topicId": zod.coerce.string()
 })
 
+export const updateTopicBodyPipelineExitReasonMax = 2000;
+
 export const updateTopicBodyTitleMin = 3;
 export const updateTopicBodyTitleMax = 160;
 
@@ -2768,6 +2798,9 @@ export const updateTopicBodyCompletionSummaryMax = 1000;
 
 
 export const UpdateTopicBody = zod.object({
+  "pipelineWaitingFor": zod.union([zod.literal('decision'),zod.literal('budget'),zod.literal('vendor'),zod.literal('partner_input'),zod.literal(null)]).nullish(),
+  "pipelineReviewDate": zod.coerce.date().nullish(),
+  "pipelineExitReason": zod.string().max(updateTopicBodyPipelineExitReasonMax).nullish(),
   "title": zod.string().min(updateTopicBodyTitleMin).max(updateTopicBodyTitleMax).optional(),
   "description": zod.string().min(updateTopicBodyDescriptionMin).max(updateTopicBodyDescriptionMax).optional(),
   "documentationUrl": zod.string().url().max(updateTopicBodyDocumentationUrlMax).nullish(),
@@ -2778,7 +2811,7 @@ export const UpdateTopicBody = zod.object({
   "estimatedFinishDate": zod.coerce.date().nullish(),
   "dependsOnTopicId": zod.string().nullish(),
   "estimatedEffortHours": zod.number().int().min(updateTopicBodyEstimatedEffortHoursMin).nullish(),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']).optional(),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']).optional(),
   "completionSummary": zod.string().max(updateTopicBodyCompletionSummaryMax).nullish()
 })
 
@@ -2962,7 +2995,7 @@ export const UpdateTopicResponse = zod.object({
   "memberIds": zod.array(zod.string()).optional()
 }),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -3026,10 +3059,13 @@ export const UpdateTopicResponse = zod.object({
   "dependency": zod.union([zod.object({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "estimatedFinishDate": zod.coerce.date().nullable()
 }),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(updateTopicResponseEstimatedEffortHoursMin).nullish(),
+  "pipelineWaitingFor": zod.union([zod.literal('decision'),zod.literal('budget'),zod.literal('vendor'),zod.literal('partner_input'),zod.literal(null)]).nullish(),
+  "pipelineReviewDate": zod.coerce.date().nullish(),
+  "pipelineExitReason": zod.string().nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
   "validator": zod.union([zod.object({
@@ -3261,7 +3297,7 @@ export const UpdateTopicFinishDateResponse = zod.object({
   "memberIds": zod.array(zod.string()).optional()
 }),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -3325,10 +3361,13 @@ export const UpdateTopicFinishDateResponse = zod.object({
   "dependency": zod.union([zod.object({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "estimatedFinishDate": zod.coerce.date().nullable()
 }),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(updateTopicFinishDateResponseEstimatedEffortHoursMin).nullish(),
+  "pipelineWaitingFor": zod.union([zod.literal('decision'),zod.literal('budget'),zod.literal('vendor'),zod.literal('partner_input'),zod.literal(null)]).nullish(),
+  "pipelineReviewDate": zod.coerce.date().nullish(),
+  "pipelineExitReason": zod.string().nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
   "validator": zod.union([zod.object({
@@ -3599,7 +3638,7 @@ export const ValidateTopicResponse = zod.object({
   "memberIds": zod.array(zod.string()).optional()
 }),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -3663,10 +3702,13 @@ export const ValidateTopicResponse = zod.object({
   "dependency": zod.union([zod.object({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "estimatedFinishDate": zod.coerce.date().nullable()
 }),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(validateTopicResponseEstimatedEffortHoursMin).nullish(),
+  "pipelineWaitingFor": zod.union([zod.literal('decision'),zod.literal('budget'),zod.literal('vendor'),zod.literal('partner_input'),zod.literal(null)]).nullish(),
+  "pipelineReviewDate": zod.coerce.date().nullish(),
+  "pipelineExitReason": zod.string().nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
   "validator": zod.union([zod.object({
@@ -3893,7 +3935,7 @@ export const ValidateTopicBreakGlassResponse = zod.object({
   "memberIds": zod.array(zod.string()).optional()
 }),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -3957,10 +3999,13 @@ export const ValidateTopicBreakGlassResponse = zod.object({
   "dependency": zod.union([zod.object({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "estimatedFinishDate": zod.coerce.date().nullable()
 }),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(validateTopicBreakGlassResponseEstimatedEffortHoursMin).nullish(),
+  "pipelineWaitingFor": zod.union([zod.literal('decision'),zod.literal('budget'),zod.literal('vendor'),zod.literal('partner_input'),zod.literal(null)]).nullish(),
+  "pipelineReviewDate": zod.coerce.date().nullish(),
+  "pipelineExitReason": zod.string().nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
   "validator": zod.union([zod.object({
@@ -4177,7 +4222,7 @@ export const AssignTopicResponse = zod.object({
   "memberIds": zod.array(zod.string()).optional()
 }),zod.null()]),
   "priority": zod.enum(['P1', 'P2', 'P3', 'P4']),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "creator": zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -4241,10 +4286,13 @@ export const AssignTopicResponse = zod.object({
   "dependency": zod.union([zod.object({
   "id": zod.string(),
   "title": zod.string(),
-  "status": zod.enum(['pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
+  "status": zod.enum(['pipeline', 'not_pursued', 'pending_validation', 'open', 'in_progress', 'completed', 'closed', 'returned', 'rejected']),
   "estimatedFinishDate": zod.coerce.date().nullable()
 }),zod.null()]).optional(),
   "estimatedEffortHours": zod.number().int().min(assignTopicResponseEstimatedEffortHoursMin).nullish(),
+  "pipelineWaitingFor": zod.union([zod.literal('decision'),zod.literal('budget'),zod.literal('vendor'),zod.literal('partner_input'),zod.literal(null)]).nullish(),
+  "pipelineReviewDate": zod.coerce.date().nullish(),
+  "pipelineExitReason": zod.string().nullish(),
   "validationMode": zod.enum(['standard', 'break_glass']),
   "validationReason": zod.string().nullish(),
   "validator": zod.union([zod.object({

@@ -3,6 +3,8 @@ import * as React from "react"
 export function StatusBadge({ status, label: customLabel }: { status: string; label?: string }) {
   const colors: Record<string, string> = {
     pending_validation: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+    pipeline: "bg-teal-500/10 text-teal-700 border-teal-500/20",
+    not_pursued: "bg-stone-500/10 text-stone-600 border-stone-500/20",
     open: "bg-blue-500/10 text-blue-600 border-blue-500/20",
     in_progress: "bg-primary/10 text-primary border-primary/20",
     completed: "bg-green-500/10 text-green-600 border-green-500/20",

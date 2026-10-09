@@ -7,8 +7,18 @@
  */
 import type { TopicPriority } from './topicPriority';
 import type { TopicStatus } from './topicStatus';
+import type { TopicUpdatePipelineWaitingFor } from './topicUpdatePipelineWaitingFor';
 
 export interface TopicUpdate {
+  /** @nullable */
+  pipelineWaitingFor?: TopicUpdatePipelineWaitingFor;
+  /** @nullable */
+  pipelineReviewDate?: Date | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  pipelineExitReason?: string | null;
   /**
      * @minLength 3
      * @maxLength 160

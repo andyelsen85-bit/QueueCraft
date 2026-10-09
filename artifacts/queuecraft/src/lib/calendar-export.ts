@@ -97,7 +97,7 @@ export function downloadCalendarCsv(topics: readonly CalendarExportTopic[], opti
 
 const statusColors: Record<string, [number, number, number]> = {
   open: [59, 130, 246], not_started: [14, 165, 233], in_progress: [249, 115, 22],
-  completed: [16, 185, 129], pending_validation: [234, 179, 8], returned: [217, 119, 6],
+  pipeline: [13, 148, 136], not_pursued: [120, 113, 108], completed: [16, 185, 129], pending_validation: [234, 179, 8], returned: [217, 119, 6],
   blocked: [220, 38, 38], rejected: [220, 38, 38], closed: [100, 116, 139],
 };
 

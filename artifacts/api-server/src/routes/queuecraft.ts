@@ -539,6 +539,9 @@ async function loadSnapshot() {
           })()
         : null,
       estimatedEffortHours: topic.estimatedEffortHours,
+      pipelineWaitingFor: topic.pipelineWaitingFor,
+      pipelineReviewDate: topic.pipelineReviewDate,
+      pipelineExitReason: topic.pipelineExitReason,
       validationMode: topic.validationMode,
       validationReason: topic.validationReason,
       validator: member(topic.validatorId),
@@ -696,7 +699,7 @@ function canManageTopic(
     topic.creatorId === userId ||
     topic.primaryAssigneeId === userId ||
     collaborator ||
-    (!topic.departmentId && topic.status === "pending_validation" &&
+    (!topic.departmentId && ["pending_validation", "pipeline"].includes(topic.status) &&
       (snapshot.memberById.get(userId)?.isCio ||
         snapshot.departments.some((entry) =>
           [entry.serviceHeadId, entry.serviceHeadDeputyId].includes(userId)))) ||
@@ -1872,7 +1875,7 @@ router.delete("/directory/roles/:roleId", async (req, res): Promise<void> => {
     if (!role || role.archivedAt) return { type: "missing" as const };
     const unfinished = await tx.select({ id: topicsTable.id }).from(topicsTable)
       .where(and(eq(topicsTable.roleId, role.id),
-        sql`${topicsTable.status} NOT IN ('completed', 'closed', 'rejected')`));
+        sql`${topicsTable.status} NOT IN ('completed', 'closed', 'rejected', 'not_pursued')`));
     if (unfinished.length) return { type: "in_use" as const, count: unfinished.length };
     await tx.update(rolesTable).set({ archivedAt: new Date() })
       .where(eq(rolesTable.id, role.id));
@@ -1919,7 +1922,8 @@ router.get("/calendar/topics", async (req, res): Promise<void> => {
     addMember(milestoneMembers, assignment.milestoneId,
       collaboratorsById.get(assignment.collaboratorId)?.memberId ?? null);
   }
-  res.json(ListCalendarTopicsResponse.parse(snapshot.topics.map((topic) => ({
+  res.json(ListCalendarTopicsResponse.parse(snapshot.topics
+    .filter((topic) => !["pipeline", "not_pursued"].includes(topic.status)).map((topic) => ({
     id: topic.id,
     title: topic.title,
     priority: topic.priority,
@@ -2022,6 +2026,10 @@ router.post("/topics", async (req, res): Promise<void> => {
   }
   const snapshot = await loadSnapshot();
   const departmentId = parsed.data.departmentId ?? null;
+  const isPipeline = parsed.data.initialStatus === "pipeline";
+  if (!isPipeline && (parsed.data.pipelineWaitingFor || parsed.data.pipelineReviewDate)) {
+    res.status(400).json({ error: "Pipeline review fields are only available for pipeline topics" }); return;
+  }
   const roleId = parsed.data.roleId ?? null;
   const routingError = topicRoutingError(snapshot, departmentId, roleId);
   if (routingError) {
@@ -2061,7 +2069,7 @@ router.post("/topics", async (req, res): Promise<void> => {
   const [created] = await db.transaction(async (tx) => {
     const routing = await lockTopicRouting(tx, departmentId, roleId);
     if (!routing) return [];
-    const approvalAuthority = routing.department && routing.role
+    const approvalAuthority = !isPipeline && routing.department && routing.role
       ? [routing.department.serviceHeadId, routing.department.serviceHeadDeputyId].includes(creatorId)
         ? "selected department's Head or Deputy"
         : routing.role.leadId === creatorId ? "selected role's lead" : null
@@ -2095,7 +2103,9 @@ router.post("/topics", async (req, res): Promise<void> => {
         estimatedFinishDate: plannedFinish,
         dependsOnTopicId,
         estimatedEffortHours: parsed.data.estimatedEffortHours,
-        status: approvalAuthority ? "open" : "pending_validation",
+        pipelineWaitingFor: isPipeline ? parsed.data.pipelineWaitingFor : null,
+        pipelineReviewDate: isPipeline ? dateOnly(parsed.data.pipelineReviewDate) : null,
+        status: isPipeline ? "pipeline" : approvalAuthority ? "open" : "pending_validation",
         validatorId: approvalAuthority ? creatorId : null,
         validatedAt: approvalAuthority ? new Date() : null,
         validationReason: approvalReason,
@@ -2118,7 +2128,7 @@ router.post("/topics", async (req, res): Promise<void> => {
         `Estimated finish: ${displayActivityValue(plannedFinish)}`,
         `Prerequisite: ${currentPrerequisite?.title ?? "—"}`,
         `Estimated effort (hours): ${displayActivityValue(parsed.data.estimatedEffortHours)}`,
-        approvalAuthority ? "Initial status: Open" : "Initial status: Pending validation",
+        isPipeline ? "Initial status: Pipeline" : approvalAuthority ? "Initial status: Open" : "Initial status: Pending validation",
         approvalReason ?? "Approval: Required from the selected department's Head or Deputy",
       ].join("\n"),
       false,
@@ -2360,12 +2370,12 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
   const nextRoleId = body.data.roleId === undefined ? currentTopic.roleId : body.data.roleId;
   const nextRole = current.roleById.get(nextRoleId ?? "");
   const routingError = topicRoutingError(current, nextDepartmentId, nextRoleId,
-    currentTopic.status !== "pending_validation", false);
+    !["pending_validation", "pipeline", "not_pursued"].includes(currentTopic.status), false);
   if (routingError) {
     res.status(400).json({ error: routingError });
     return;
   }
-  const terminalTopicStatuses = ["completed", "closed", "rejected"];
+  const terminalTopicStatuses = ["completed", "closed", "rejected", "not_pursued"];
   if (nextRole?.archivedAt && (nextRoleId !== currentTopic.roleId ||
     !terminalTopicStatuses.includes(body.data.status ?? currentTopic.status))) {
     res.status(409).json({ error: "Select an active role before reopening this topic" });
@@ -2471,6 +2481,7 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
   }
   if (
     currentTopic.status !== "pending_validation" &&
+    currentTopic.status !== "pipeline" &&
     body.data.status === "pending_validation"
   ) {
     res
@@ -2480,9 +2491,35 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
       });
     return;
   }
+  if (currentTopic.status === "pipeline" && body.data.status &&
+    !["pipeline", "pending_validation", "not_pursued"].includes(body.data.status)) {
+    res.status(409).json({ error: "Move the pipeline topic to validation before activating work" }); return;
+  }
+  if (currentTopic.status === "pipeline" && body.data.status === "pending_validation" &&
+    (!(body.data.departmentId === undefined ? currentTopic.departmentId : body.data.departmentId) ||
+      !(body.data.roleId === undefined ? currentTopic.roleId : body.data.roleId))) {
+    res.status(409).json({ error: "Select a department and role before moving to active" }); return;
+  }
+  if (currentTopic.status === "pipeline" && body.data.status === "not_pursued" &&
+    !body.data.pipelineExitReason?.trim()) {
+    res.status(400).json({ error: "A reason is required for Not pursued" }); return;
+  }
+  if (currentTopic.status !== "pipeline" &&
+    body.data.status && body.data.status !== currentTopic.status &&
+    (["pipeline", "not_pursued"].includes(body.data.status) || currentTopic.status === "not_pursued")) {
+    res.status(409).json({ error: "This transition is only available to pipeline topics" }); return;
+  }
+  if (currentTopic.status !== "pipeline" &&
+    (body.data.pipelineWaitingFor !== undefined || body.data.pipelineReviewDate !== undefined || body.data.pipelineExitReason !== undefined)) {
+    res.status(409).json({ error: "Pipeline fields can only be changed while in Pipeline" }); return;
+  }
   const completedAt = body.data.status === "completed" ? new Date() : undefined;
-  const normalizedUpdate = { ...body.data, documentationUrl };
+  const normalizedUpdate = { ...body.data, documentationUrl,
+    pipelineReviewDate: body.data.pipelineReviewDate === undefined ? undefined : dateOnly(body.data.pipelineReviewDate),
+    ...(body.data.pipelineExitReason !== undefined ? { pipelineExitReason: body.data.pipelineExitReason?.trim() || null } : {}),
+  };
   const changedValues = Object.entries(normalizedUpdate).flatMap(([field, rawValue]) => {
+    if (rawValue === undefined) return [];
     const nextValue = field === "estimatedStartDate" || field === "estimatedFinishDate"
       ? dateOnly(rawValue as string | null | undefined)
       : rawValue;
@@ -2568,6 +2605,10 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
       .update(topicsTable)
       .set({
         ...normalizedUpdate,
+        ...(currentTopic.status === "pipeline" && body.data.status === "pending_validation"
+          ? { validatorId: null, validatedAt: null, validationReason: null, validationMode: "standard" as const } : {}),
+        ...(body.data.pipelineReviewDate !== undefined && dateOnly(body.data.pipelineReviewDate) !== currentTopic.pipelineReviewDate
+          ? { pipelineReviewNotifiedAt: null } : {}),
         dependsOnTopicId: dependencyChanged ? dependencyId : undefined,
         estimatedStartDate: dependencyChanged && dependencyId
           ? savedStart : body.data.estimatedStartDate === undefined ? undefined : proposedStart,
@@ -2580,6 +2621,15 @@ router.patch("/topics/:topicId", async (req, res): Promise<void> => {
       .where(eq(topicsTable.id, params.data.topicId))
       .returning();
     if (rows[0]) {
+      if (currentTopic.status === "pipeline" &&
+        ((body.data.status && body.data.status !== "pipeline") ||
+          (body.data.pipelineReviewDate !== undefined && dateOnly(body.data.pipelineReviewDate) !== currentTopic.pipelineReviewDate))) {
+        await tx.delete(notificationOutboxTable).where(and(
+          eq(notificationOutboxTable.topicId, rows[0].id),
+          eq(notificationOutboxTable.action, "topic.pipeline_review_due"),
+          inArray(notificationOutboxTable.status, ["pending", "failed"]),
+        ));
+      }
       if (milestoneDays) {
         await tx.update(milestonesTable).set({
           beginDate: sql`${milestonesTable.beginDate} + ${milestoneDays}::integer`,
@@ -2709,7 +2759,7 @@ function occupancyAllocationsByMember(snapshot: Awaited<ReturnType<typeof loadSn
     const milestone = milestoneById.get(allocation.milestoneId);
     const topic = milestone && topicById.get(milestone.topicId);
     if (!milestone?.beginDate || !milestone.targetDate || !topic ||
-      topic.status === "pending_validation" || !prerequisiteComplete(topic, snapshot.topics)) continue;
+      ["pending_validation", "pipeline", "not_pursued"].includes(topic.status) || !prerequisiteComplete(topic, snapshot.topics)) continue;
     const rows = result.get(allocation.memberId) ?? [];
     rows.push({
       memberId: allocation.memberId,
@@ -3292,6 +3342,9 @@ router.post("/topics/:topicId/milestones", async (req, res): Promise<void> => {
   }
   // Authentication middleware permits every active member to plan milestones,
   // regardless of department or topic management access.
+  if (["pipeline", "not_pursued"].includes(topic.status)) {
+    res.status(409).json({ error: "Move the topic through validation before planning milestones or allocations" }); return;
+  }
   if (topic.dependsOnTopicId && !topic.estimatedStartDate) {
     res.status(409).json({ error: "Set a tentative estimated start on this topic before adding dated milestones" });
     return;
@@ -3411,6 +3464,9 @@ router.patch("/milestones/:milestoneId", async (req, res): Promise<void> => {
     return;
   }
   if (!requireTopicManager(req, res, topic, before)) return;
+  if (["pipeline", "not_pursued"].includes(topic.status)) {
+    res.status(409).json({ error: "Pipeline topics cannot hold milestone allocations" }); return;
+  }
   if (body.data.status && ["in_progress", "completed"].includes(body.data.status) &&
     topic.status === "pending_validation") {
     res.status(409).json({ error: "Validate the topic before starting milestone work" });
@@ -3801,7 +3857,7 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
           (topic) =>
             topic.targetDate &&
             new Date(topic.targetDate) < now &&
-            !["completed", "closed", "rejected"].includes(topic.status),
+            !["completed", "closed", "rejected", "pipeline", "not_pursued"].includes(topic.status),
         ).length,
         unassigned: snapshot.topics.filter((topic) => !topic.primaryAssigneeId)
           .length,

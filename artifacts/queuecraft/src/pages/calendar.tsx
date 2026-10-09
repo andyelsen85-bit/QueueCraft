@@ -41,6 +41,8 @@ const getBarColors = (status: string) => {
     case 'rejected': return 'bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20';
     case 'returned': return 'bg-amber-100 border-amber-300 text-amber-900 hover:bg-amber-200 dark:bg-amber-950 dark:border-amber-700 dark:text-amber-200';
     case 'pending_validation': return 'bg-yellow-100 border-yellow-300 text-yellow-900 hover:bg-yellow-200 dark:bg-yellow-950 dark:border-yellow-700 dark:text-yellow-200';
+    case 'pipeline': return 'bg-teal-100 border-teal-300 text-teal-900 hover:bg-teal-200';
+    case 'not_pursued': return 'bg-stone-100 border-stone-300 text-stone-700 hover:bg-stone-200';
     case 'closed': return 'bg-muted border-border text-muted-foreground hover:bg-muted/80';
     case 'in_progress': return 'bg-orange-100 border-orange-300 text-orange-900 hover:bg-orange-200 dark:bg-orange-950 dark:border-orange-700 dark:text-orange-200';
     case 'open': return 'bg-blue-100 border-blue-300 text-blue-900 hover:bg-blue-200 dark:bg-blue-950 dark:border-blue-700 dark:text-blue-200';
@@ -49,7 +51,7 @@ const getBarColors = (status: string) => {
   }
 };
 
-const LEGEND = ["not_started", "open", "in_progress", "pending_validation", "returned", "completed", "blocked", "rejected", "closed"];
+const LEGEND = ["pipeline", "not_pursued", "not_started", "open", "in_progress", "pending_validation", "returned", "completed", "blocked", "rejected", "closed"];
 
 function StatusLegend() {
   return (
@@ -163,6 +165,7 @@ export function Calendar() {
 
   const visibleTopics = React.useMemo(() => {
     return (topics ?? [])
+      .filter((topic) => !(["pipeline", "not_pursued"] as string[]).includes(topic.status))
       .filter((topic) => matchesCalendarDepartment(topic, departmentId))
       .filter((topic) => !roleId || topic.roleId === roleId)
       .map(topic => {
