@@ -1,4 +1,4 @@
-import { useGetMyWork } from "@workspace/api-client-react"
+import { getGetMyWorkQueryKey, useGetMyWork } from "@workspace/api-client-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TabsContent, TabsList, TabsRoot, TabsTrigger } from "@/components/ui/tabs"
@@ -6,9 +6,23 @@ import { StatusBadge, PriorityBadge } from "@/components/badges"
 import { formatDate } from "@/lib/dates"
 import { Link } from "wouter"
 import { ArrowRight } from "lucide-react"
+import { useEffect, useState } from "react"
+import { isRunningOnDate, localTodayIso } from "@/lib/my-work-running"
 
 export function MyWork() {
-  const { data: myWork, isLoading } = useGetMyWork()
+  const { data: myWork, isLoading } = useGetMyWork({
+    query: { queryKey: getGetMyWorkQueryKey(), refetchInterval: 60_000 },
+  })
+  const [today, setToday] = useState(() => localTodayIso())
+  useEffect(() => {
+    const updateDay = () => setToday(localTodayIso())
+    const timer = window.setInterval(updateDay, 60_000)
+    window.addEventListener("focus", updateDay)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener("focus", updateDay)
+    }
+  }, [])
 
   if (isLoading) {
     return (
@@ -33,6 +47,11 @@ export function MyWork() {
   const sortedCreated = [...created].sort(compareName)
   const sortedCollaborations = [...collaborations].sort(compareName)
   const sortedMilestones = [...milestones].sort(compareName)
+  const runningTopics = [...new Map([...assigned, ...collaborations]
+    .filter(t => isRunningOnDate(t.status, t.estimatedStartDate, t.estimatedFinishDate, today))
+    .map(t => [t.id, t])).values()].sort(compareName)
+  const runningMilestones = sortedMilestones.filter(m =>
+    isRunningOnDate(m.status, m.beginDate, m.targetDate, today))
 
   const TopicList = ({ topics, emptyMessage }: { topics: typeof myWork.created, emptyMessage: string }) => {
     if (topics.length === 0) {
@@ -82,12 +101,18 @@ export function MyWork() {
       </div>
 
       <TabsRoot defaultValue="assigned">
-        <TabsList className="w-full justify-start border-b border-border bg-transparent rounded-none p-0 h-auto">
+        <TabsList className="w-full flex-wrap justify-start border-b border-border bg-transparent rounded-none p-0 h-auto">
           <TabsTrigger 
             value="assigned" 
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
           >
             Assigned Topics ({assigned.length})
+          </TabsTrigger>
+          <TabsTrigger
+            value="running"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
+          >
+            Assigned Running ({runningTopics.length + runningMilestones.length})
           </TabsTrigger>
           <TabsTrigger 
             value="milestones" 
@@ -110,6 +135,40 @@ export function MyWork() {
         </TabsList>
 
         <div className="mt-6">
+          <TabsContent value="running" className="space-y-6">
+            <p className="text-sm text-muted-foreground">
+              In-progress assignments for {formatDate(today)}. Only work whose scheduled dates include today is shown.
+              Future, finished and undated work is excluded.
+            </p>
+            <section aria-labelledby="running-topics-title" className="space-y-3">
+              <h2 id="running-topics-title" className="text-lg font-semibold">Topics ({runningTopics.length})</h2>
+              <TopicList topics={runningTopics} emptyMessage="No assigned or collaborating topics running today." />
+            </section>
+            <section aria-labelledby="running-milestones-title" className="space-y-3">
+              <h2 id="running-milestones-title" className="text-lg font-semibold">Milestones ({runningMilestones.length})</h2>
+              {runningMilestones.length === 0 ? (
+                <div className="p-12 text-center text-sm text-muted-foreground border-2 border-dashed border-muted rounded-sm">
+                  No milestones assigned or allocated to you running today.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {runningMilestones.map(m => (
+                    <Card key={m.id}>
+                      <CardContent className="p-4 flex items-center gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-semibold">{m.title}</h3>
+                          <div className="text-xs text-muted-foreground mt-1 font-mono">
+                            {formatDate(m.beginDate)} – {formatDate(m.targetDate)}
+                          </div>
+                        </div>
+                        <StatusBadge status={m.status} />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </section>
+          </TabsContent>
           <TabsContent value="assigned">
             <TopicList topics={sortedAssigned} emptyMessage="No open topics currently assigned as primary responsibility." />
           </TabsContent>

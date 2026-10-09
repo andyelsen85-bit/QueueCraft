@@ -22,3 +22,4 @@
 - [Calendar intent](calendar-intent.md) — readable departments with a status color legend; exports support DIN A0 printing and AI schedule analysis.
 - [Project priority and overbooking](project-priority-overbooking.md) — allow milestone overbooking with red negative availability; projects take priority over BAU.
 - [Pipeline decision gate](pipeline-policy.md) — activation always needs department validation; undecided proposals never reserve capacity.
+- [My Work current-date view](my-work-current-date.md) — running assignments belong in a separate current-day tab; future planning stays in existing tabs.
