@@ -604,7 +604,7 @@ export function Topics() {
                       </FormItem>
                     )}
                   />
-                  <FormField
+                  {form.watch("creationMode") !== "pipeline" && <FormField
                     control={form.control}
                     name="targetDate"
                     render={({ field }) => (
@@ -616,7 +616,7 @@ export function Topics() {
                         <FormMessage />
                       </FormItem>
                     )}
-                  />
+                  />}
                 </div>
 
                 <div className="rounded-sm border bg-muted/20 p-4 space-y-4">

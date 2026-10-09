@@ -124,6 +124,9 @@ test("pipeline preserves identity, blocks work and always requires department va
   }).expect(201)).body;
   assert.equal(created.status, "pipeline");
   assert.equal(created.validator, null);
+  const dashboard = (await agent.get("/api/dashboard/summary").expect(200)).body;
+  assert.ok(dashboard.statusCounts.find((group: any) => group.label === "pipeline").count >= 1);
+  assert.equal(dashboard.statusCounts.reduce((sum: number, group: any) => sum + group.count, 0), dashboard.kpis.total);
   await agent.patch(`/api/topics/${created.id}`).set("x-csrf-token", csrf)
     .send({ status: "open" }).expect(409);
   await agent.post(`/api/topics/${created.id}/milestones`).set("x-csrf-token", csrf)

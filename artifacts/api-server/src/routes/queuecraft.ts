@@ -3863,7 +3863,7 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
           .length,
       },
       statusCounts: grouped(
-        ["pending_validation", "open", "in_progress", "completed", "closed"],
+        ["pending_validation", "open", "in_progress", "completed", "closed", "returned", "rejected", "pipeline", "not_pursued"],
         (topic) => topic.status,
       ),
       priorityCounts: grouped(
