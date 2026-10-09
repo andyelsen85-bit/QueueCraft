@@ -26,3 +26,9 @@ The Topics page excludes Pending validation, Pipeline and Not pursued. Pending v
 **Why:** The user explicitly requested separate delivery, approval and proposal views, with declined proposals kept only in Pipeline rather than the Topics list.
 
 **How to apply:** Keep the same underlying topics and history when changing lifecycle stages. Apply the page boundary even when searches or saved filters request an excluded status.
+
+Pipeline filters are independent of Topics preferences. A fresh Pipeline visit defaults to Pipeline; the selection on that visit must remain consistent after refresh.
+
+**Why:** The user reported that the filter showed its first item rather than consistently reflecting the selection and results.
+
+**How to apply:** Keep the selected Pipeline status, department, role and priority in the page URL. Do not hydrate Pipeline from saved Topics filters.

@@ -35,6 +35,12 @@ Validate source blob hashes before uploading, and read large payloads in bounded
 
 ## Resumable uploads across runtime reloads
 
+Workspace checkpoints can add local-only commits containing generated archives and Library metadata. Do not include those unrelated files when publishing a narrow source fix.
+
+**Why:** An automatic checkpoint appeared between the verified remote commit and a source fix, so the local parent was not available on GitHub.
+
+**How to apply:** Verify the live remote head and compare the local-only changes. Publish the intended source changes on that remote base, preserving workspace files and local checkpoint history.
+
 Persist long-upload progress in an ignored workspace-local temporary file rather than relying solely on notebook variables or `/tmp`. Remove that file after verifying the remote branch.
 
 **Why:** A runtime reload cleared both notebook state and `/tmp` during a binary upload, while the already uploaded GitHub blobs remained intact.

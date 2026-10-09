@@ -1,7 +1,9 @@
 import * as React from "react";
-import { HIDDEN_TOPIC_STATUSES, isTopicInPage, type PipelineViewStatus } from "@/lib/topic-page-visibility";
+import { HIDDEN_TOPIC_STATUSES, isTopicInPage } from "@/lib/topic-page-visibility";
+import { readPipelineFilters, updatePipelineFilterSearch } from "@/lib/pipeline-filters";
 import {
   useListTopics,
+  getGetTopicFilterPreferencesQueryKey,
   useListDependencyCandidates,
   useCreateTopic,
   useListDepartments,
@@ -45,7 +47,7 @@ import { formatDate } from "@/lib/dates";
 import { formatHours } from "@/lib/contract-hours";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -148,15 +150,20 @@ export function Pipeline() {
 
 export function Topics({ mode = "topics" }: { mode?: "topics" | "pipeline" } = {}) {
   const isPipelineView = mode === "pipeline";
+  const routeSearch = useSearch();
+  const pipelineFilters = readPipelineFilters(routeSearch);
   const [search, setSearch] = React.useState("");
   const [status, setStatus] = React.useState<string>("");
-  const [pipelineStatus, setPipelineStatus] = React.useState<PipelineViewStatus>("pipeline");
-  const [priority, setPriority] = React.useState<string>("");
-  const [departmentId, setDepartmentId] = React.useState<string>("");
-  const [roleId, setRoleId] = React.useState<string>("");
+  const pipelineStatus = pipelineFilters.status;
+  const [topicPriority, setPriority] = React.useState<string>("");
+  const [topicDepartmentId, setDepartmentId] = React.useState<string>("");
+  const [topicRoleId, setRoleId] = React.useState<string>("");
+  const priority = isPipelineView ? pipelineFilters.priority : topicPriority;
+  const departmentId = isPipelineView ? pipelineFilters.departmentId : topicDepartmentId;
+  const roleId = isPipelineView ? pipelineFilters.roleId : topicRoleId;
   const [sortBy, setSortBy] = React.useState<TopicSort>("title");
   const [sortDirection, setSortDirection] = React.useState<"asc" | "desc">("asc");
-  const [filtersReady, setFiltersReady] = React.useState(false);
+  const [filtersReady, setFiltersReady] = React.useState(isPipelineView);
   const [openCreate, setOpenCreate] = React.useState(false);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -164,19 +171,21 @@ export function Topics({ mode = "topics" }: { mode?: "topics" | "pipeline" } = {
     data: savedFilters,
     isLoading: filtersLoading,
     isError: filtersError,
-  } = useGetTopicFilterPreferences();
+  } = useGetTopicFilterPreferences({
+    query: { queryKey: getGetTopicFilterPreferencesQueryKey(), enabled: !isPipelineView },
+  });
   const updateFilters = useUpdateTopicFilterPreferences();
 
   const normalizeFilter = (value: string) => (value === "none" ? "" : value);
 
   React.useEffect(() => {
-    if (!savedFilters || filtersReady) return;
+    if (isPipelineView || !savedFilters || filtersReady) return;
     setDepartmentId(savedFilters.departmentId ?? "");
     setRoleId(savedFilters.roleId ?? "");
     setStatus(HIDDEN_STATUSES.includes(savedFilters.status ?? "") ? "" : savedFilters.status ?? "");
     setPriority(savedFilters.priority ?? "");
     setFiltersReady(true);
-  }, [savedFilters, filtersReady]);
+  }, [savedFilters, filtersReady, isPipelineView]);
 
   const saveFilters = React.useCallback(
     (next: {
@@ -185,7 +194,12 @@ export function Topics({ mode = "topics" }: { mode?: "topics" | "pipeline" } = {
       status?: string;
       priority?: string;
     }) => {
-      if (!filtersReady || isPipelineView) return;
+      if (isPipelineView) {
+        const nextSearch = updatePipelineFilterSearch(routeSearch, next);
+        setLocation(`/pipeline${nextSearch ? `?${nextSearch}` : ""}`, { replace: true });
+        return;
+      }
+      if (!filtersReady) return;
       updateFilters.mutate({
         data: {
           departmentId: (next.departmentId ?? departmentId) || null,
@@ -195,7 +209,7 @@ export function Topics({ mode = "topics" }: { mode?: "topics" | "pipeline" } = {
         },
       });
     },
-    [departmentId, roleId, priority, status, filtersReady, updateFilters, isPipelineView],
+    [departmentId, roleId, priority, status, filtersReady, updateFilters, isPipelineView, routeSearch, setLocation],
   );
 
   // Queries
@@ -846,7 +860,7 @@ export function Topics({ mode = "topics" }: { mode?: "topics" | "pipeline" } = {
           </Select>
           {isPipelineView ? <Select
             value={pipelineStatus}
-            onValueChange={value => setPipelineStatus(value as PipelineViewStatus)}
+            onValueChange={value => saveFilters({ status: value })}
           >
             <SelectTrigger aria-label="Pipeline status filter" className="w-[160px] bg-background">
               <SelectValue />
@@ -903,7 +917,7 @@ export function Topics({ mode = "topics" }: { mode?: "topics" | "pipeline" } = {
             ? "Filters could not be loaded; using defaults."
             : updateFilters.isPending
               ? "Saving filters…"
-              : isPipelineView ? "Pipeline filters apply to this visit." : "Your department, role, status, and priority filters are saved automatically."}
+              : isPipelineView ? "Pipeline filters are kept in this page’s URL and retained on refresh." : "Your department, role, status, and priority filters are saved automatically."}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
