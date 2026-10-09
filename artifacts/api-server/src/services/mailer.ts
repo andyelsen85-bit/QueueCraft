@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import nodemailer from "nodemailer";
-import { db, notificationOutboxTable } from "@workspace/db";
+import { db, pool, notificationOutboxTable } from "@workspace/db";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { and, eq, inArray, lte, ne, sql } from "drizzle-orm";
 import { config } from "../config";
 import { getRuntimeSettings } from "./application-settings";
@@ -18,6 +19,9 @@ async function getTransporter() {
           ? { user: smtp.user, pass: smtp.password }
           : undefined,
       tls: { rejectUnauthorized: false },
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000,
     }), smtp };
 }
 
@@ -95,27 +99,52 @@ export function groupNotificationsByRecipient(items: Array<typeof notificationOu
   return groups;
 }
 
+let deliveryRunning = false;
+
 export async function deliverPendingNotifications() {
+  if (deliveryRunning) return;
+  deliveryRunning = true;
+  try {
+    await deliverNotificationPass();
+  } catch (error) {
+    logger.error({ err: error }, "Notification delivery pass failed");
+  } finally {
+    deliveryRunning = false;
+  }
+}
+
+async function deliverNotificationPass() {
   const { transporter, smtp } = await getTransporter();
   if (!transporter) {
     if (config.production) logger.error("SMTP is unavailable; notification delivery is blocked");
     return;
   }
 
-  // A transaction-scoped advisory lock serializes polling across all server
-  // instances, including the SMTP send itself, so rows cannot be sent twice
-  // by overlapping timers.
-  await db.transaction(async (tx) => {
-    const lock = await tx.execute(sql`SELECT pg_try_advisory_xact_lock(731904221) AS locked`) as unknown as { rows: Array<{ locked: boolean }> };
+  // Keep one session-level worker lock across SMTP sends, but NO open
+  // transaction or recipient locks. Topic edits take recipient transaction
+  // locks when enqueuing mail; retaining those over SMTP can freeze all saves.
+  const client = await pool.connect();
+  let locked = false;
+  let discardClient = false;
+  try {
+    const lock = await client.query<{ locked: boolean }>(
+      "SELECT pg_try_advisory_lock(731904221) AS locked",
+    );
     if (!lock.rows[0]?.locked) return;
+    locked = true;
+    const deliveryDb = drizzle(client);
     const now = new Date();
+    // Bound the pass so a large retry backlog cannot postpone new urgent
+    // alerts indefinitely. An in-flight send finishes within SMTP timeouts.
+    const deadline = Date.now() + 30_000;
 
-    const urgent = await tx.select().from(notificationOutboxTable).where(and(
+    const urgent = await deliveryDb.select().from(notificationOutboxTable).where(and(
       eq(notificationOutboxTable.action, BREAK_GLASS_NOTIFICATION_ACTION),
       inArray(notificationOutboxTable.status, ["pending", "failed"]),
       lte(notificationOutboxTable.nextAttemptAt, now),
     )).orderBy(notificationOutboxTable.createdAt).limit(25);
     for (const item of urgent) {
+      if (Date.now() >= deadline) break;
       try {
         // Security alerts bypass the digest delay and retain the original
         // subject and plain-text content alongside the branded HTML version.
@@ -126,14 +155,14 @@ export async function deliverPendingNotifications() {
           text: item.body,
           html: renderUrgentNotificationHtml(item.subject, item.body),
         });
-        await tx.update(notificationOutboxTable).set({
+        await deliveryDb.update(notificationOutboxTable).set({
           status: "sent", sentAt: new Date(), error: null,
           attempts: sql`${notificationOutboxTable.attempts} + 1`,
         }).where(eq(notificationOutboxTable.id, item.id));
       } catch (error) {
         const attempts = item.attempts + 1;
         const delayMinutes = Math.min(60, 2 ** Math.min(attempts, 6));
-        await tx.update(notificationOutboxTable).set({
+        await deliveryDb.update(notificationOutboxTable).set({
           status: "failed", attempts,
           nextAttemptAt: new Date(Date.now() + delayMinutes * 60_000),
           error: error instanceof Error ? error.message.slice(0, 1000) : "SMTP delivery failed",
@@ -144,7 +173,7 @@ export async function deliverPendingNotifications() {
 
     // Bound each pass by recipient count, not row count. Once a recipient is
     // due, all of their pending changes are loaded so one digest is never split.
-    const recipientQuery = await tx.execute(sql`
+    const recipientQuery = await deliveryDb.execute(sql`
       SELECT lower(recipient) AS recipient_key
       FROM notification_outbox
       WHERE status IN ('pending', 'failed')
@@ -155,10 +184,7 @@ export async function deliverPendingNotifications() {
       LIMIT 25
     `) as unknown as { rows: Array<{ recipient_key: string }> };
     const recipientKeys = recipientQuery.rows.map((item) => item.recipient_key).sort();
-    for (const recipient of recipientKeys) {
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(lower(${recipient})), 731904221)`);
-    }
-    const pending = recipientKeys.length ? await tx.select().from(notificationOutboxTable).where(
+    const pending = recipientKeys.length ? await deliveryDb.select().from(notificationOutboxTable).where(
       and(
         inArray(notificationOutboxTable.status, ["pending", "failed"]),
         ne(notificationOutboxTable.action, BREAK_GLASS_NOTIFICATION_ACTION),
@@ -168,6 +194,7 @@ export async function deliverPendingNotifications() {
     const recipientBatches = groupNotificationsByRecipient(pending);
 
     for (const items of recipientBatches.values()) {
+      if (Date.now() >= deadline) break;
       try {
         await transporter.sendMail({
           from: smtp.fromName ? { name: smtp.fromName, address: smtp.from } : smtp.from,
@@ -176,7 +203,7 @@ export async function deliverPendingNotifications() {
           text: items.map((item) => `${item.topicTitle || "Topic"} — ${item.action}\nChanged by: ${item.actorName || "QueueCraft user"}\n${item.body}`).join("\n\n"),
           html: renderNotificationDigest(items),
         });
-        await tx.update(notificationOutboxTable).set({
+        await deliveryDb.update(notificationOutboxTable).set({
           status: "sent",
           sentAt: new Date(),
           error: null,
@@ -186,7 +213,7 @@ export async function deliverPendingNotifications() {
         for (const item of items) {
           const attempts = item.attempts + 1;
           const delayMinutes = Math.min(60, 2 ** Math.min(attempts, 6));
-          await tx.update(notificationOutboxTable).set({
+          await deliveryDb.update(notificationOutboxTable).set({
             status: "failed",
             attempts,
             nextAttemptAt: new Date(Date.now() + delayMinutes * 60_000),
@@ -196,5 +223,16 @@ export async function deliverPendingNotifications() {
         logger.error({ err: error, recipient: items[0].recipient, notificationCount: items.length }, "SMTP digest delivery failed");
       }
     }
-  });
+  } finally {
+    if (locked) {
+      try {
+        await client.query("SELECT pg_advisory_unlock(731904221)");
+      } catch (error) {
+        discardClient = true;
+        logger.error({ err: error }, "Could not release notification worker lock");
+      }
+    }
+    // Never return a connection with a potentially retained session lock.
+    client.release(discardClient);
+  }
 }

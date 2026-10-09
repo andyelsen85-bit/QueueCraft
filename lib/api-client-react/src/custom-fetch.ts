@@ -1,5 +1,7 @@
 export type CustomFetchOptions = RequestInit & {
   responseType?: "json" | "text" | "blob" | "auto";
+  /** Includes CSRF lookup and response-body reading. Zero disables the limit. */
+  timeoutMs?: number;
 };
 
 export type ErrorType<T = unknown> = ApiError<T>;
@@ -19,10 +21,11 @@ let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
 let _csrfToken: string | null = null;
 
-async function getCsrfToken(): Promise<string | null> {
+async function getCsrfToken(signal?: AbortSignal): Promise<string | null> {
   if (typeof window === "undefined") return null;
   if (_csrfToken) return _csrfToken;
   const response = await fetch("/api/auth/csrf", {
+    signal,
     credentials: "include",
     headers: { accept: "application/json" },
   });
@@ -163,6 +166,9 @@ function truncate(text: string, maxLength = 300): string {
 }
 
 function buildErrorMessage(response: Response, data: unknown): string {
+  if (response.status === 504) {
+    return "The server took too long to respond. Your change may already have been saved. Refresh this page and check before trying again.";
+  }
   const prefix = `HTTP ${response.status} ${response.statusText}`;
 
   if (typeof data === "string") {
@@ -340,6 +346,34 @@ export async function customFetch<T = unknown>(
   input: RequestInfo | URL,
   options: CustomFetchOptions = {},
 ): Promise<T> {
+  const { timeoutMs = 45_000, ...requestOptions } = options;
+  const controller = new AbortController();
+  const callerSignal = requestOptions.signal ?? (isRequest(input) ? input.signal : undefined);
+  const forwardAbort = () => controller.abort(callerSignal?.reason);
+  if (callerSignal?.aborted) forwardAbort();
+  else callerSignal?.addEventListener("abort", forwardAbort, { once: true });
+  let timedOut = false;
+  const timer = timeoutMs > 0 ? setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs) : undefined;
+  try {
+    return await performFetch<T>(input, { ...requestOptions, signal: controller.signal });
+  } catch (error) {
+    if (timedOut) {
+      throw new Error("The request timed out. Your change may already have been saved. Refresh this page and check before trying again.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    callerSignal?.removeEventListener("abort", forwardAbort);
+  }
+}
+
+async function performFetch<T = unknown>(
+  input: RequestInfo | URL,
+  options: CustomFetchOptions,
+): Promise<T> {
   input = applyBaseUrl(input);
   const { responseType = "auto", headers: headersInit, ...init } = options;
 
@@ -373,7 +407,7 @@ export async function customFetch<T = unknown>(
   }
 
   if (!["GET", "HEAD", "OPTIONS"].includes(method) && !headers.has("x-csrf-token")) {
-    const csrfToken = await getCsrfToken();
+    const csrfToken = await getCsrfToken(init.signal ?? undefined);
     if (csrfToken) headers.set("x-csrf-token", csrfToken);
   }
 
