@@ -8,6 +8,7 @@ import { Link } from "wouter"
 import { ArrowRight } from "lucide-react"
 import { useEffect, useState } from "react"
 import { currentDateAssignments, localTodayIso } from "@/lib/my-work-running"
+import { WorkTopicStatus, WorkMilestoneCard } from "@/components/my-work-status"
 
 export function MyWork() {
   const { data: myWork, isLoading } = useGetMyWork({
@@ -61,9 +62,9 @@ export function MyWork() {
     return (
       <div className="space-y-2">
         {topics.map(t => (
-          <Link key={t.id} href={`/topics/${t.id}`} className="block group">
-            <Card className="transition-colors hover:border-primary/50 hover:bg-muted/30">
-              <CardContent className="p-4 flex items-center gap-4">
+            <Card key={t.id} className="transition-colors hover:border-primary/50 hover:bg-muted/30">
+              <CardContent className="p-4 flex flex-wrap items-center gap-4">
+                <Link href={`/topics/${t.id}`} className="flex flex-1 min-w-0 items-center gap-4 group">
                 <div className="w-12 text-center">
                   <PriorityBadge priority={t.priority} />
                 </div>
@@ -75,15 +76,13 @@ export function MyWork() {
                     <span>{t.role?.name ?? "Not assigned"}</span>
                   </div>
                 </div>
-                <div className="flex-none">
-                  <StatusBadge status={t.status} />
-                </div>
                 <div className="flex-none text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                   <ArrowRight className="h-4 w-4" />
                 </div>
+                </Link>
+                <WorkTopicStatus topic={t} />
               </CardContent>
             </Card>
-          </Link>
         ))}
       </div>
     )
@@ -148,19 +147,7 @@ export function MyWork() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {runningMilestones.map(m => (
-                    <Card key={m.id}>
-                      <CardContent className="p-4 flex items-center gap-4">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-semibold">{m.title}</h3>
-                          <div className="text-xs text-muted-foreground mt-1 font-mono">
-                            {formatDate(m.beginDate)} – {formatDate(m.targetDate)}
-                          </div>
-                        </div>
-                        <StatusBadge status={m.status} />
-                      </CardContent>
-                    </Card>
-                  ))}
+                  {runningMilestones.map(m => <WorkMilestoneCard key={m.id} milestone={m} />)}
                 </div>
               )}
             </section>
@@ -176,23 +163,7 @@ export function MyWork() {
               </div>
             ) : (
               <div className="space-y-2">
-                {sortedMilestones.map(m => (
-                  <Card key={m.id}>
-                    <CardContent className="p-4 flex items-center gap-4">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-semibold truncate">{m.title}</h3>
-                        {m.targetDate && (
-                          <div className="text-xs text-muted-foreground mt-1 font-mono">
-                            Target: {formatDate(m.targetDate)}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-none">
-                        <StatusBadge status={m.status} />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                {sortedMilestones.map(m => <WorkMilestoneCard key={m.id} milestone={m} />)}
               </div>
             )}
           </TabsContent>

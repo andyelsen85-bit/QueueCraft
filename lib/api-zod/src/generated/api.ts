@@ -947,6 +947,7 @@ export const GetMyWorkResponse = zod.object({
 })),
   "milestones": zod.array(zod.object({
   "id": zod.string(),
+  "topicId": zod.string(),
   "title": zod.string(),
   "description": zod.string().nullish(),
   "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']),
@@ -2657,6 +2658,7 @@ export const GetTopicResponse = zod.object({
 }).and(zod.object({
   "milestones": zod.array(zod.object({
   "id": zod.string(),
+  "topicId": zod.string(),
   "title": zod.string(),
   "description": zod.string().nullish(),
   "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']),
@@ -4438,6 +4440,7 @@ export const addTopicMilestoneResponseAllocationsItemAllocationPercentMax = 100;
 
 export const AddTopicMilestoneResponse = zod.object({
   "id": zod.string(),
+  "topicId": zod.string(),
   "title": zod.string(),
   "description": zod.string().nullish(),
   "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']),
@@ -4550,6 +4553,7 @@ export const updateMilestoneResponseAllocationsItemAllocationPercentMax = 100;
 
 export const UpdateMilestoneResponse = zod.object({
   "id": zod.string(),
+  "topicId": zod.string(),
   "title": zod.string(),
   "description": zod.string().nullish(),
   "status": zod.enum(['not_started', 'in_progress', 'returned', 'completed', 'blocked']),

@@ -308,6 +308,7 @@ export interface MilestoneAllocation {
 
 export interface Milestone {
   id: string;
+  topicId: string;
   title: string;
   /** @nullable */
   description?: string | null;

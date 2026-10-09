@@ -451,6 +451,7 @@ async function loadSnapshot() {
 
   const buildMilestone = (milestone: (typeof milestones)[number]) => ({
     id: milestone.id,
+    topicId: milestone.topicId,
     title: milestone.title,
     description: milestone.description,
     status: milestone.status,

@@ -4,7 +4,7 @@ import { useGetSession } from "@workspace/api-client-react"
 import { Loader2 } from "lucide-react"
 import { Dashboard } from "./pages/dashboard"
 import { MyWork } from "./pages/my-work"
-import { Topics } from "./pages/topics"
+import { Topics, Pipeline } from "./pages/topics"
 import { TopicDetail } from "./pages/topic-detail"
 import { Validation } from "./pages/validation"
 import { Directory } from "./pages/directory"
@@ -48,7 +48,8 @@ export function AppRouter() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/my-work" component={MyWork} />
-        <Route path="/topics" component={Topics} />
+        <Route path="/topics">{() => <Topics />}</Route>
+        <Route path="/pipeline" component={Pipeline} />
         <Route path="/topics/:topicId" component={TopicDetail} />
         <Route path="/validation" component={Validation} />
         <Route path="/directory">{session?.capabilities?.includes("directory.manage") ? <Directory /> : <AccessDenied />}</Route>

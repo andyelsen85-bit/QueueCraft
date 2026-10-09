@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Link, useLocation } from "wouter"
 import { cn } from "@/lib/utils"
-import { Home, FolderKanban, ListTodo, ShieldAlert, Users, CalendarDays, Settings, ChevronRight, ChartNoAxesCombined, Menu, X } from "lucide-react"
+import { Home, FolderKanban, ListTodo, Lightbulb, ShieldAlert, Users, CalendarDays, Settings, ChevronRight, ChartNoAxesCombined, Menu, X } from "lucide-react"
 import { useGetSession, useListDepartments } from "@workspace/api-client-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -36,6 +36,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { label: "Dashboard", href: "/", icon: Home },
     { label: "My Work", href: "/my-work", icon: FolderKanban },
     { label: "Topics", href: "/topics", icon: ListTodo },
+    { label: "Pipeline", href: "/pipeline", icon: Lightbulb },
     { label: "Occupancy", href: "/occupancy", icon: CalendarDays },
     { label: "Role capacity", href: "/role-occupancy", icon: ChartNoAxesCombined },
     { label: "Calendar", href: "/calendar", icon: CalendarDays },

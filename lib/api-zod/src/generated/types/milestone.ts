@@ -11,6 +11,7 @@ import type { MilestoneStatus } from './milestoneStatus';
 
 export interface Milestone {
   id: string;
+  topicId: string;
   title: string;
   /** @nullable */
   description?: string | null;

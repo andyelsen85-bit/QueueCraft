@@ -39,4 +39,6 @@ Persist long-upload progress in an ignored workspace-local temporary file rather
 
 **Why:** A runtime reload cleared both notebook state and `/tmp` during a binary upload, while the already uploaded GitHub blobs remained intact.
 
-**How to apply:** Re-read progress before each small batch, advance it only after hash verification, and keep each execution below the aggregate file-operation budget.
+**How to apply:** Re-read progress before each small batch, advance it only after hash verification, and keep each execution well below the aggregate file-operation budget. Recreate callback-using helpers inside each execution rather than calling stored notebook closures.
+
+**Why:** An aggregate Base64 payload smaller than the nominal file budget still exceeded it once callback operations were counted. A callback-using function reused in a later block also failed with `executeJs is not defined`; standalone batches with persisted progress worked.

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { HIDDEN_TOPIC_STATUSES, isTopicInPage, type PipelineViewStatus } from "@/lib/topic-page-visibility";
 import {
   useListTopics,
   useListDependencyCandidates,
@@ -133,9 +134,23 @@ const statusOrder: Record<string, number> = {
   not_pursued: 8,
 };
 
-export function Topics() {
+const HIDDEN_STATUSES = HIDDEN_TOPIC_STATUSES;
+const WAITING_LABELS: Record<string, string> = {
+  decision: "A decision",
+  budget: "Budget",
+  vendor: "A vendor",
+  partner_input: "Partner input",
+};
+
+export function Pipeline() {
+  return <Topics mode="pipeline" />;
+}
+
+export function Topics({ mode = "topics" }: { mode?: "topics" | "pipeline" } = {}) {
+  const isPipelineView = mode === "pipeline";
   const [search, setSearch] = React.useState("");
   const [status, setStatus] = React.useState<string>("");
+  const [pipelineStatus, setPipelineStatus] = React.useState<PipelineViewStatus>("pipeline");
   const [priority, setPriority] = React.useState<string>("");
   const [departmentId, setDepartmentId] = React.useState<string>("");
   const [roleId, setRoleId] = React.useState<string>("");
@@ -158,7 +173,7 @@ export function Topics() {
     if (!savedFilters || filtersReady) return;
     setDepartmentId(savedFilters.departmentId ?? "");
     setRoleId(savedFilters.roleId ?? "");
-    setStatus(savedFilters.status ?? "");
+    setStatus(HIDDEN_STATUSES.includes(savedFilters.status ?? "") ? "" : savedFilters.status ?? "");
     setPriority(savedFilters.priority ?? "");
     setFiltersReady(true);
   }, [savedFilters, filtersReady]);
@@ -170,7 +185,7 @@ export function Topics() {
       status?: string;
       priority?: string;
     }) => {
-      if (!filtersReady) return;
+      if (!filtersReady || isPipelineView) return;
       updateFilters.mutate({
         data: {
           departmentId: (next.departmentId ?? departmentId) || null,
@@ -180,19 +195,22 @@ export function Topics() {
         },
       });
     },
-    [departmentId, roleId, priority, status, filtersReady, updateFilters],
+    [departmentId, roleId, priority, status, filtersReady, updateFilters, isPipelineView],
   );
 
   // Queries
   const { data: topics, isLoading } = useListTopics({
     search: search || undefined,
-    status: status ? (status as any) : undefined,
+    status: isPipelineView ? pipelineStatus : status ? (status as any) : undefined,
     priority: priority ? (priority as any) : undefined,
     departmentId: departmentId || undefined,
     roleId: roleId || undefined,
   });
   const sortedTopics = React.useMemo(() => {
     if (!topics) return topics;
+    const visibleTopics = topics.filter((topic) =>
+      isTopicInPage(topic.status, mode, pipelineStatus),
+    );
 
     const compareText = (left: string, right: string) =>
       left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" });
@@ -206,7 +224,7 @@ export function Topics() {
       return left.localeCompare(right);
     };
 
-    return [...topics].sort((left, right) => {
+    return [...visibleTopics].sort((left, right) => {
       let comparison = 0;
       switch (sortBy) {
         case "priority":
@@ -258,7 +276,7 @@ export function Topics() {
           ? comparison
           : -comparison;
     });
-  }, [topics, sortBy, sortDirection]);
+  }, [topics, sortBy, sortDirection, mode, pipelineStatus]);
 
   const { data: departments } = useListDepartments();
   const { data: roles } = useListRoles();
@@ -311,7 +329,7 @@ export function Topics() {
       estimatedFinishDate: "",
       dependsOnTopicId: null,
       estimatedEffortHours: null,
-      creationMode: "pending_validation",
+      creationMode: isPipelineView ? "pipeline" : "pending_validation",
       pipelineWaitingFor: null,
       pipelineReviewDate: "",
     },
@@ -408,9 +426,9 @@ export function Topics() {
     <div className="flex-1 space-y-6 p-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Topics</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{isPipelineView ? "Pipeline" : "Topics"}</h1>
           <p className="text-muted-foreground mt-1">
-            Browse, filter, and create operational topics.
+            {isPipelineView ? "Proposals awaiting a decision and proposals not pursued." : "Browse, filter, and create operational topics."}
           </p>
         </div>
 
@@ -418,7 +436,7 @@ export function Topics() {
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              New Topic
+              {isPipelineView ? "New Pipeline Topic" : "New Topic"}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
@@ -826,7 +844,18 @@ export function Topics() {
               ))}
             </SelectContent>
           </Select>
-          <Select
+          {isPipelineView ? <Select
+            value={pipelineStatus}
+            onValueChange={value => setPipelineStatus(value as PipelineViewStatus)}
+          >
+            <SelectTrigger aria-label="Pipeline status filter" className="w-[160px] bg-background">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pipeline">Pipeline</SelectItem>
+              <SelectItem value="not_pursued">Not pursued</SelectItem>
+            </SelectContent>
+          </Select> : <Select
             value={status || "none"}
             onValueChange={(value) => {
               const next = normalizeFilter(value);
@@ -839,17 +868,12 @@ export function Topics() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">All Statuses</SelectItem>
-              <SelectItem value="pipeline">Pipeline</SelectItem>
-              <SelectItem value="not_pursued">Not Pursued</SelectItem>
-              <SelectItem value="pending_validation">
-                Pending Validation
-              </SelectItem>
               <SelectItem value="open">Open</SelectItem>
               <SelectItem value="in_progress">In Progress</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="closed">Closed</SelectItem>
             </SelectContent>
-          </Select>
+          </Select>}
           <Select
             value={priority || "none"}
             onValueChange={(value) => {
@@ -879,7 +903,7 @@ export function Topics() {
             ? "Filters could not be loaded; using defaults."
             : updateFilters.isPending
               ? "Saving filters…"
-              : "Your department, role, status, and priority filters are saved automatically."}
+              : isPipelineView ? "Pipeline filters apply to this visit." : "Your department, role, status, and priority filters are saved automatically."}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -996,6 +1020,17 @@ export function Topics() {
                           : "—"}
                       </div>
                     </div>
+                    {isPipelineView && (
+                      <div className="hidden max-w-[220px] shrink-0 break-words text-right text-xs sm:block" data-testid={`pipeline-meta-${t.id}`}>
+                        <div className="font-mono uppercase text-muted-foreground">{pipelineStatus === "not_pursued" ? "Decision" : "Waiting for"}</div>
+                        <div className="font-semibold">
+                          {pipelineStatus === "not_pursued" ? "Not pursued" : t.pipelineWaitingFor ? WAITING_LABELS[t.pipelineWaitingFor] ?? t.pipelineWaitingFor : "Not set"}
+                        </div>
+                        <div className="text-muted-foreground">
+                          {pipelineStatus === "not_pursued" ? t.pipelineExitReason || "Reason not recorded" : `Review ${t.pipelineReviewDate ? formatDate(t.pipelineReviewDate) : "not set"}`}
+                        </div>
+                      </div>
+                    )}
                     <StatusBadge status={t.status} />
                   </div>
                 </CardContent>
@@ -1005,7 +1040,7 @@ export function Topics() {
         </div>
       ) : (
         <div className="py-16 text-center border-2 border-dashed border-muted rounded-sm">
-          <h3 className="text-lg font-semibold mb-1">No topics found</h3>
+          <h3 className="text-lg font-semibold mb-1">{isPipelineView ? pipelineStatus === "not_pursued" ? "No not-pursued topics found" : "No pipeline topics found" : "No topics found"}</h3>
           <p className="text-muted-foreground text-sm">
             Adjust your filters or create a new topic to get started.
           </p>
