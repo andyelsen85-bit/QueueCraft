@@ -7,7 +7,7 @@ import { formatDate } from "@/lib/dates"
 import { Link } from "wouter"
 import { ArrowRight } from "lucide-react"
 import { useEffect, useState } from "react"
-import { isRunningOnDate, localTodayIso } from "@/lib/my-work-running"
+import { currentDateAssignments, localTodayIso } from "@/lib/my-work-running"
 
 export function MyWork() {
   const { data: myWork, isLoading } = useGetMyWork({
@@ -47,11 +47,7 @@ export function MyWork() {
   const sortedCreated = [...created].sort(compareName)
   const sortedCollaborations = [...collaborations].sort(compareName)
   const sortedMilestones = [...milestones].sort(compareName)
-  const runningTopics = [...new Map([...assigned, ...collaborations]
-    .filter(t => isRunningOnDate(t.status, t.estimatedStartDate, t.estimatedFinishDate, today))
-    .map(t => [t.id, t])).values()].sort(compareName)
-  const runningMilestones = sortedMilestones.filter(m =>
-    isRunningOnDate(m.status, m.beginDate, m.targetDate, today))
+  const { topics: runningTopics, milestones: runningMilestones } = currentDateAssignments(myWork, today)
 
   const TopicList = ({ topics, emptyMessage }: { topics: typeof myWork.created, emptyMessage: string }) => {
     if (topics.length === 0) {
@@ -137,8 +133,8 @@ export function MyWork() {
         <div className="mt-6">
           <TabsContent value="running" className="space-y-6">
             <p className="text-sm text-muted-foreground">
-              In-progress assignments for {formatDate(today)}. Only work whose scheduled dates include today is shown.
-              Future, finished and undated work is excluded.
+              Assignments scheduled for {formatDate(today)}, regardless of status, including work that still needs to be started.
+              Future, past and undated work is excluded.
             </p>
             <section aria-labelledby="running-topics-title" className="space-y-3">
               <h2 id="running-topics-title" className="text-lg font-semibold">Topics ({runningTopics.length})</h2>
